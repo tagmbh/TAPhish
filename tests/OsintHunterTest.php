@@ -165,4 +165,73 @@ final class OsintHunterTest extends TestCase
         self::assertTrue($r['ok']);
         self::assertSame(0, $r['results'][0]['confidence']);
     }
+
+    // --- email-finder parser (Phase 3.13) --------------------------------
+
+    public function testFinderParseHappyPath(): void
+    {
+        $raw = json_encode([
+            'data' => [
+                'email'        => 'alice.adams@example.com',
+                'first_name'   => 'Alice',
+                'last_name'    => 'Adams',
+                'position'     => 'CEO',
+                'score'        => 92,
+                'domain'       => 'example.com',
+                'organization' => 'Example Corp',
+            ],
+        ]);
+        $r = osint_hunter_parse_email_finder($raw);
+        self::assertTrue($r['ok']);
+        self::assertSame('Example Corp', $r['organization']);
+        self::assertCount(1, $r['results']);
+        $row = $r['results'][0];
+        self::assertSame('alice.adams@example.com', $row['email']);
+        self::assertSame('Alice Adams', $row['name']);
+        self::assertSame('CEO', $row['position']);
+        self::assertSame(92, $row['confidence']);
+        self::assertSame('finder', $row['type']);
+    }
+
+    public function testFinderParseEmptyResult(): void
+    {
+        $raw = json_encode([
+            'data' => ['email' => null, 'domain' => 'example.com'],
+        ]);
+        $r = osint_hunter_parse_email_finder($raw);
+        self::assertTrue($r['ok']);
+        self::assertSame([], $r['results']);
+    }
+
+    public function testFinderParseSurfacesErrorArray(): void
+    {
+        $raw = json_encode([
+            'errors' => [['id' => 'invalid_api_key', 'details' => 'Invalid API key']],
+        ]);
+        $r = osint_hunter_parse_email_finder($raw);
+        self::assertFalse($r['ok']);
+        self::assertStringContainsString('Invalid API key', $r['err']);
+    }
+
+    public function testFinderParseRejectsMissingDataField(): void
+    {
+        $r = osint_hunter_parse_email_finder(json_encode(['meta' => []]));
+        self::assertFalse($r['ok']);
+        self::assertStringContainsString('missing data', $r['err']);
+    }
+
+    public function testFinderParseRejectsNonJsonBody(): void
+    {
+        $r = osint_hunter_parse_email_finder('<html>503</html>');
+        self::assertFalse($r['ok']);
+    }
+
+    public function testFinderParseNormalizesNonNumericScore(): void
+    {
+        $raw = json_encode([
+            'data' => ['email' => 'x@x.com', 'score' => 'high'],
+        ]);
+        $r = osint_hunter_parse_email_finder($raw);
+        self::assertSame(0, $r['results'][0]['confidence']);
+    }
 }

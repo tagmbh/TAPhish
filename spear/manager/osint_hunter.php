@@ -181,3 +181,129 @@ if (!function_exists('osint_hunter_domain_search')) {
         return $parsed;
     }
 }
+
+// ---- Phase 3.13: email-finder --------------------------------------------
+
+if (!function_exists('osint_hunter_parse_email_finder')) {
+    /**
+     * Reduce the Hunter.io /v2/email-finder response to the same row shape
+     * that the parser uses for domain-search, so the JS layer renders both
+     * in the same table.
+     *
+     * @param mixed $raw
+     * @return array{
+     *   ok: bool,
+     *   domain?: ?string,
+     *   organization?: ?string,
+     *   results?: array<int, array<string,mixed>>,
+     *   err?: string,
+     * }
+     */
+    function osint_hunter_parse_email_finder($raw): array
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                return ['ok' => false, 'err' => 'Hunter.io returned non-JSON response'];
+            }
+            $raw = $decoded;
+        }
+        if (!is_array($raw)) {
+            return ['ok' => false, 'err' => 'Hunter.io response was not an object'];
+        }
+        if (isset($raw['errors']) && is_array($raw['errors']) && $raw['errors'] !== []) {
+            $first = $raw['errors'][0] ?? [];
+            $msg = is_array($first) ? ($first['details'] ?? $first['code'] ?? 'unknown error') : 'unknown error';
+            return ['ok' => false, 'err' => 'Hunter.io: ' . (string) $msg];
+        }
+        $data = $raw['data'] ?? null;
+        if (!is_array($data)) {
+            return ['ok' => false, 'err' => 'Hunter.io response missing data field'];
+        }
+        if (empty($data['email'])) {
+            return [
+                'ok'           => true,
+                'domain'       => isset($data['domain']) ? (string) $data['domain'] : null,
+                'organization' => isset($data['organization']) ? (string) $data['organization'] : null,
+                'results'      => [],
+            ];
+        }
+        $first = (string) ($data['first_name'] ?? '');
+        $last  = (string) ($data['last_name'] ?? '');
+        return [
+            'ok'           => true,
+            'domain'       => isset($data['domain']) ? (string) $data['domain'] : null,
+            'organization' => isset($data['organization']) ? (string) $data['organization'] : null,
+            'results'      => [[
+                'email'      => (string) $data['email'],
+                'name'       => trim($first . ' ' . $last),
+                'first_name' => $first,
+                'last_name'  => $last,
+                'position'   => (string) ($data['position'] ?? ''),
+                'confidence' => is_numeric($data['score'] ?? null) ? (int) $data['score'] : 0,
+                'type'       => 'finder',
+            ]],
+        ];
+    }
+}
+
+if (!function_exists('osint_hunter_email_finder')) {
+    /**
+     * Live call to Hunter.io /v2/email-finder. Same return shape as
+     * osint_hunter_domain_search() so the front end can render both in
+     * the same modal.
+     */
+    function osint_hunter_email_finder(
+        string $domain,
+        string $firstName,
+        string $lastName,
+        string $apiKey
+    ): array {
+        if (!osint_hunter_is_valid_domain($domain)) {
+            return ['ok' => false, 'err' => 'Invalid domain format'];
+        }
+        if (!osint_hunter_is_valid_api_key($apiKey)) {
+            return ['ok' => false, 'err' => 'Invalid Hunter.io API key format'];
+        }
+        $firstName = trim($firstName);
+        $lastName  = trim($lastName);
+        if ($firstName === '' && $lastName === '') {
+            return ['ok' => false, 'err' => 'At least one of first_name / last_name is required'];
+        }
+        if (!function_exists('curl_init')) {
+            return ['ok' => false, 'err' => 'ext-curl not available on this PHP runtime'];
+        }
+        $url = 'https://api.hunter.io/v2/email-finder?'
+            . http_build_query([
+                'domain'     => $domain,
+                'first_name' => $firstName,
+                'last_name'  => $lastName,
+                'api_key'    => $apiKey,
+            ]);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_USERAGENT      => (defined('BRAND_PRODUCT_NAME') ? BRAND_PRODUCT_NAME : 'TAPhish') . '/osint',
+            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+        ]);
+        $body   = curl_exec($ch);
+        $errno  = curl_errno($ch);
+        $errstr = curl_error($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+
+        if ($errno !== 0 || $body === false) {
+            return ['ok' => false, 'err' => 'cURL error ' . $errno . ': ' . $errstr];
+        }
+        $parsed = osint_hunter_parse_email_finder($body);
+        if (!$parsed['ok'] && $status >= 400) {
+            $parsed['err'] = $parsed['err'] ?? ('HTTP ' . $status);
+        }
+        return $parsed;
+    }
+}

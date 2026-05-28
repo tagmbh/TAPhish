@@ -541,3 +541,46 @@ function osintHunterImportSelected() {
         });
     });
 }
+
+
+function osintHunterFind(e) {
+    var apiKey = $("#osint_hunter_apikey").val().trim();
+    var domain = $("#osint_hunter_domain").val().trim();
+    var first  = $("#osint_hunter_first").val().trim();
+    var last   = $("#osint_hunter_last").val().trim();
+    if (!apiKey || !domain) {
+        toastr.error("", "API key and domain are both required.");
+        return;
+    }
+    if (!first && !last) {
+        toastr.error("", "Enter at least a first or last name.");
+        return;
+    }
+    localStorage.setItem(OSINT_HUNTER_KEY_LS, apiKey);
+    enableDisableMe(e);
+    $("#osint_hunter_summary").text("Looking up…");
+    $("#osint_hunter_results tbody").empty();
+    $.post({
+        url: "manager/userlist_campaignlist_mailtemplate_manager",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({
+            action_type: "osint_hunter_email_finder",
+            domain: domain,
+            first_name: first,
+            last_name: last,
+            api_key: apiKey
+        })
+    }).done(function (data) {
+        if (data && data.result === "success") {
+            renderOsintHunterResults(data);
+        } else {
+            $("#osint_hunter_summary").text("");
+            toastr.error("", (data && data.err) || "Email-finder failed.");
+        }
+    }).fail(function (xhr) {
+        $("#osint_hunter_summary").text("");
+        toastr.error("", "Request failed (HTTP " + xhr.status + ").");
+    }).always(function () {
+        enableDisableMe(e);
+    });
+}
