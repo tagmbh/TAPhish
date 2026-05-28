@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+# Locked to the gem set that the github-pages gem ships, so the local
+# bundle exec jekyll serve matches what GitHub renders.
+gem "github-pages", "~> 232", group: :jekyll_plugins
+gem "jekyll-seo-tag"
+gem "jekyll-sitemap"
+
+# Windows / WSL helpers — ignored on macOS/Linux CI.
+gem "tzinfo-data", platforms: [:mingw, :x64_mingw, :mswin, :jruby]
+gem "wdm", "~> 0.1", platforms: [:mingw, :x64_mingw, :mswin]
