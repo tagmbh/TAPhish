@@ -345,6 +345,16 @@
                               <button type="button" class="btn btn-info" onclick="osintHunterFind($(this))" title="Hunter.io email-finder: look up a specific person at the target domain" data-toggle="tooltip" data-placement="left"><i class="fas fa-user-tag"></i> Find</button>
                            </div>
                         </div>
+                        <div class="form-group row">
+                           <label class="col-sm-3 control-label col-form-label">Subdomain enum (crt.sh)</label>
+                           <div class="col-sm-7">
+                              <small class="text-muted">Uses Certificate Transparency logs — no API key. Reads the target domain field above.</small>
+                           </div>
+                           <div class="col-sm-2">
+                              <button type="button" class="btn btn-secondary" onclick="osintCrtSh($(this))" title="Enumerate subdomains of the target via crt.sh" data-toggle="tooltip" data-placement="left"><i class="fas fa-sitemap"></i> Subdomains</button>
+                           </div>
+                        </div>
+                        <div id="osint_crt_sh_results" class="small mb-2"></div>
                         <div id="osint_hunter_summary" class="text-muted small"></div>
                         <div class="table-responsive">
                            <table class="table table-sm table-striped" id="osint_hunter_results">
