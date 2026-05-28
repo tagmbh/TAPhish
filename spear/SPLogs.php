@@ -12,11 +12,12 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
       <link rel="stylesheet" type="text/css" href="css/dataTables.foundation.min.css">
       <script src="js/libs/clipboard.min.js"></script>  
@@ -52,7 +53,7 @@
             <div class="page-breadcrumb">
                <div class="row">
                   <div class="col-12 d-flex no-block align-items-center">
-                     <h4 class="page-title">SniperPhish Log</h4>
+                     <h4 class="page-title">TAPhish Log</h4>
                      <div class="ml-auto text-right">
                         <div class="btn-group">
                             <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fas fa-cog"></i></button>

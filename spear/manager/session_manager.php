@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 if (file_exists(dirname(__FILE__,2) . '/config/db.php'))
 	require_once(dirname(__FILE__,2) . '/config/db.php');
 else
-	die("Can not find db.php. Visit <a href='/install'>here</a> to install SniperPhish");	//shows if login page is opened before install 
+	die("Can not find db.php. Visit <a href='/install'>here</a> to install TAPhish");	//shows if login page is opened before install
 require_once(dirname(__FILE__) . '/common_functions.php');
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
@@ -215,9 +215,12 @@ function doReLogin($username, $pwd){
 function createSession($f_regenerate,$username){
 	global $conn;
 	session_destroy();
+	$is_https = (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+		|| (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+		|| (($_SERVER['SERVER_PORT'] ?? '') == 443);
 	session_set_cookie_params([
 			'lifetime' => 86400,	//86400=1 day
-			'secure' => false,
+			'secure' => $is_https,
 			'httponly' => true,
 			'samesite' => 'Strict'
 		]);

@@ -11,19 +11,19 @@
             <b class="logo-icon p-l-10">
                <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
                <!-- Dark Logo icon -->
-               <img src="/spear/images/logo-icon.png" alt="homepage" class="light-logo" />
+               <img src="/spear/images/brand/logo-icon.png" alt="homepage" class="light-logo" />
             </b>
             <!--End Logo icon -->
             <!-- Logo text -->
             <span class="logo-text">
                <!-- dark Logo text -->
-               <img src="/spear/images/logo-text.png" alt="homepage" class="light-logo" />
+               <img src="/spear/images/brand/logo-text.png" alt="homepage" class="light-logo" />
             </span>
             <!-- Logo icon -->
             <!-- <b class="logo-icon"> -->
             <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
             <!-- Dark Logo icon -->
-            <!-- <img src="images/logo-text.png" alt="homepage" class="light-logo" /> -->
+            <!-- <img src="images/brand/logo-text.png" alt="homepage" class="light-logo" /> -->
             <!-- </b> -->
             <!--End Logo icon -->
          </a>
@@ -142,7 +142,7 @@
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/MailCmpDashboard" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><i class="icon-right-corn mdi mdi-email-outline"></i><span class="hide-menu">Email Campaign Dashboard</span></a></li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/WebMailCmpDashboard" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><i class="icon-bottom mdi mdi-email-outline"></i><i class="icon-right mdi mdi-web"></i><span class="hide-menu">Web-MailCamp Dashboard</span></a></li>
             <li class="sidebar-item">
-               <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-cloud"></i><span class="hide-menu">SniperHost</span></a>
+               <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-cloud"></i><span class="hide-menu">Hosted Pages</span></a>
                <ul aria-expanded="false" class="collapse  first-level">
                   <li class="sidebar-item"><a href="/spear/sniperhost/PlainText" class="sidebar-link"><i class="mdi mdi-format-text"></i><span class="hide-menu"> Plain-Text </span></a></li>
                   <li class="sidebar-item"><a href="/spear/sniperhost/FileHost" class="sidebar-link"><i class="mdi mdi-file-multiple"></i><span class="hide-menu"> Files </span></a></li>

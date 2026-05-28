@@ -1,6 +1,7 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/db.php');
+require_once(dirname(__FILE__, 2) . '/config/brand.php');
 //-----------------------------
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
@@ -65,12 +66,13 @@ function sendNewReset($conn, $contact_mail){
 }
 
 function initResetMail($conn, $v_hash, $contact_mail){
-	$msg = "Hi,<p>It looks you requested for SnipierPhish password reset. Please visit ".getServerVariable($conn)['baseurl']."/spear/ChangePwd?token=".$v_hash." for resetting password</p>";
-	
+	$product = BRAND_PRODUCT_NAME;
+	$msg = "Hi,<p>It looks you requested for ".$product." password reset. Please visit ".getServerVariable($conn)['baseurl']."/spear/ChangePwd?token=".$v_hash." for resetting password</p>";
+
 	$headers = "MIME-Version: 1.0" . "\r\n";
     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
 
-	if(!mail($contact_mail,"SniperPhish Password Reset",$msg,$headers))
+	if(!mail($contact_mail,$product." Password Reset",$msg,$headers))
 		die(json_encode(['error' => 'Mail sending failed!']));
 }
 

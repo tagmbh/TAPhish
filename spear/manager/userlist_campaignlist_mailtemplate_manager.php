@@ -618,7 +618,7 @@ function sendTestMailVerification($conn,$POSTJ){
 	$sender_pwd = $POSTJ['sender_list_mail_sender_acc_pwd'];
 	$cust_headers = $POSTJ['sender_list_cust_headers'];
 	$test_to_address = $POSTJ['test_to_address'];
-	$mail_subject = "SniperPhish Test Mail";
+	$mail_subject = BRAND_PRODUCT_NAME." Test Mail";
 	$mail_body = "Success. Here is the test message body";
 	$mail_content_type = "text/plain";
 	$dsn_type = $POSTJ['dsn_type'];

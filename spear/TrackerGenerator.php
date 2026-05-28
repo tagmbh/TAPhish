@@ -12,14 +12,15 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="css/jquery.steps.css">
       <link rel="stylesheet" type="text/css" href="css/steps.css">
       <link rel="stylesheet" type="text/css" href="css/prism.css"/> 
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
       <style> 
          .tab-header{ list-style-type: none; }
          pre {
@@ -101,7 +102,7 @@
                                     <div class="col-md-4">
                                        <input type="text" class="form-control" id="tb_webhook_url">
                                        <div class="text-right m-t-5">
-                                          <i class="mdi mdi-information cursor-pointer" data-container="body" tabindex="0" data-toggle="popover" data-trigger="focus" data-placement="top" data-content="SniperPhish URL to which webhook is received from phishing websites. Thish should be accessible for target users."></i>
+                                          <i class="mdi mdi-information cursor-pointer" data-container="body" tabindex="0" data-toggle="popover" data-trigger="focus" data-placement="top" data-content="TAPhish URL to which webhook is received from phishing websites. This should be accessible to target users."></i>
                                           <button type="button" class="btn btn-success btn-sm" data-toggle="tooltip" data-placement="top" title="Verify access to the Webhook URL" onclick="webhookValidate($(this))"><i class="fa fas fa-check"></i></button>
                                        </div>
                                     </div>

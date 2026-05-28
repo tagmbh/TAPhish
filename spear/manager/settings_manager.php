@@ -441,7 +441,7 @@ function downloadLogs($conn,$file_format){
 		elseif ($file_format == 'pdf') {
 			$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 			$pdf->SetCreator(PDF_CREATOR);
-			$pdf->SetAuthor('SniperPhish');
+			$pdf->SetAuthor(BRAND_PRODUCT_NAME);
 			$pdf->SetTitle('Report data');
 			$pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
 			$pdf->SetFooterMargin(PDF_MARGIN_FOOTER);

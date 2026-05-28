@@ -12,11 +12,12 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="spear/images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="spear/images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="spear/css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="spear/css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="spear/css/brand.css">
    </head>
    <body>
       <div class="main-wrapper">
@@ -38,7 +39,7 @@
          <div class=" d-flex no-block justify-content-center align-items-center bg-dark">
             <div class="bg-dark border-top border-secondary">
                <div class="text-center p-t-20 p-b-20">
-                  <span class="db"><img src="spear/images/logo-icon2x.png" alt="logo" /><img src="spear/images/logo.png" alt="logo" /> v<?php getSniperPhishVersion(); ?></span>
+                  <span class="db"><img src="spear/images/brand/logo-icon2x.png" alt="logo" /><img src="spear/images/brand/logo.png" alt="logo" /> v<?php getSniperPhishVersion(); ?></span>
                </div>
             </div>
          </div>
@@ -178,7 +179,7 @@
                     $("#comm_error").text(data2);             
                 }).fail(function(error2) {
                     if(error2.status == 200)
-                        $("#comm_error").html('The .htaccess file from web root is either a) missing, b)incorrectly configured or c)it\'s support does not enabled in your web server. SniperPhish requires web server configuration to ignore .php from URLs. You should configure .htaccess file to ignore .php extension.');
+                        $("#comm_error").html('The .htaccess file from web root is either a) missing, b)incorrectly configured or c)it\'s support does not enabled in your web server. TAPhish requires web server configuration to ignore .php from URLs. You should configure .htaccess file to ignore .php extension.');
                     else
                         $("#comm_error").text('Can not access /install_manager.php. Error:' + error2.status + ' ' + error2.statusText);
                 });
@@ -212,10 +213,10 @@
                 $("#bt_install i").toggleClass('fa-spinner fa-spin');
 
                 if(!data.error){
-                  $("#lb_error").html('<span class="text-success">Installation success. SniperPhish will redirect to <a href="/spear">login page</a> in few seconds..</span>');
+                  $("#lb_error").html('<div class="text-success">Installation success. Redirecting to <a href="/spear">login page</a> in a few seconds.</div><div class="text-warning m-t-10"><strong>Security notice:</strong> the default login is <code>admin</code> / <code>sniperphish</code>. Change the password immediately after first login.</div>');
                     setTimeout(function() {
                         document.location = location.origin + '/spear';
-                    }, 3000);
+                    }, 6000);
                 }
                 else{
                     if(data.error=="db_content_exist")

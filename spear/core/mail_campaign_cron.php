@@ -146,6 +146,14 @@ function InitMailCampaign($conn, $campaign_id){
 	$config_antiflood_pause = $MCONFIG_DATA['mconfig_data']['antiflood']['pause'];
 	$config_msg_priority = $MCONFIG_DATA['mconfig_data']['msg_priority'];
 	$config_peer_verification = $MCONFIG_DATA['mconfig_data']['peer_verification'];
+	// Auto-pause threshold: percentage of failures over the last N sends that
+	// triggers a status=3 pause. 0 disables the check entirely. Default 50%.
+	$config_failure_pause_percent = isset($MCONFIG_DATA['mconfig_data']['failure_pause_percent'])
+		? (int) $MCONFIG_DATA['mconfig_data']['failure_pause_percent']
+		: 50;
+	$config_failure_pause_window = isset($MCONFIG_DATA['mconfig_data']['failure_pause_window'])
+		? (int) $MCONFIG_DATA['mconfig_data']['failure_pause_window']
+		: 20;
 	if($config_signed_mail){
 		$config_mail_sign_cert_name = $MCONFIG_DATA['mconfig_data']['mail_sign']['cert']['name'];
 		$config_mail_sign_cert_fb64 = $MCONFIG_DATA['mconfig_data']['mail_sign']['cert']['fb64'];
@@ -286,11 +294,37 @@ function InitMailCampaign($conn, $campaign_id){
 			sleep($config_antiflood_pause);
 		}
 
+		//Auto-pause when the recent failure rate crosses the configured threshold.
+		if ($config_failure_pause_percent > 0 && $i >= $config_failure_pause_window) {
+			$recent_failures = countRecentFailures($conn, $campaign_id, $config_failure_pause_window);
+			$failure_pct = ($recent_failures * 100) / $config_failure_pause_window;
+			if ($failure_pct >= $config_failure_pause_percent) {
+				changeCampaignStatus($conn, $campaign_id, 3); //3=Paused
+				logIt('Mail campaign auto-paused: '.$recent_failures.'/'.$config_failure_pause_window.' recent sends failed (threshold '.$config_failure_pause_percent.'%)', 'cron');
+				return; //changeCampaignStatus to 4 (below) would overwrite the pause
+			}
+		}
+
 		//Exit if campaign is stopped by user
 		if(isCampaignStopped($conn, $campaign_id))
 			break;
 	}
 	changeCampaignStatus($conn, $campaign_id, 4); //4=Mail sending completed (But campaign is in progress (2))
+}
+
+function countRecentFailures($conn, $campaign_id, $window){
+	// sending_status: 1=in progress, 2=success, 3=error
+	$stmt = $conn->prepare("SELECT sending_status FROM tb_data_mailcamp_live WHERE campaign_id=? ORDER BY send_time DESC LIMIT ?");
+	$stmt->bind_param('si', $campaign_id, $window);
+	$stmt->execute();
+	$result = $stmt->get_result();
+	$failures = 0;
+	while ($row = $result->fetch_assoc()) {
+		if ((int) $row['sending_status'] === 3)
+			$failures++;
+	}
+	$stmt->close();
+	return $failures;
 }
 
 function isCampaignStopped($conn, $campaign_id){

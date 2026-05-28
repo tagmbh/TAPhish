@@ -146,7 +146,7 @@ function doInstall(&$POSTJ){
         
 
         if(file_put_contents('spear/config/db.php', $file_contents)){ //created db.php file
-            if (createTables($conn)) //creates SniperPhish DB tables
+            if (createTables($conn)) //creates application DB tables
                 if (modifySniperPhishSettings($conn, $time_zone, $user_contact_mail))
                     echo json_encode(['result' => 'success']);  
                 else 

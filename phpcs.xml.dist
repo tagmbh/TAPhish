@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<ruleset name="TAPhish">
+    <description>PSR-12 style guide (warnings only) for TAPhish code outside vendored libraries.</description>
+
+    <file>spear/manager</file>
+    <file>spear/core</file>
+    <file>spear/config</file>
+    <file>install.php</file>
+    <file>install_manager.php</file>
+    <file>mod.php</file>
+    <file>qt.php</file>
+    <file>tmail.php</file>
+    <file>track.php</file>
+    <file>ChangePwd.php</file>
+    <file>tests</file>
+
+    <exclude-pattern>spear/libs/*</exclude-pattern>
+    <exclude-pattern>vendor/*</exclude-pattern>
+
+    <rule ref="PSR12">
+        <severity>5</severity>
+        <type>warning</type>
+    </rule>
+
+    <arg name="colors"/>
+    <arg name="extensions" value="php"/>
+    <arg value="p"/>
+</ruleset>

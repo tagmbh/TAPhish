@@ -1,0 +1,32 @@
+/* Brand accent overrides for TAPhish (t-alpha GmbH). */
+/* Loaded after css/style.min.css so these rules win. */
+
+.bg-info,
+.btn-info {
+    background-color: #0a3d62 !important;
+    border-color: #0a3d62 !important;
+}
+
+.btn-info:hover,
+.btn-info:focus,
+.btn-info:active {
+    background-color: #3c6382 !important;
+    border-color: #3c6382 !important;
+}
+
+.text-info {
+    color: #0a3d62 !important;
+}
+
+a {
+    color: #0a3d62;
+}
+
+a:hover,
+a:focus {
+    color: #3c6382;
+}
+
+.page-title {
+    color: #0a3d62;
+}

@@ -23,10 +23,11 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
    </head>
    <body>
       <div class="main-wrapper">
@@ -49,7 +50,7 @@
             <div class="auth-box bg-dark border-top border-secondary">
                <div id="loginform">
                   <div class="text-center p-t-20 p-b-20">
-                     <span class="db"><img src="images/logo-icon2x.png" alt="logo" /><img src="images/logo.png" alt="logo" /> v<?php getSniperPhishVersion(); ?></span>
+                     <span class="db"><img src="images/brand/logo-icon2x.png" alt="logo" /><img src="images/brand/logo.png" alt="logo" /> v<?php getSniperPhishVersion(); ?></span>
                   </div>
                   <!-- Form -->
                   <form class="form-horizontal m-t-20" id="loginform" action="index" method="post" onsubmit="doLogin()">

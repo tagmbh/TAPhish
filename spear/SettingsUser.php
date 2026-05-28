@@ -12,11 +12,12 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
       <link rel="stylesheet" type="text/css" href="css/dataTables.foundation.min.css">
       <script src="js/libs/clipboard.min.js"></script>  
@@ -52,7 +53,7 @@
             <div class="page-breadcrumb">
                <div class="row">
                   <div class="col-12 d-flex no-block align-items-center">
-                     <h4 class="page-title">SniperPhish Settings</h4>
+                     <h4 class="page-title">TAPhish Settings</h4>
                   </div>
                </div>
             </div>
@@ -89,7 +90,7 @@
 
                      <div class="row">
                         <div class="col-md-12">
-                           <h5 class="card-title text-center m-t-10"><span>SniperPhish Accounts</span></h5>
+                           <h5 class="card-title text-center m-t-10"><span>TAPhish Accounts</span></h5>
                         </div>
                      </div>
                      <div class="row">

@@ -1,6 +1,8 @@
 <?php
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
+require_once(dirname(__FILE__, 2) . '/config/brand.php');
+require_once(__DIR__ . '/filters.php');
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mime\Email;
@@ -85,10 +87,20 @@ function startProcess($os){
 }
 
 function executeCron($conn,$os,$campaign_id){
-    if($os == "windows")
-        pclose(popen('start /b '.getPHPBinaryLocation($os).' '.dirname(__FILE__,2).'\core\mail_campaign_cron.php '.$campaign_id,'r')); //background execution
+    // Defense in depth: campaign_id must be a positive integer string before it
+    // reaches a shell. Today it's a DB-derived value, but escaping makes the
+    // call safe even if upstream validation regresses.
+    if (!ctype_digit((string) $campaign_id))
+        return;
+
+    $php = escapeshellarg(getPHPBinaryLocation($os));
+    $cron = escapeshellarg(dirname(__FILE__,2) . ($os == "windows" ? '\\core\\mail_campaign_cron.php' : '/core/mail_campaign_cron.php'));
+    $cid = escapeshellarg((string) $campaign_id);
+
+    if ($os == "windows")
+        pclose(popen('start /b ' . $php . ' ' . $cron . ' ' . $cid, 'r')); //background execution
     else
-        pclose(popen(getPHPBinaryLocation($os).' '.dirname(__FILE__,2).'/core/mail_campaign_cron.php '.$campaign_id.' &','r'));
+        pclose(popen($php . ' ' . $cron . ' ' . $cid . ' &', 'r'));
 }
 
 function isCommandExist($cmd) {
@@ -444,29 +456,8 @@ function getMailReplied($conn, $campaign_id, $quite=false){
     $stmt->close();
 }
 //--------------------------------------------------------------------
-function doFilter($string, $type){
-    if($type == 'ALPHA_NUM')
-        return preg_replace("/[^a-zA-Z0-9]+/", '', $string);
-    else
-    if($type == 'ALPHA')
-        return preg_replace("/[^a-zA-Z]+/", '', $string);
-    else
-    if($type == 'NUM')
-        return preg_replace("/[^0-9]+/", '', $string);
-    else
-        return $string;
-}
-
-function isValidEmail($email) { //supports  RFC 5322
-  if (empty($email)) {
-    return false;
-  }
-
-  $email = mb_convert_encoding($email, 'UTF-8', 'auto');
-  $regex = '/^[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~.-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/';
-  
-  return filter_var($email, FILTER_VALIDATE_EMAIL) || preg_match($regex, $email);
-}
+// doFilter() and isValidEmail() now live in filters.php (required above)
+// so they can be unit-tested without DB/session deps.
 
 function getTimeInfo($conn){    //get client-set date-time formats
     $result = mysqli_query($conn, "SELECT time_zone,time_format FROM tb_main_variables")->fetch_assoc();
@@ -588,8 +579,8 @@ function logIt($log,$username=null){
 function getRandomStr($length=10){
     return substr(str_shuffle(str_repeat($x='0123456789abcdefghijklmnopqrstuvwxyz', ceil(10/strlen($x)) )),1,intval($length));
 }
-function getSniperPhishVersion(){   //update this when new version releases
-    echo "2.1";
+function getSniperPhishVersion(){   //backward-compat alias; update BRAND_PRODUCT_VERSION in spear/config/brand.php
+    echo BRAND_PRODUCT_VERSION;
 }
 
 ?>

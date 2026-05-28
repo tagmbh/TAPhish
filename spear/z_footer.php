@@ -1,3 +1,4 @@
+<?php require_once(dirname(__FILE__) . '/config/brand.php'); ?>
 <footer class="footer text-center">
-   © 2023 | All Rights Reserved 
+   <?php echo brand_copyright(); ?>
 </footer>

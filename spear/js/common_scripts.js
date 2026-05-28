@@ -154,7 +154,7 @@ function addAlert(alert){
                            <div class="d-flex no-block align-items-center p-10">
                                 <span class="btn btn-danger btn-circle"><i class="mdi mdi-alert"></i></span>
                                 <div class="m-l-15">
-                                    <h5 class="m-b-0">SniperPhish service</h5>
+                                    <h5 class="m-b-0">TAPhish service</h5>
                                     <span class="mail-desc">Service is not running. Click here to start.</span> 
                                 </div>
                            </div>

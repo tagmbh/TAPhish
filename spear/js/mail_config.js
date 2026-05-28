@@ -167,6 +167,8 @@ function saveConfigAction(e) {
     configData.signed_mail = $("#cb_signed_mail").is(':checked');
     configData.encrypted_mail = $("#cb_encrypted_mail").is(':checked');
     configData.antiflood = {"limit": $('#tb_antiflood_limit').val(), "pause": $('#tb_antiflood_pause').val()};
+    configData.failure_pause_percent = parseInt($('#tb_failure_pause_percent').val(), 10) || 0;
+    configData.failure_pause_window = parseInt($('#tb_failure_pause_window').val(), 10) || 20;
     configData.msg_priority = $("#select_msg_priority").val();
 
     enableDisableMe(e);
@@ -272,6 +274,8 @@ function getMCampConfigFromConfigId(mconfig_id,quite) {
         $('#cb_encrypted_mail').prop('checked', configData.encrypted_mail).trigger('change');   
         $('#tb_antiflood_limit').val(configData.antiflood.limit);
         $('#tb_antiflood_pause').val(configData.antiflood.pause);
+        $('#tb_failure_pause_percent').val(configData.failure_pause_percent != null ? configData.failure_pause_percent : 50);
+        $('#tb_failure_pause_window').val(configData.failure_pause_window != null ? configData.failure_pause_window : 20);
         $('#select_msg_priority').val(configData.msg_priority).change();
 
         if(!($.isEmptyObject(configData.mail_sign.cert) || $.isEmptyObject(configData.mail_sign.pvk))){
