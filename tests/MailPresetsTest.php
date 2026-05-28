@@ -47,6 +47,40 @@ final class MailPresetsTest extends TestCase
         self::assertContains('Hostpoint (hostpoint.ch) - TLS', $names);
     }
 
+    public function testIncludesInfomaniakPresets(): void
+    {
+        $names = array_column(taphish_known_mail_presets(), 'name');
+        self::assertContains('Infomaniak (infomaniak.com) - SSL', $names);
+        self::assertContains('Infomaniak (infomaniak.com) - TLS', $names);
+    }
+
+    public function testIncludesMicrosoft365CustomDomainPreset(): void
+    {
+        $names = array_column(taphish_known_mail_presets(), 'name');
+        self::assertContains('Microsoft 365 - Custom domain (SMTP AUTH)', $names);
+    }
+
+    public function testInfomaniakSslPointsAtCorrectServer(): void
+    {
+        $ssl = $this->findPreset('Infomaniak (infomaniak.com) - SSL');
+        $content = json_decode($ssl['content'], true);
+        self::assertSame('mail.infomaniak.com:465', $content['smtp']['value']);
+    }
+
+    public function testInfomaniakTlsPointsAtCorrectServer(): void
+    {
+        $tls = $this->findPreset('Infomaniak (infomaniak.com) - TLS');
+        $content = json_decode($tls['content'], true);
+        self::assertSame('mail.infomaniak.com:587', $content['smtp']['value']);
+    }
+
+    public function testMicrosoft365CustomDomainPointsAtOffice365(): void
+    {
+        $m365 = $this->findPreset('Microsoft 365 - Custom domain (SMTP AUTH)');
+        $content = json_decode($m365['content'], true);
+        self::assertSame('smtp.office365.com:587', $content['smtp']['value']);
+    }
+
     public function testHostpointSslPointsAtCorrectServerAndPort(): void
     {
         $ssl = $this->findPreset('Hostpoint (hostpoint.ch) - SSL');

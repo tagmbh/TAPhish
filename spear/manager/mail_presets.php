@@ -69,6 +69,71 @@ if (!function_exists('taphish_known_mail_presets')) {
                     ],
                 ], JSON_UNESCAPED_SLASHES),
             ],
+            [
+                'name' => 'Infomaniak (infomaniak.com) - SSL',
+                'info' => json_encode([
+                    'dsn_type'  => 'custom',
+                    'disp_note' => 'Swiss host. Implicit-TLS submission on port 465. '
+                        . 'Use your full mailbox address as username and the mailbox password.',
+                ], JSON_UNESCAPED_SLASHES),
+                'content' => json_encode([
+                    'from'     => 'Name<username@yourdomain.ch>',
+                    'username' => 'username@yourdomain.ch',
+                    'mailbox'  => [
+                        'value'    => '{mail.infomaniak.com:993/imap/ssl}INBOX',
+                        'disabled' => false,
+                        'checked'  => true,
+                    ],
+                    'smtp' => [
+                        'value'    => 'mail.infomaniak.com:465',
+                        'disabled' => false,
+                    ],
+                ], JSON_UNESCAPED_SLASHES),
+            ],
+            [
+                'name' => 'Infomaniak (infomaniak.com) - TLS',
+                'info' => json_encode([
+                    'dsn_type'  => 'custom',
+                    'disp_note' => 'Swiss host. STARTTLS submission on port 587. '
+                        . 'Use your full mailbox address as username and the mailbox password.',
+                ], JSON_UNESCAPED_SLASHES),
+                'content' => json_encode([
+                    'from'     => 'Name<username@yourdomain.ch>',
+                    'username' => 'username@yourdomain.ch',
+                    'mailbox'  => [
+                        'value'    => '{mail.infomaniak.com:993/imap/ssl}INBOX',
+                        'disabled' => false,
+                        'checked'  => true,
+                    ],
+                    'smtp' => [
+                        'value'    => 'mail.infomaniak.com:587',
+                        'disabled' => false,
+                    ],
+                ], JSON_UNESCAPED_SLASHES),
+            ],
+            [
+                'name' => 'Microsoft 365 - Custom domain (SMTP AUTH)',
+                'info' => json_encode([
+                    'dsn_type'  => 'custom',
+                    'disp_note' => 'Microsoft 365 with your own domain. Requires '
+                        . 'SMTP AUTH enabled on the mailbox (Settings > Mail > Get the Outlook apps > '
+                        . 'POP and IMAP). Sender must match the licensed mailbox address. '
+                        . 'Consider Graph API + a dedicated app registration for production use.',
+                ], JSON_UNESCAPED_SLASHES),
+                'content' => json_encode([
+                    'from'     => 'Name<sender@yourdomain.com>',
+                    'username' => 'sender@yourdomain.com',
+                    'mailbox'  => [
+                        'value'    => '{outlook.office365.com:993/imap/ssl/novalidate-cert}INBOX',
+                        'disabled' => false,
+                        'checked'  => true,
+                    ],
+                    'smtp' => [
+                        'value'    => 'smtp.office365.com:587',
+                        'disabled' => false,
+                    ],
+                ], JSON_UNESCAPED_SLASHES),
+            ],
         ];
     }
 }

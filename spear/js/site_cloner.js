@@ -1,15 +1,22 @@
 "use strict";
 
 const SITE_CLONER_ENDPOINT = "sniperhost/manager/site_cloner_manager.php";
+const WEB_TRACKER_LIST_ENDPOINT = "manager/web_tracker_generator_list_manager.php";
 
-function postJson(payload) {
+let g_sp_base_url = "";
+
+function postJson(url, payload) {
    return $.ajax({
-      url: SITE_CLONER_ENDPOINT,
+      url: url,
       method: "POST",
       contentType: "application/json",
       data: JSON.stringify(payload),
       dataType: "json",
    });
+}
+
+function postSiteCloner(payload) {
+   return postJson(SITE_CLONER_ENDPOINT, payload);
 }
 
 function renderCloneResult(res) {
@@ -73,7 +80,7 @@ function renderCloneList(clones) {
 }
 
 function refreshList() {
-   postJson({ action_type: "list_clones" })
+   postSiteCloner({ action_type: "list_clones" })
       .done((res) => {
          if (res.result === "success") {
             renderCloneList(res.clones || []);
@@ -86,7 +93,7 @@ function refreshList() {
 
 function deleteClone(slug) {
    if (!confirm("Delete clone '" + slug + "'? This removes its directory on disk.")) return;
-   postJson({ action_type: "delete_clone", slug: slug })
+   postSiteCloner({ action_type: "delete_clone", slug: slug })
       .done((res) => {
          if (res.result === "success") {
             refreshList();
@@ -96,7 +103,56 @@ function deleteClone(slug) {
       });
 }
 
+function buildTrackerScriptUrl(trackerId) {
+   if (!trackerId) return "";
+   const base = g_sp_base_url || window.location.origin;
+   return base.replace(/\/$/, "") + "/mod?tlink=" + encodeURIComponent(trackerId);
+}
+
+function loadSpBaseUrl() {
+   return postJson(WEB_TRACKER_LIST_ENDPOINT, { action_type: "get_SP_base_URL" })
+      .done((data) => {
+         if (data && data.baseurl) {
+            g_sp_base_url = data.baseurl;
+         }
+      });
+}
+
+function loadTrackerOptions() {
+   return postJson(WEB_TRACKER_LIST_ENDPOINT, { action_type: "get_web_tracker_list_for_modal" })
+      .done((data) => {
+         const sel = $("#sel_tracker");
+         sel.find("option:not([value=''])").remove();
+         if (!Array.isArray(data)) return; // {error: 'No data'} response
+         data.forEach((t) => {
+            sel.append(
+               $("<option>")
+                  .val(t.tracker_id)
+                  .text(t.tracker_name + " (" + t.tracker_id + ")")
+            );
+         });
+      });
+}
+
+function wireTrackerSelector() {
+   $("#sel_tracker").on("change", function () {
+      const trackerId = $(this).val();
+      $("#in_tracker").val(buildTrackerScriptUrl(trackerId));
+   });
+   // If the operator types a custom URL, clear the dropdown to avoid implying
+   // the two are in sync.
+   $("#in_tracker").on("input", function () {
+      const sel = $("#sel_tracker");
+      if (sel.val() && $(this).val() !== buildTrackerScriptUrl(sel.val())) {
+         sel.val("");
+      }
+   });
+}
+
 $(function () {
+   wireTrackerSelector();
+   loadSpBaseUrl().always(loadTrackerOptions);
+
    $("#frm_clone").on("submit", function (e) {
       e.preventDefault();
       const btn = $("#btn_clone");
@@ -114,7 +170,7 @@ $(function () {
          allow_private: $("#cb_allow_private").is(":checked"),
          force: $("#cb_force").is(":checked"),
       };
-      postJson(payload)
+      postSiteCloner(payload)
          .done((res) => {
             renderCloneResult(res);
             refreshList();

@@ -56,8 +56,12 @@
                                  <input type="text" class="form-control" id="in_slug" placeholder="acme-bank-login" required>
                               </div>
                               <div class="form-group">
-                                 <label>Tracker script URL (optional, injected before <code>&lt;/head&gt;</code>)</label>
-                                 <input type="text" class="form-control" id="in_tracker" placeholder="/spear/track.js?rid={{RID}}">
+                                 <label>Tracker (optional, injected before <code>&lt;/head&gt;</code>)</label>
+                                 <select class="form-control" id="sel_tracker">
+                                    <option value="">— No tracker —</option>
+                                 </select>
+                                 <input type="text" class="form-control mt-2" id="in_tracker" placeholder="Or paste a custom tracker script URL">
+                                 <small class="form-text text-muted">Picking a tracker fills the URL automatically. The text field is an escape hatch for external trackers.</small>
                               </div>
                               <div class="form-row">
                                  <div class="form-group col-md-6">
