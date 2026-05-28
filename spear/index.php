@@ -5,12 +5,15 @@
       die();
   }
    
+  $login_error = null;
   if (!empty($_POST['username']) && !empty($_POST['password'])) {
-      if(validateLogin($_POST['username'],$_POST['password']) == true){
+      if (!csrf_verify($_POST['_csrf'] ?? null)) {
+         $login_error = 'Session token expired. Please retry.';
+      } elseif(validateLogin($_POST['username'],$_POST['password']) == true){
          createSession(true,$_POST['username']);
          header("Location: Home");
          die();
-      }  
+      }
    }
 ?>
 <!DOCTYPE html>
@@ -54,6 +57,7 @@
                   </div>
                   <!-- Form -->
                   <form class="form-horizontal m-t-20" id="loginform" action="index" method="post" onsubmit="doLogin()">
+                     <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_HTML5); ?>">
                      <div class="row p-b-30">
                         <div class="col-12">
                            <div class="input-group mb-3">
@@ -68,8 +72,10 @@
                               </div>
                               <input type="password" class="form-control form-control-lg" name="password" placeholder="Password" aria-label="Password" aria-describedby="basic-addon1" required>
                            </div>
-                           <?php 
-                              if(isset($_POST['username']) || isset($_POST['password']))
+                           <?php
+                              if($login_error !== null)
+                                 echo '<div class="text-danger">' . htmlspecialchars($login_error, ENT_QUOTES | ENT_HTML5) . '</div>';
+                              elseif(isset($_POST['username']) || isset($_POST['password']))
                                  echo '<div class="text-danger">
                                           Username or password is incorrect.
                                        </div>';

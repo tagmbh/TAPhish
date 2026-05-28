@@ -9,6 +9,7 @@ use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mime\Email;
 if(isSessionValid() == false)
 	die("Access denied");
+csrf_require();
 //-------------------------------------------------------
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');

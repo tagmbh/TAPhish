@@ -17,6 +17,7 @@ if (!isSessionValid()) {
     http_response_code(403);
     die('Access denied');
 }
+csrf_require();
 
 header('Content-Type: application/json');
 

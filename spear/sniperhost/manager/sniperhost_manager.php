@@ -7,6 +7,7 @@ require_once(dirname(__FILE__,2) . '/lib/Base32.php');
 require_once(dirname(__FILE__,2) . '/lib/base85.class.php');
 if(isSessionValid() == false)
 	die("Access denied");
+csrf_require();
 //-------------------------------------------------------
 use Base32\Base32;
 date_default_timezone_set('UTC');

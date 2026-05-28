@@ -29,6 +29,8 @@ if (isset($_POST)) {
 			else
 				die("Access denied");
 		}
+		else
+			csrf_require();	//session-authed branch: enforce CSRF; public dashboard-share branch above is read-only and unauthenticated by design
 
 		if($POSTJ['action_type'] == "get_web_mail_tracker_from_id")
 			getWebMailTrackerFromId($conn, $POSTJ['campaign_id'], $POSTJ['tracker_id']);

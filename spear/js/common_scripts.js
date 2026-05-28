@@ -2,6 +2,21 @@ var globalModalValue = nextRandomId ='';
 var g_deny_navigation = null;
 var cookie_c_data = JSON.parse(atob(decodeURIComponent(Cookies.get('c_data'))));
 
+// Auto-attach CSRF token to every same-origin AJAX request. The token is
+// emitted on each authenticated page render by csrf_emit_script_tag() in
+// z_menu.php and lives in window.TAPHISH_CSRF.
+if (typeof $ !== 'undefined' && $.ajaxSetup) {
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+            if (window.TAPHISH_CSRF && settings && settings.type
+                && settings.type.toUpperCase() !== 'GET'
+                && settings.type.toUpperCase() !== 'HEAD') {
+                xhr.setRequestHeader('X-CSRF-Token', window.TAPHISH_CSRF);
+            }
+        }
+    });
+}
+
 $(function() {
     checkSniperPhishProcess();
     $('[data-toggle="tooltip"]').tooltip({

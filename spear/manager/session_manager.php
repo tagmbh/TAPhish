@@ -1,7 +1,11 @@
 <?php
+require_once(dirname(__FILE__) . '/csrf.php');
 if (session_status() === PHP_SESSION_NONE) {
    @ob_start();
    session_start();
+   if (empty($_SESSION['_csrf'])) {
+      $_SESSION['_csrf'] = _csrf_make_token();
+   }
    session_write_close();	//prevent access denied lock error
 }
 if (file_exists(dirname(__FILE__,2) . '/config/db.php'))
@@ -117,7 +121,13 @@ function amIPublic($tk_id,$campaign_id,$tracker_id=""){
 if (isset($_POST)) {
 	$POSTJ = json_decode(file_get_contents('php://input'),true);
 
-	if(isset($POSTJ['action_type'])){ 
+	if(isset($POSTJ['action_type'])){
+		// State-changing actions require a valid CSRF token. re_login is the
+		// recovery path after session_destroy() so the stored token is gone;
+		// it relies on the credentials themselves for authentication.
+		$csrf_exempt_actions = ['re_login'];
+		if(!in_array($POSTJ['action_type'], $csrf_exempt_actions, true))
+			csrf_require();
 
 		if(isset($POSTJ['tk_id']))
 			if($POSTJ['action_type'] == "manage_dashboard_access"){
@@ -233,6 +243,7 @@ function createSession($f_regenerate,$username){
 	}
 
 	$_SESSION['username'] = $username;
+	$_SESSION['_csrf'] = _csrf_make_token();	//fresh CSRF token per session
 	setInfoCookie($conn,$username);
 }
 

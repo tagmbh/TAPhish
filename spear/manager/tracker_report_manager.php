@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 if(isSessionValid() == false)
 	die("Access denied");
+csrf_require();
 //-------------------------------------------------------
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
