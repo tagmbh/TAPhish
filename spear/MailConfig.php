@@ -329,6 +329,31 @@
                            </div>
                         </div>
                      </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">Per-Recipient Timezone Scheduling</h6>
+                        </div>
+                        <div class="col-md-12">
+                           <i class="small">When enabled, each recipient is sent at their local target hour. Timezone is inferred from the email's country-code TLD (.ch → Europe/Zurich, .de → Europe/Berlin, …); generic TLDs (.com, .org) fall back to the server timezone. Recipients outside their window are deferred and retried on the next cron pass.</i>
+                        </div>
+                        <div class="col-md-4">
+                           <div class="custom-control custom-switch m-t-15">
+                              <label class="switch">
+                                 <input type="checkbox" id="cb_recipient_tz_aware">
+                                 <span class="slider round"></span>
+                              </label>
+                              <span class="ml-2">Stagger by recipient timezone</span>
+                           </div>
+                        </div>
+                        <div class="col-md-4">
+                           <label for="tb_recipient_send_local_hour" class="control-label col-form-label m-t-10">Target local hour (0–23)</label>
+                           <input type="number" min="0" max="23" class="form-control form-control-sm" id="tb_recipient_send_local_hour" value="9">
+                        </div>
+                        <div class="col-md-4">
+                           <label for="tb_recipient_send_window_hours" class="control-label col-form-label m-t-10">Window (hours, 1–12)</label>
+                           <input type="number" min="1" max="12" class="form-control form-control-sm" id="tb_recipient_send_window_hours" value="4">
+                        </div>
+                     </div>
                      <hr/>
                      <input type="file" id="sign_mail_cert_uploader" accept=".pem,.crt" onchange="getBase64ofFile(uploadSignMailCert,this.files[0])" hidden="">
                      <input type="file" id="sign_mail_pvk_uploader" accept=".pem,.key" onchange="getBase64ofFile(uploadSignMailPVK,this.files[0])" hidden="">

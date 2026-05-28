@@ -26,6 +26,8 @@ while(true){
 	$camp_ids = getScheduledCampaigns($conn);
 	foreach ($camp_ids as $campaign_id)
 		executeCron($conn,$os,$campaign_id);
+	foreach (getTzDeferredCampaigns($conn) as $campaign_id)	//Phase 3.18: resume campaigns whose recipients were outside their local send window
+		executeCron($conn,$os,$campaign_id);
 	autoCompleteEngagedCampaigns($conn);	//Phase 3.3: terminal-state tracking-phase campaigns whose engagement met threshold
 	bounce_poll_cron_pass($conn);	//Phase 3.12: throttled auto-poll of IMAP bounces (60min/campaign)
 	sleep(5);
@@ -40,11 +42,25 @@ function getScheduledCampaigns($conn){
 	while($row = $result->fetch_assoc()){
 		$scheduled_time_plus = strtotime($row['scheduled_time'])-10;
 		$current_time =  time();
-		
+
 		if($scheduled_time_plus < $current_time)
 			array_push($camp_ids,$row['campaign_id']);
-	}	
+	}
 	$stmt->close();
+	return $camp_ids;
+}
+
+// Phase 3.18: campaigns whose previous send pass deferred some recipients
+// for their local-time send window. Re-running executeCron on these makes
+// the inner send loop dedup against tb_data_mailcamp_live and pick up
+// exactly the deferred entries that are now in-window.
+function getTzDeferredCampaigns($conn){
+	$camp_ids = [];
+	$res = $conn->query("SELECT campaign_id FROM tb_core_mailcamp_list WHERE camp_status=5 AND camp_lock=0");
+	if (!$res) return $camp_ids;
+	while ($row = $res->fetch_assoc())
+		$camp_ids[] = $row['campaign_id'];
+	$res->free();
 	return $camp_ids;
 }
 ?>
