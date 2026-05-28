@@ -82,6 +82,14 @@ if (isset($_POST)) {
 			$result = osint_hunter_domain_search($domain, $apiKey, $limit);
 			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
 		}
+		if($POSTJ['action_type'] == "osint_hunter_email_finder") {
+			$domain = (string) ($POSTJ['domain'] ?? '');
+			$first  = (string) ($POSTJ['first_name'] ?? '');
+			$last   = (string) ($POSTJ['last_name'] ?? '');
+			$apiKey = (string) ($POSTJ['api_key'] ?? '');
+			$result = osint_hunter_email_finder($domain, $first, $last, $apiKey);
+			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
+		}
 	}
 }
 

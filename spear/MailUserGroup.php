@@ -330,7 +330,19 @@
                               <input type="text" class="form-control" id="osint_hunter_domain" placeholder="example.com">
                            </div>
                            <div class="col-sm-2">
-                              <button type="button" class="btn btn-info" onclick="osintHunterSearch($(this))"><i class="fas fa-search"></i> Search</button>
+                              <button type="button" class="btn btn-info" onclick="osintHunterSearch($(this))" title="Hunter.io domain-search: list company emails for this domain" data-toggle="tooltip" data-placement="left"><i class="fas fa-search"></i> Search</button>
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label class="col-sm-3 control-label col-form-label">Find specific person</label>
+                           <div class="col-sm-3">
+                              <input type="text" class="form-control" id="osint_hunter_first" placeholder="First name">
+                           </div>
+                           <div class="col-sm-4">
+                              <input type="text" class="form-control" id="osint_hunter_last" placeholder="Last name">
+                           </div>
+                           <div class="col-sm-2">
+                              <button type="button" class="btn btn-info" onclick="osintHunterFind($(this))" title="Hunter.io email-finder: look up a specific person at the target domain" data-toggle="tooltip" data-placement="left"><i class="fas fa-user-tag"></i> Find</button>
                            </div>
                         </div>
                         <div id="osint_hunter_summary" class="text-muted small"></div>
