@@ -175,6 +175,11 @@ function saveConfigAction(e) {
     var metric_raw = $('#select_auto_complete_metric').val();
     var metric_allowed = ['opens', 'opens_clicks', 'opens_clicks_submits'];
     configData.auto_complete_metric = metric_allowed.indexOf(metric_raw) >= 0 ? metric_raw : 'opens';
+    configData.recipient_tz_aware = $('#cb_recipient_tz_aware').is(':checked');
+    var tz_hour = parseInt($('#tb_recipient_send_local_hour').val(), 10);
+    configData.recipient_send_local_hour = isNaN(tz_hour) ? 9 : Math.max(0, Math.min(23, tz_hour));
+    var tz_win = parseInt($('#tb_recipient_send_window_hours').val(), 10);
+    configData.recipient_send_window_hours = isNaN(tz_win) ? 4 : Math.max(1, Math.min(12, tz_win));
     configData.msg_priority = $("#select_msg_priority").val();
 
     enableDisableMe(e);
@@ -286,6 +291,9 @@ function getMCampConfigFromConfigId(mconfig_id,quite) {
         var loaded_metric = configData.auto_complete_metric || 'opens';
         if (['opens','opens_clicks','opens_clicks_submits'].indexOf(loaded_metric) < 0) loaded_metric = 'opens';
         $('#select_auto_complete_metric').val(loaded_metric);
+        $('#cb_recipient_tz_aware').prop('checked', !!configData.recipient_tz_aware);
+        $('#tb_recipient_send_local_hour').val(configData.recipient_send_local_hour != null ? configData.recipient_send_local_hour : 9);
+        $('#tb_recipient_send_window_hours').val(configData.recipient_send_window_hours != null ? configData.recipient_send_window_hours : 4);
         $('#select_msg_priority').val(configData.msg_priority).change();
 
         if(!($.isEmptyObject(configData.mail_sign.cert) || $.isEmptyObject(configData.mail_sign.pvk))){

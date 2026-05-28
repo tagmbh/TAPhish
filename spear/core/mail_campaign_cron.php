@@ -3,6 +3,7 @@ ini_set('max_execution_time', 0);
 require_once(dirname(__FILE__,2) . '/config/db.php');
 require_once(dirname(__FILE__,2) . '/manager/common_functions.php');
 require_once(dirname(__FILE__,2) . '/manager/ab_variants.php');
+require_once(dirname(__FILE__,2) . '/manager/recipient_tz.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -165,6 +166,24 @@ function InitMailCampaign($conn, $campaign_id){
 	$config_failure_pause_window = isset($MCONFIG_DATA['mconfig_data']['failure_pause_window'])
 		? (int) $MCONFIG_DATA['mconfig_data']['failure_pause_window']
 		: 20;
+
+	// Phase 3.18: per-recipient timezone-aware scheduling.
+	$config_recipient_tz_aware = !empty($MCONFIG_DATA['mconfig_data']['recipient_tz_aware']);
+	$config_recipient_send_local_hour = recipient_tz_clamp_hour(
+		$MCONFIG_DATA['mconfig_data']['recipient_send_local_hour'] ?? 9
+	);
+	$config_recipient_send_window_hours = recipient_tz_clamp_window(
+		$MCONFIG_DATA['mconfig_data']['recipient_send_window_hours'] ?? 4
+	);
+	$server_default_tz = 'UTC';
+	if (function_exists('getTimeInfo')) {
+		$_dti = getTimeInfo($conn);
+		if (is_array($_dti) && !empty($_dti['time_zone']['timezone'])) {
+			$server_default_tz = (string) $_dti['time_zone']['timezone'];
+		}
+	}
+	$deferred_count = 0;
+
 	if($config_signed_mail){
 		$config_mail_sign_cert_name = $MCONFIG_DATA['mconfig_data']['mail_sign']['cert']['name'];
 		$config_mail_sign_cert_fb64 = $MCONFIG_DATA['mconfig_data']['mail_sign']['cert']['fb64'];
@@ -197,9 +216,41 @@ function InitMailCampaign($conn, $campaign_id){
 	}
 
 	foreach ($arr_user_data as $arr_user) {
+		// Phase 3.18: skip recipient if they already have a row for this
+		// campaign — happens on a status=5 resume pass so we don't
+		// double-send. Cheap: indexed lookup on (campaign_id, user_email).
+		$dedup_stmt = $conn->prepare("SELECT 1 FROM tb_data_mailcamp_live WHERE campaign_id = ? AND user_email = ? LIMIT 1");
+		if ($dedup_stmt) {
+			$dedup_stmt->bind_param('ss', $campaign_id, $arr_user['email']);
+			$dedup_stmt->execute();
+			$dedup_res = $dedup_stmt->get_result();
+			$_already = $dedup_res && $dedup_res->fetch_row() !== null;
+			$dedup_stmt->close();
+			if ($_already) {
+				continue;
+			}
+		}
+
+		// Phase 3.18: if TZ-aware sending is on and this recipient isn't
+		// in their local send window, defer — no row created, will retry
+		// on the next status=5 resume pass.
+		if ($config_recipient_tz_aware) {
+			$_now_utc = time();
+			if (!recipient_in_send_window(
+				(string) $arr_user['email'],
+				$server_default_tz,
+				$config_recipient_send_local_hour,
+				$config_recipient_send_window_hours,
+				$_now_utc
+			)) {
+				$deferred_count++;
+				continue;
+			}
+		}
+
 		$send_time = round(microtime(true) * 1000); //milli-seconds
     	$msg_fail_retry_counter = 0;
-	    $RID = generateRID($conn, $campaign_id); 
+	    $RID = generateRID($conn, $campaign_id);
 	    $i++;
 
 	    $keyword_vals['{{RID}}'] = $RID;
@@ -335,7 +386,18 @@ function InitMailCampaign($conn, $campaign_id){
 		if(isCampaignStopped($conn, $campaign_id))
 			break;
 	}
-	changeCampaignStatus($conn, $campaign_id, 4); //4=Mail sending completed (But campaign is in progress (2))
+	// Phase 3.18: if any recipients were deferred for their local send
+	// window, leave the campaign at status=5 so the main cron loop's
+	// resumeDeferredCampaigns() pass re-runs us. Otherwise transition to
+	// the usual status=4 (mail sending completed, tracking phase).
+	if ($config_recipient_tz_aware && $deferred_count > 0) {
+		changeCampaignStatus($conn, $campaign_id, 5); //5=TZ-deferred, awaiting resume pass
+		if (function_exists('logIt')) {
+			logIt('Mail campaign TZ-deferred: ' . $deferred_count . ' recipient(s) outside send window', 'cron');
+		}
+	} else {
+		changeCampaignStatus($conn, $campaign_id, 4); //4=Mail sending completed (But campaign is in progress (2))
+	}
 }
 
 function countRecentFailures($conn, $campaign_id, $window){
