@@ -5,6 +5,7 @@ require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 
 if(isSessionValid() == false)
 	die("Access denied");
+csrf_require();
 //-------------------------------------------------------
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
@@ -89,8 +90,8 @@ function addAccount($conn,$name,$username,$contact_mail,$dp_name,$current_pwd,$n
 	if(checkAnIDExist($conn,$username,'username','tb_main'))
 		die(json_encode(['result' => 'failed', 'error' => 'Account with this username already exist!']));
 
-	if(isCurrentPwdCorrect($conn,$current_pwd)){		
-		$new_pwd_hash = hash("sha256", $new_pwd, false);
+	if(isCurrentPwdCorrect($conn,$current_pwd)){
+		$new_pwd_hash = hash_user_password($new_pwd);
 		$stmt = $conn->prepare("INSERT INTO tb_main(name, username, password, contact_mail, dp_name, date) VALUES(?,?,?,?,?,?)");
 		$stmt->bind_param('ssssss', $name,$username,$new_pwd_hash,$contact_mail,$dp_name,$GLOBALS['entry_time']);
 
@@ -117,7 +118,7 @@ function modifyAccount($conn,$name,$username,$contact_mail,$dp_name,$current_pwd
 				echo(json_encode(['result' => 'failed', 'error' => 'Contact mail update failed!']));
 		}
 		else{	//update all
-			$new_pwd_hash = hash("sha256", $new_pwd, false);	
+			$new_pwd_hash = hash_user_password($new_pwd);
 			$stmt = $conn->prepare("UPDATE tb_main SET name=?, password=?, contact_mail=?, dp_name=? WHERE username=?");
 			$stmt->bind_param('sssss', $name,$new_pwd_hash,$contact_mail,$dp_name,$username);
 			if ($stmt->execute() === TRUE)
@@ -131,18 +132,28 @@ function modifyAccount($conn,$name,$username,$contact_mail,$dp_name,$current_pwd
 		echo(json_encode(['result' => 'failed', 'error' => 'Authorization failed! Your password is incorrect!']));
 }
 
-function isCurrentPwdCorrect(&$conn, &$current_pwd){	
-	$current_pwd_hash = hash("sha256", $current_pwd, false);
+function isCurrentPwdCorrect(&$conn, &$current_pwd){
 	$current_username = $_SESSION['username'];
 
-	$stmt = $conn->prepare("SELECT COUNT(*) FROM tb_main WHERE username=? AND password=?");
-	$stmt->bind_param('ss', $current_username, $current_pwd_hash);
+	$stmt = $conn->prepare("SELECT password FROM tb_main WHERE username=?");
+	$stmt->bind_param('s', $current_username);
 	$stmt->execute();
-	$row = $stmt->get_result()->fetch_row();
-	if($row[0] > 0)	//current password is correct
-		return true;
-	else
+	$result = $stmt->get_result();
+	if ($result->num_rows === 0) {
 		return false;
+	}
+	$stored = $result->fetch_assoc()['password'];
+	if (!verify_user_password($current_pwd, $stored)) {
+		return false;
+	}
+	if (password_should_rehash($stored)) {
+		$newHash = hash_user_password($current_pwd);
+		$upd = $conn->prepare("UPDATE tb_main SET password=? WHERE username=?");
+		$upd->bind_param('ss', $newHash, $current_username);
+		$upd->execute();
+		$upd->close();
+	}
+	return true;	//current password is correct (verify succeeded above)
 }
 
 function deleteAccount($conn,$id){
@@ -441,7 +452,7 @@ function downloadLogs($conn,$file_format){
 		elseif ($file_format == 'pdf') {
 			$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 			$pdf->SetCreator(PDF_CREATOR);
-			$pdf->SetAuthor('SniperPhish');
+			$pdf->SetAuthor(BRAND_PRODUCT_NAME);
 			$pdf->SetTitle('Report data');
 			$pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
 			$pdf->SetFooterMargin(PDF_MARGIN_FOOTER);

@@ -2,6 +2,7 @@
 error_reporting(E_ALL ^ E_WARNING); //display error but not warnings
 ini_set('display_errors', true);    //display error on screen
 require_once (dirname(__FILE__) . '/spear/manager/common_functions.php');
+require_once (dirname(__FILE__) . '/spear/manager/password_hash_helper.php');
 header('Content-Type: application/json');
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
@@ -146,7 +147,7 @@ function doInstall(&$POSTJ){
         
 
         if(file_put_contents('spear/config/db.php', $file_contents)){ //created db.php file
-            if (createTables($conn)) //creates SniperPhish DB tables
+            if (createTables($conn)) //creates application DB tables
                 if (modifySniperPhishSettings($conn, $time_zone, $user_contact_mail))
                     echo json_encode(['result' => 'success']);  
                 else 
@@ -169,8 +170,9 @@ function modifySniperPhishSettings($conn, $time_zone, $user_contact_mail){
         return false;
     $stmt->close(); 
       
-    $stmt = $conn->prepare("INSERT INTO tb_main(id,name,username,password,contact_mail,dp_name,date) VALUES(1,'Admin','admin','23d119e1749d0d0f21dd751c52d3ca221462867669acaf58f209aa237a3955a3',?,1,?)");
-    $stmt->bind_param('ss', $user_contact_mail,$GLOBALS['entry_time']);
+    $default_pwd_hash = hash_user_password('sniperphish');
+    $stmt = $conn->prepare("INSERT INTO tb_main(id,name,username,password,contact_mail,dp_name,date) VALUES(1,'Admin','admin',?,?,1,?)");
+    $stmt->bind_param('sss', $default_pwd_hash, $user_contact_mail, $GLOBALS['entry_time']);
     if ($stmt->execute() === TRUE)
         return true;
     else
@@ -748,6 +750,11 @@ INSERT INTO `tb_store` (`type`, `name`, `info`, `content`) VALUES
 ('mail_sender', 'Custom', '{\"dsn_type\":\"custom\",\"disp_note\":\"Note: Custom mail sender template\"}', '{\"from\":\"\",\"username\":\"\",\"mailbox\":{\"value\":\"\",\"disabled\":false,\"checked\":false},\"smtp\":{\"value\":\"\",\"disabled\":false}}'),
 ('mail_template', 'Give me your address', '{\"disp_note\":\"Desc: A simple mail to track mail open and capture data from the phishing site\"}', '{\"mail_template_subject\":\"Free COVID-19 Vaccine for {{FNAME}}\",\"mail_template_content\":\"Dear Sir\\/Madam<br><br>We are happy to inform you that you have been selected to receive the COVID-19 vaccine at your home for free. Please submit your address in the link given below, so that we can arrange our medical representative.<br><br>Submit address <a href=\\\"https:\\/\\/yourphishing site.com\\/form.html?rid={{RID}}\\\">here<\\/a><br><br>Please let us know if you have any questions.<br><br>Regards,<br>Cage,<br>Chief Medical Officer<br><br>{{TRACKER}}\",\"timage_type\":1,\"mail_content_type\":\"text/html\",\"attachment\":[]}'),
 ('mail_sender', 'Gmail (gmail.com)', '{\"dsn_type\":\"gmail\",\"disp_note\":\"Note: You need to create app specifc password instead of your mail pasword. Refer <a href=\'https://support.google.com/accounts/answer/185833\' target=\'_blank\'>https://support.google.com/accounts/answer/185833</a>\"}', '{\"from\":\"Name<username@gmail.com>\",\"username\":\"username@gmail.com\",\"mailbox\":{\"value\":\"{imap.gmail.com:993/imap/ssl}INBOX\",\"disabled\":true,\"checked\":true},\"smtp\":{\"value\":\"NA\",\"disabled\":true}}'),
+('mail_sender', 'Hostpoint (hostpoint.ch) - SSL', '{\"dsn_type\":\"custom\",\"disp_note\":\"Swiss host. Implicit-TLS submission on port 465. Use your full mailbox address as username and the mailbox password. IMAP is pre-filled for reply tracking.\"}', '{\"from\":\"Name<username@yourdomain.ch>\",\"username\":\"username@yourdomain.ch\",\"mailbox\":{\"value\":\"{imap.hostpoint.ch:993/imap/ssl}INBOX\",\"disabled\":false,\"checked\":true},\"smtp\":{\"value\":\"asmtp.mail.hostpoint.ch:465\",\"disabled\":false}}'),
+('mail_sender', 'Hostpoint (hostpoint.ch) - TLS', '{\"dsn_type\":\"custom\",\"disp_note\":\"Swiss host. STARTTLS submission on port 587. Use your full mailbox address as username and the mailbox password.\"}', '{\"from\":\"Name<username@yourdomain.ch>\",\"username\":\"username@yourdomain.ch\",\"mailbox\":{\"value\":\"{imap.hostpoint.ch:993/imap/ssl}INBOX\",\"disabled\":false,\"checked\":true},\"smtp\":{\"value\":\"asmtp.mail.hostpoint.ch:587\",\"disabled\":false}}'),
+('mail_sender', 'Infomaniak (infomaniak.com) - SSL', '{\"dsn_type\":\"custom\",\"disp_note\":\"Swiss host. Implicit-TLS submission on port 465. Use your full mailbox address as username and the mailbox password.\"}', '{\"from\":\"Name<username@yourdomain.ch>\",\"username\":\"username@yourdomain.ch\",\"mailbox\":{\"value\":\"{mail.infomaniak.com:993/imap/ssl}INBOX\",\"disabled\":false,\"checked\":true},\"smtp\":{\"value\":\"mail.infomaniak.com:465\",\"disabled\":false}}'),
+('mail_sender', 'Infomaniak (infomaniak.com) - TLS', '{\"dsn_type\":\"custom\",\"disp_note\":\"Swiss host. STARTTLS submission on port 587. Use your full mailbox address as username and the mailbox password.\"}', '{\"from\":\"Name<username@yourdomain.ch>\",\"username\":\"username@yourdomain.ch\",\"mailbox\":{\"value\":\"{mail.infomaniak.com:993/imap/ssl}INBOX\",\"disabled\":false,\"checked\":true},\"smtp\":{\"value\":\"mail.infomaniak.com:587\",\"disabled\":false}}'),
+('mail_sender', 'Microsoft 365 - Custom domain (SMTP AUTH)', '{\"dsn_type\":\"custom\",\"disp_note\":\"Microsoft 365 with your own domain. Requires SMTP AUTH enabled on the mailbox. Sender must match the licensed mailbox address. Consider Graph API + a dedicated app registration for production use.\"}', '{\"from\":\"Name<sender@yourdomain.com>\",\"username\":\"sender@yourdomain.com\",\"mailbox\":{\"value\":\"{outlook.office365.com:993/imap/ssl/novalidate-cert}INBOX\",\"disabled\":false,\"checked\":true},\"smtp\":{\"value\":\"smtp.office365.com:587\",\"disabled\":false}}'),
 ('mail_sender', 'Mailchimp Mandrill', '{\"dsn_type\":\"mailchimp_mandrill\",\"disp_note\":\"\"}', '{\"from\":\"\",\"username\":\"\",\"mailbox\":{\"value\":\"\",\"disabled\":false,\"checked\":false},\"smtp\":{\"value\":\"NA\",\"disabled\":true}}'),
 ('mail_sender', 'Mailgun', '{\"dsn_type\":\"mailgun\",\"disp_note\":\"\"}', '{\"from\":\"\",\"username\":\"\",\"mailbox\":{\"value\":\"\",\"disabled\":false,\"checked\":false},\"smtp\":{\"value\":\"NA\",\"disabled\":true}}'),
 ('mail_sender', 'Mailjet', '{\"dsn_type\":\"mailjet\",\"disp_note\":\"Note: Provide the value for ACCESS_KEY at \'SMTP Username\' field and SECRET_KEY at \'SMTP Password\' field.\"}', '{\"from\":\"\",\"username\":\"\",\"mailbox\":{\"value\":\"\",\"disabled\":false,\"checked\":false},\"smtp\":{\"value\":\"NA\",\"disabled\":true}}'),

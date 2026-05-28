@@ -1,35 +1,57 @@
 <?php
+require_once(dirname(__FILE__) . '/csrf.php');
+require_once(dirname(__FILE__) . '/password_hash_helper.php');
 if (session_status() === PHP_SESSION_NONE) {
    @ob_start();
    session_start();
+   if (empty($_SESSION['_csrf'])) {
+      $_SESSION['_csrf'] = _csrf_make_token();
+   }
    session_write_close();	//prevent access denied lock error
 }
 if (file_exists(dirname(__FILE__,2) . '/config/db.php'))
 	require_once(dirname(__FILE__,2) . '/config/db.php');
 else
-	die("Can not find db.php. Visit <a href='/install'>here</a> to install SniperPhish");	//shows if login page is opened before install 
+	die("Can not find db.php. Visit <a href='/install'>here</a> to install TAPhish");	//shows if login page is opened before install
 require_once(dirname(__FILE__) . '/common_functions.php');
+require_once(dirname(__FILE__) . '/mail_presets.php');
 date_default_timezone_set('UTC');
+// Idempotently top up TAPhish-shipped mail-sender presets so existing
+// installs gain new providers without manual SQL. Cheap: one indexed
+// SELECT against tb_store; INSERT only on miss.
+if (isset($conn) && $conn instanceof mysqli) {
+	taphish_ensure_mail_presets($conn);
+}
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
 error_reporting(E_ERROR | E_PARSE); //Disable warnings
 //-----------------------------
 
-function validateLogin($username,$pwd){	
+function validateLogin($username,$pwd){
 	global $conn;
-	$pwdhash = hash("sha256", $pwd, false);
-	$stmt = $conn->prepare("SELECT COUNT(*) FROM tb_main where username=? AND password=?");
-	$stmt->bind_param('ss', $username,$pwdhash);
+	$stmt = $conn->prepare("SELECT password FROM tb_main WHERE username=?");
+	$stmt->bind_param('s', $username);
 	$stmt->execute();
-	$row = $stmt->get_result()->fetch_row();
-	if($row[0] > 0){
-		updateLoginLogout($conn, $username, $GLOBALS['entry_time'], true);
-		$os = getOSType();
-		if(!isProcessRunning($conn,$os))
-			startProcess($os);
-		return true;
-	}
-	else
+	$result = $stmt->get_result();
+	if ($result->num_rows === 0) {
 		return false;
+	}
+	$stored = $result->fetch_assoc()['password'];
+	if (!verify_user_password($pwd, $stored)) {
+		return false;
+	}
+	if (password_should_rehash($stored)) {
+		// Transparent upgrade: re-hash with bcrypt and persist.
+		$newHash = hash_user_password($pwd);
+		$upd = $conn->prepare("UPDATE tb_main SET password=? WHERE username=?");
+		$upd->bind_param('ss', $newHash, $username);
+		$upd->execute();
+		$upd->close();
+	}
+	updateLoginLogout($conn, $username, $GLOBALS['entry_time'], true);
+	$os = getOSType();
+	if(!isProcessRunning($conn,$os))
+		startProcess($os);
+	return true;
 }
 
 function isSessionValid($f_redirection=false){	//this check refreshes session expiry
@@ -117,7 +139,13 @@ function amIPublic($tk_id,$campaign_id,$tracker_id=""){
 if (isset($_POST)) {
 	$POSTJ = json_decode(file_get_contents('php://input'),true);
 
-	if(isset($POSTJ['action_type'])){ 
+	if(isset($POSTJ['action_type'])){
+		// State-changing actions require a valid CSRF token. re_login is the
+		// recovery path after session_destroy() so the stored token is gone;
+		// it relies on the credentials themselves for authentication.
+		$csrf_exempt_actions = ['re_login'];
+		if(!in_array($POSTJ['action_type'], $csrf_exempt_actions, true))
+			csrf_require();
 
 		if(isset($POSTJ['tk_id']))
 			if($POSTJ['action_type'] == "manage_dashboard_access"){
@@ -199,25 +227,39 @@ function doReLogin($username, $pwd){
 	header('Content-Type: application/json');
 	global $conn;
 
-	$pwdhash = hash("sha256", $pwd, false);
-	$stmt = $conn->prepare("SELECT COUNT(*) FROM tb_main where username=? AND password=?");
-	$stmt->bind_param('ss', $username,$pwdhash);
+	$stmt = $conn->prepare("SELECT password FROM tb_main WHERE username=?");
+	$stmt->bind_param('s', $username);
 	$stmt->execute();
-	$row = $stmt->get_result()->fetch_row();
-	if($row[0] > 0){
-		createSession(true,$username);
-		echo json_encode(['result' => 'success']);	
+	$result = $stmt->get_result();
+	if ($result->num_rows === 0) {
+		echo json_encode(['result' => 'failed']);
+		return;
 	}
-	else
-		echo json_encode(['result' => 'failed']);	
+	$stored = $result->fetch_assoc()['password'];
+	if (!verify_user_password($pwd, $stored)) {
+		echo json_encode(['result' => 'failed']);
+		return;
+	}
+	if (password_should_rehash($stored)) {
+		$newHash = hash_user_password($pwd);
+		$upd = $conn->prepare("UPDATE tb_main SET password=? WHERE username=?");
+		$upd->bind_param('ss', $newHash, $username);
+		$upd->execute();
+		$upd->close();
+	}
+	createSession(true, $username);
+	echo json_encode(['result' => 'success']);
 }
 
 function createSession($f_regenerate,$username){
 	global $conn;
 	session_destroy();
+	$is_https = (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+		|| (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+		|| (($_SERVER['SERVER_PORT'] ?? '') == 443);
 	session_set_cookie_params([
 			'lifetime' => 86400,	//86400=1 day
-			'secure' => false,
+			'secure' => $is_https,
 			'httponly' => true,
 			'samesite' => 'Strict'
 		]);
@@ -230,6 +272,7 @@ function createSession($f_regenerate,$username){
 	}
 
 	$_SESSION['username'] = $username;
+	$_SESSION['_csrf'] = _csrf_make_token();	//fresh CSRF token per session
 	setInfoCookie($conn,$username);
 }
 

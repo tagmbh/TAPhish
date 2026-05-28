@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 if(isSessionValid() == false)
 	die("Access denied");
+csrf_require();
 //-------------------------------------------------------
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
@@ -87,7 +88,7 @@ function downloadReport($conn,$tracker_id,$selected_col,$dic_all_col,$page,$file
 		elseif ($file_format == 'pdf') {
 			$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 			$pdf->SetCreator(PDF_CREATOR);
-			$pdf->SetAuthor('SniperPhish');
+			$pdf->SetAuthor(BRAND_PRODUCT_NAME);
 			$pdf->SetTitle('Report data');
 			$pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
 			$pdf->SetFooterMargin(PDF_MARGIN_FOOTER);

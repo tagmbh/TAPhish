@@ -12,12 +12,13 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="css/summernote-lite.min.css">
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
       <link rel="stylesheet" type="text/css" href="css/dataTables.foundation.min.css">
       <link rel="stylesheet" type="text/css" href="css/codemirror.min.css">
       <style> 
@@ -245,7 +246,7 @@
                                                    </tr>
                                                    <tr>
                                                       <td>{{BASEURL}}</td>
-                                                      <td>SniperPhish base URL</td>
+                                                      <td>TAPhish base URL</td>
                                                    </tr>
                                                    <tr>
                                                       <td>{{MUSERNAME}}</td>

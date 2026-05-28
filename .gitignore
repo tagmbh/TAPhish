@@ -1,0 +1,11 @@
+/vendor/
+/.phpunit.cache/
+/.phpunit.result.cache
+/spear/config/db.php
+/spear/uploads/
+/spear/sniperhost/cloned/*
+!/spear/sniperhost/cloned/.gitkeep
+*.log
+.DS_Store
+.idea/
+.vscode/

@@ -12,11 +12,12 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
       <style> 
          .tab-header{ list-style-type: none; }
       </style>
@@ -187,7 +188,7 @@
                                  <h6 class="hbar">AntiFlood Control</h6> 
                               </div>   
                               <div class="col-md-12">
-                                 <i class="small">Controls the number of mails send in a single connection. Once the number of mails exceeded, SniperPhish will disconnect and pause some time before it re-connects (default is 50 emails and pause for 30seconds).</i> 
+                                 <i class="small">Controls the number of mails send in a single connection. Once the number of mails exceeded, the mailer will disconnect and pause some time before it re-connects (default is 50 emails and pause for 30seconds).</i>
                               </div>  
                               <div class="row">
                                  <div class="col-md-6">
@@ -239,12 +240,56 @@
                                     <option value="3" selected="">Normal</option>
                                     <option value="4">Low</option>
                                     <option value="5">Lowest</option>
-                                 </select>  
-                              </div>  
-                           </div>                           
-                        </div> 
+                                 </select>
+                              </div>
+                           </div>
+                        </div>
                      </div>
-                     <hr/>                     
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">Auto-pause on Failure Rate</h6>
+                        </div>
+                        <div class="col-md-12">
+                           <i class="small">When the recent failure rate exceeds the threshold, the campaign is automatically paused. Set threshold to 0 to disable. Default: pause when 50% of the last 20 sends failed.</i>
+                        </div>
+                        <div class="col-md-6">
+                           <div class="row">
+                              <div class="col-md-12">
+                                 <label for="tb_failure_pause_percent" class="col-md-12 text-left control-label col-form-label m-t-10">Threshold (% failed):</label>
+                                 <div class="col-md-8">
+                                    <div class="input-group number-spinner">
+                                       <span class="input-group-btn">
+                                          <button class="btn btn-outline-secondary btn-sm" data-dir="dwn"><span class="fas fa-minus"></span></button>
+                                       </span>
+                                       <input type="text" class="form-control text-center form-control-sm" value="50" id="tb_failure_pause_percent">
+                                       <span class="input-group-btn">
+                                          <button class="btn btn-outline-secondary btn-sm" data-dir="up"><span class="fas fa-plus"></span></button>
+                                       </span>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                        <div class="col-md-6">
+                           <div class="row">
+                              <div class="col-md-12">
+                                 <label for="tb_failure_pause_window" class="col-md-12 text-left control-label col-form-label m-t-10">Recent sends window:</label>
+                                 <div class="col-md-8">
+                                    <div class="input-group number-spinner">
+                                       <span class="input-group-btn">
+                                          <button class="btn btn-outline-secondary btn-sm" data-dir="dwn"><span class="fas fa-minus"></span></button>
+                                       </span>
+                                       <input type="text" class="form-control text-center form-control-sm" value="20" id="tb_failure_pause_window">
+                                       <span class="input-group-btn">
+                                          <button class="btn btn-outline-secondary btn-sm" data-dir="up"><span class="fas fa-plus"></span></button>
+                                       </span>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                     <hr/>
                      <input type="file" id="sign_mail_cert_uploader" accept=".pem,.crt" onchange="getBase64ofFile(uploadSignMailCert,this.files[0])" hidden="">
                      <input type="file" id="sign_mail_pvk_uploader" accept=".pem,.key" onchange="getBase64ofFile(uploadSignMailPVK,this.files[0])" hidden="">
                      <input type="file" id="enc_mail_pvk_uploader" accept=".pem,.crt" onchange="getBase64ofFile(uploadEncMailCert,this.files[0])" hidden="">

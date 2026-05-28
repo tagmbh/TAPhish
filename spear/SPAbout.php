@@ -12,11 +12,12 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
       <script src="js/libs/clipboard.min.js"></script>  
    </head>
@@ -51,7 +52,7 @@
             <div class="page-breadcrumb">
                <div class="row">
                   <div class="col-12 d-flex no-block align-items-center">
-                     <h4 class="page-title">SniperPhish Settings</h4>
+                     <h4 class="page-title">TAPhish Settings</h4>
                   </div>
                </div>
             </div>
@@ -70,18 +71,18 @@
                      <div class="col-md-12 text-center">
                         <hr/>
                         <div class="m-b-40 m-t-40">
-                           <a class="navbar-brand" href="https://sniperphish.com/" target="_blank">
+                           <a class="navbar-brand">
                               <!-- Logo icon -->
                               <b class="logo-icon p-l-10">
-                                 <img src="images/logo-icon.png" alt="homepage" class="light-logo" />
+                                 <img src="images/brand/logo-icon.png" alt="<?php echo htmlspecialchars(BRAND_PRODUCT_NAME); ?>" class="light-logo" />
                               </b>
                               <span class="logo-text">
-                                 <img src="images/logo-text.png" alt="homepage" class="light-logo" />
+                                 <img src="images/brand/logo-text.png" alt="<?php echo htmlspecialchars(BRAND_PRODUCT_NAME); ?>" class="light-logo" />
                               </span>
                            </a>
                            <h5 id="lb_version"></h5>
-                           <h5>The Web-Email Spear Phishing Toolkit</h5>
-                           <p>Developed by Gem George</p>
+                           <h5><?php echo htmlspecialchars(BRAND_TAGLINE); ?></h5>
+                           <p>Maintained by <?php echo htmlspecialchars(BRAND_COMPANY); ?>. Forked from <a href="https://sniperphish.com/" target="_blank" rel="noopener">SniperPhish</a> by Gem George.</p>
                            <button class="btn btn-outline-secondary btn-sm" data-dir="dwn" onclick="checkUpdates($(this))"><i class="fa fas fa-sync"> </i> Check for Updates</button>
                            <p class="m-t-10"><span class="text-success" id="lb_new_version_status"></span></p>
                         </div>

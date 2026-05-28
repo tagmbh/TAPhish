@@ -29,6 +29,8 @@ if (isset($_POST)) {
 			else
 				die("Access denied");
 		}
+		else
+			csrf_require();	//session-authed branch: enforce CSRF; public dashboard-share branch above is read-only and unauthenticated by design
 
 		if($POSTJ['action_type'] == "get_web_mail_tracker_from_id")
 			getWebMailTrackerFromId($conn, $POSTJ['campaign_id'], $POSTJ['tracker_id']);
@@ -666,7 +668,7 @@ function downloadReport($conn,$campaign_id,$tracker_id,$selected_col,$dic_all_co
 	elseif ($file_format == 'pdf') {
 		$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 		$pdf->SetCreator(PDF_CREATOR);
-		$pdf->SetAuthor('SniperPhish');
+		$pdf->SetAuthor(BRAND_PRODUCT_NAME);
 		$pdf->SetTitle('Report data');
 		$pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
 		$pdf->SetFooterMargin(PDF_MARGIN_FOOTER);

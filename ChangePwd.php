@@ -18,11 +18,12 @@
       <meta name="description" content="">
       <meta name="author" content="">
       <!-- Favicon icon -->
-      <link rel="icon" type="image/png" sizes="16x16" href="images/favicon.png">
-      <title>SniperPhish - The Web-Email Spear Phishing Toolkit</title>
+      <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
+      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/select2.min.css">
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
+      <link rel="stylesheet" type="text/css" href="css/brand.css">
    </head>
    <body>
       <div class="main-wrapper">
@@ -44,7 +45,7 @@
          <div class=" d-flex no-block justify-content-center align-items-center bg-dark">
             <div class="bg-dark border-top border-secondary">
                <div class="text-center p-t-20 p-b-20">
-                  <span class="db"><img src="images/logo-icon2x.png" alt="logo" /><img src="images/logo.png" alt="logo" /></span>
+                  <span class="db"><img src="images/brand/logo-icon2x.png" alt="logo" /><img src="images/brand/logo.png" alt="logo" /></span>
                </div>
             </div>
          </div>
@@ -127,7 +128,7 @@
                     if (data != "success")
                         $("#lb_msg").html('<span class="text-danger">' + data + '</span>');
                     else {
-                        $("#lb_msg").html('<span class="text-success">Password reset successs. SniperPhish will rediect to login screen in few seconds..</span>');
+                        $("#lb_msg").html('<span class="text-success">Password reset success. Redirecting to login screen in a few seconds.</span>');
                         setTimeout(function() {
                             document.location = location.origin + '/spear';
                         }, 3000);
