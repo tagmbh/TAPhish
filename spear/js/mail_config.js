@@ -169,6 +169,9 @@ function saveConfigAction(e) {
     configData.antiflood = {"limit": $('#tb_antiflood_limit').val(), "pause": $('#tb_antiflood_pause').val()};
     configData.failure_pause_percent = parseInt($('#tb_failure_pause_percent').val(), 10) || 0;
     configData.failure_pause_window = parseInt($('#tb_failure_pause_window').val(), 10) || 20;
+    var auto_complete_raw = parseInt($('#tb_auto_complete_threshold_percent').val(), 10);
+    if (isNaN(auto_complete_raw)) auto_complete_raw = 100;
+    configData.auto_complete_threshold_percent = Math.max(0, Math.min(100, auto_complete_raw));
     configData.msg_priority = $("#select_msg_priority").val();
 
     enableDisableMe(e);
@@ -276,6 +279,7 @@ function getMCampConfigFromConfigId(mconfig_id,quite) {
         $('#tb_antiflood_pause').val(configData.antiflood.pause);
         $('#tb_failure_pause_percent').val(configData.failure_pause_percent != null ? configData.failure_pause_percent : 50);
         $('#tb_failure_pause_window').val(configData.failure_pause_window != null ? configData.failure_pause_window : 20);
+        $('#tb_auto_complete_threshold_percent').val(configData.auto_complete_threshold_percent != null ? configData.auto_complete_threshold_percent : 100);
         $('#select_msg_priority').val(configData.msg_priority).change();
 
         if(!($.isEmptyObject(configData.mail_sign.cert) || $.isEmptyObject(configData.mail_sign.pvk))){
