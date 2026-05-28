@@ -1,6 +1,9 @@
 <?php
    require_once(dirname(__FILE__) . '/manager/csrf.php');
    csrf_emit_script_tag();
+   echo '<script>window.TAPHISH_MUST_CHANGE_PWD = '
+      . (!empty($GLOBALS['TAPHISH_MUST_CHANGE_PWD']) ? 'true' : 'false')
+      . ';</script>';
 ?>
 <header class="topbar" data-navbarbg="skin5">
    <nav class="navbar top-navbar navbar-expand-md navbar-dark">

@@ -64,6 +64,12 @@
             <!-- Container fluid  -->
             <!-- ============================================================== -->
             <div class="container-fluid">
+               <?php if (!empty($_GET['must_change']) || !empty($GLOBALS['TAPHISH_MUST_CHANGE_PWD'])): ?>
+                  <div class="alert alert-danger alert-rounded m-b-20">
+                     <strong>Change the default password.</strong>
+                     The <code>admin</code> account is still using the bootstrap <code>sniperphish</code> password. You'll keep being redirected here until you change it.
+                  </div>
+               <?php endif; ?>
                <!-- ============================================================== -->
                <!-- Start Page Content -->
                <!-- ============================================================== -->
