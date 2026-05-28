@@ -1,7 +1,12 @@
 <?php
+$_db_file = dirname(__FILE__) . '/spear/config/db.php';
+if (!file_exists($_db_file)) {
+	http_response_code(404);
+	exit;
+}
 require_once(dirname(__FILE__) . '/spear/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__) . '/spear/libs/qr_barcode/barcode.php');
-require_once(dirname(__FILE__) . '/spear/config/db.php');
+require_once($_db_file);
 require_once(dirname(__FILE__) . '/spear/manager/common_functions.php');
 
 $ALLOWED_TYPES = ['qr_ir', 'qr_b64', 'qr_att', 'bar_ir', 'bar_b64', 'bar_att'];
