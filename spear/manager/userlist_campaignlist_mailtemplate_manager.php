@@ -2,6 +2,7 @@
 require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/common_functions.php');
 require_once(dirname(__FILE__) . '/osint_hunter.php');
+require_once(dirname(__FILE__) . '/osint_crt_sh.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -88,6 +89,11 @@ if (isset($_POST)) {
 			$last   = (string) ($POSTJ['last_name'] ?? '');
 			$apiKey = (string) ($POSTJ['api_key'] ?? '');
 			$result = osint_hunter_email_finder($domain, $first, $last, $apiKey);
+			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
+		}
+		if($POSTJ['action_type'] == "osint_crt_sh_subdomains") {
+			$domain = (string) ($POSTJ['domain'] ?? '');
+			$result = osint_crt_sh_subdomains($domain);
 			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
 		}
 	}

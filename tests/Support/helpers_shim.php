@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../spear/manager/password_hash_helper.php';
 require_once __DIR__ . '/../../spear/manager/mail_presets.php';
 require_once __DIR__ . '/../../spear/manager/campaign_completion.php';
 require_once __DIR__ . '/../../spear/manager/osint_hunter.php';
+require_once __DIR__ . '/../../spear/manager/osint_crt_sh.php';
 require_once __DIR__ . '/../../spear/manager/customer_report_aggregator.php';
 require_once __DIR__ . '/../../spear/manager/bounce_detection.php';
 require_once __DIR__ . '/../../spear/manager/ab_variants.php';

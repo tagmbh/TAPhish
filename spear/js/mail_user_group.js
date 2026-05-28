@@ -584,3 +584,34 @@ function osintHunterFind(e) {
         enableDisableMe(e);
     });
 }
+
+
+function osintCrtSh(e) {
+    var domain = $("#osint_hunter_domain").val().trim();
+    if (!domain) { toastr.error("", "Target domain is required."); return; }
+    enableDisableMe(e);
+    $("#osint_crt_sh_results").html("<em class=\"text-muted\">Querying crt.sh…</em>");
+    $.post({
+        url: "manager/userlist_campaignlist_mailtemplate_manager",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({ action_type: "osint_crt_sh_subdomains", domain: domain })
+    }).done(function (data) {
+        if (data && data.result === "success") {
+            var list = data.subdomains || [];
+            if (!list.length) {
+                $("#osint_crt_sh_results").html("<em class=\"text-muted\">No subdomains found in CT logs.</em>");
+                return;
+            }
+            var html = "<strong>" + list.length + " subdomain(s):</strong><ul class=\"mb-0\">";
+            list.forEach(function (s) { html += "<li><code>" + $("<div>").text(s).html() + "</code></li>"; });
+            html += "</ul>";
+            $("#osint_crt_sh_results").html(html);
+        } else {
+            $("#osint_crt_sh_results").html("");
+            toastr.error("", (data && data.err) || "crt.sh lookup failed.");
+        }
+    }).fail(function (xhr) {
+        $("#osint_crt_sh_results").html("");
+        toastr.error("", "Request failed (HTTP " + xhr.status + ").");
+    }).always(function () { enableDisableMe(e); });
+}
