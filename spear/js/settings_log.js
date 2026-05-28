@@ -64,9 +64,10 @@ function exportLogAction(e) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', 'manager/settings_manager', true);
         xhr.responseType = 'arraybuffer';
-        
+        if (window.TAPHISH_CSRF) xhr.setRequestHeader('X-CSRF-Token', window.TAPHISH_CSRF);
+
         enableDisableMe(e);
-        xhr.send(JSON.stringify({ 
+        xhr.send(JSON.stringify({
             action_type: "download_logs",
             file_format: file_format
         }));

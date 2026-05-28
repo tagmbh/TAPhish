@@ -197,6 +197,7 @@
                                        <div class="row">
                                           <button type="button" class="btn btn-warning item_private mr-2" id="btn_poll_bounces" onclick="pollBounces($(this))" title="Open the sender mailbox over IMAP and mark recipients whose mail bounced" data-toggle="tooltip" data-placement="bottom"><i class="m-r-10 fas fa-exclamation-triangle"></i> Refresh bounces</button>
                                           <button type="button" class="btn btn-success item_private" data-toggle="modal" data-target="#ModalExport"><i class="m-r-10 fas fa-file-export"></i> Export</button>
+                                          <button type="button" class="btn btn-info item_private ml-2" data-toggle="modal" data-target="#ModalCustomerReport" title="Branded PDF summary for client deliverables"><i class="m-r-10 fas fa-file-pdf"></i> Customer Report</button>
                                        </div>
                                     </div>
                                  </div>
@@ -273,6 +274,30 @@
                      </div>
                      <div class="modal-footer">
                         <button type="button" class="btn btn-success" onclick="exportReportAction($(this))"><i class="fas fa-file-export"></i> Export</button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <!-- Customer Report Modal -->
+            <div class="modal fade" id="ModalCustomerReport" tabindex="-1" role="dialog" aria-hidden="true">
+               <div class="modal-dialog" role="document">
+                  <div class="modal-content">
+                     <div class="modal-header">
+                        <h5 class="modal-title">Customer Report</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                     </div>
+                     <div class="modal-body">
+                        <p class="text-muted small">Branded PDF deliverable summarizing the campaign for the client: cover page with engagement name, headline KPI table, and a per-recipient timeline. For authorized engagements only.</p>
+                        <div class="form-group row">
+                           <label for="modal_customer_report_engagement_name" class="col-sm-4 text-left control-label col-form-label">Engagement name</label>
+                           <div class="col-sm-8 custom-control">
+                              <input type="text" class="form-control" id="modal_customer_report_engagement_name" placeholder="e.g. Acme Q2 phishing exercise">
+                              <small class="form-text text-muted">Used as the report title. Defaults to the internal campaign name if blank.</small>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="modal-footer">
+                        <button type="button" class="btn btn-info" onclick="generateCustomerPdfReport($(this))"><i class="fas fa-file-pdf"></i> Generate PDF</button>
                      </div>
                   </div>
                </div>

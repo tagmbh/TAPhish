@@ -289,6 +289,32 @@
                            </div>
                         </div>
                      </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">Auto-complete on Engagement</h6>
+                        </div>
+                        <div class="col-md-12">
+                           <i class="small">When the share of recipients who opened the email reaches the threshold, the campaign moves from tracking to completed. Set threshold to 0 to disable. Default: 100%.</i>
+                        </div>
+                        <div class="col-md-6">
+                           <div class="row">
+                              <div class="col-md-12">
+                                 <label for="tb_auto_complete_threshold_percent" class="col-md-12 text-left control-label col-form-label m-t-10">Threshold (% opened):</label>
+                                 <div class="col-md-8">
+                                    <div class="input-group number-spinner">
+                                       <span class="input-group-btn">
+                                          <button class="btn btn-outline-secondary btn-sm" data-dir="dwn"><span class="fas fa-minus"></span></button>
+                                       </span>
+                                       <input type="text" class="form-control text-center form-control-sm" value="100" id="tb_auto_complete_threshold_percent">
+                                       <span class="input-group-btn">
+                                          <button class="btn btn-outline-secondary btn-sm" data-dir="up"><span class="fas fa-plus"></span></button>
+                                       </span>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
                      <hr/>
                      <input type="file" id="sign_mail_cert_uploader" accept=".pem,.crt" onchange="getBase64ofFile(uploadSignMailCert,this.files[0])" hidden="">
                      <input type="file" id="sign_mail_pvk_uploader" accept=".pem,.key" onchange="getBase64ofFile(uploadSignMailPVK,this.files[0])" hidden="">

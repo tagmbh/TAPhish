@@ -803,9 +803,10 @@ function exportReportAction(e) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', 'manager/mail_campaign_manager', true);
         xhr.responseType = 'arraybuffer';
+        if (window.TAPHISH_CSRF) xhr.setRequestHeader('X-CSRF-Token', window.TAPHISH_CSRF);
 
-        enableDisableMe(e);        
-        xhr.send(JSON.stringify({ 
+        enableDisableMe(e);
+        xhr.send(JSON.stringify({
             action_type: "download_report",
             campaign_id: g_campaign_id,
             selected_col: allReportColListSelected,
@@ -828,6 +829,39 @@ function exportReportAction(e) {
     }
     else
         toastr.error('', 'Table is empty!');
+}
+
+function generateCustomerPdfReport(e) {
+    var engagement_name = $('#modal_customer_report_engagement_name').val().trim();
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'manager/mail_campaign_manager', true);
+    xhr.responseType = 'arraybuffer';
+    if (window.TAPHISH_CSRF) xhr.setRequestHeader('X-CSRF-Token', window.TAPHISH_CSRF);
+    enableDisableMe(e);
+    xhr.send(JSON.stringify({
+        action_type: 'generate_customer_pdf_report',
+        campaign_id: g_campaign_id,
+        engagement_name: engagement_name
+    }));
+    xhr.onload = function() {
+        enableDisableMe(e);
+        if (this.status === 200) {
+            var safeName = (engagement_name || 'campaign').replace(/[^a-zA-Z0-9_-]+/g, '_');
+            var link = document.createElement('a');
+            link.href = window.URL.createObjectURL(new Blob([this.response], { type: 'application/pdf' }));
+            link.download = safeName + '.pdf';
+            link.click();
+            $('#ModalCustomerReport').modal('toggle');
+        } else if (this.status === 403) {
+            toastr.error('', 'Session expired or CSRF mismatch — refresh and retry.');
+        } else {
+            toastr.error('', 'Report generation failed (HTTP ' + this.status + ').');
+        }
+    };
+    xhr.onerror = function() {
+        enableDisableMe(e);
+        toastr.error('', 'Network error generating report.');
+    };
 }
 
 //------------------------Public Access---------------

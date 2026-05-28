@@ -2,6 +2,7 @@
 ini_set('max_execution_time', 0);	//60*60*24*7=604800 =>1 week; 0=infinite
 require_once(dirname(__FILE__,2) . '/config/db.php');
 require_once(dirname(__FILE__,2) . '/manager/common_functions.php');
+require_once(dirname(__FILE__) . '/campaign_auto_complete.php');
 date_default_timezone_set("UTC");
 //---------------------------------------------------------
 
@@ -24,6 +25,7 @@ while(true){
 	$camp_ids = getScheduledCampaigns($conn);
 	foreach ($camp_ids as $campaign_id)
 		executeCron($conn,$os,$campaign_id);
+	autoCompleteEngagedCampaigns($conn);	//Phase 3.3: terminal-state tracking-phase campaigns whose engagement met threshold
 	sleep(5);
 }
 

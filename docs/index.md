@@ -58,7 +58,8 @@ and current operator workflows.
   pattern. A free-text fallback stays for external trackers.
 
 For the running list of items, see the
-[Changelog](changelog.html).
+[Changelog](changelog.html); for per-feature usage notes see
+[Features](features.html).
 
 ## Getting started
 

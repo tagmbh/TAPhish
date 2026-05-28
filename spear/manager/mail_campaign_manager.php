@@ -1,7 +1,9 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/bounce_poll.php');
+require_once(dirname(__FILE__) . '/customer_report_aggregator.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
+require_once(dirname(__FILE__,2) . '/config/brand.php');
 //-------------------------------------------------------
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
@@ -60,6 +62,8 @@ if (isset($_POST)) {
 			$result = bounce_poll_for_campaign($conn, (string) $POSTJ['campaign_id']);
 			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
 		}
+		if($POSTJ['action_type'] == "generate_customer_pdf_report")
+			generateCustomerPdfReport($conn, $POSTJ['campaign_id'], $POSTJ['engagement_name'] ?? null);
 	}
 }
 else
@@ -549,6 +553,115 @@ function downloadReport($conn,$campaign_id,$selected_col,$dic_all_col,$file_name
 	    header('Content-Disposition: attachment;filename="'.$file_name.'.html"');
 		echo getHTMLData($arr_odata,$file_name,$selected_col,$dic_all_col);
 	}
-	
+
+}
+
+/**
+ * Customer-facing PDF report.
+ *
+ * Aggregates the campaign's recipient rows into the headline KPIs and a
+ * per-recipient timeline table, renders an HTML template, and emits a
+ * branded PDF inline. For authorized red-team engagement deliverables —
+ * the operator names the engagement so the cover page reflects the
+ * client, not the campaign's internal id.
+ */
+function generateCustomerPdfReport($conn, $campaign_id, $engagement_name) {
+	// Campaign metadata
+	$stmt = $conn->prepare("SELECT campaign_name, scheduled_time FROM tb_core_mailcamp_list WHERE campaign_id = ?");
+	$stmt->bind_param('s', $campaign_id);
+	$stmt->execute();
+	$meta = $stmt->get_result()->fetch_assoc() ?: ['campaign_name' => '(unknown)', 'scheduled_time' => ''];
+	$stmt->close();
+
+	// Recipient rows
+	$stmt = $conn->prepare("SELECT user_email, user_name, sending_status, send_time, mail_open_times FROM tb_data_mailcamp_live WHERE campaign_id = ?");
+	$stmt->bind_param('s', $campaign_id);
+	$stmt->execute();
+	$rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC) ?: [];
+	$stmt->close();
+
+	$kpis       = customer_report_compute_kpis($rows);
+	$recipients = customer_report_recipient_rows($rows);
+
+	$brandName    = defined('BRAND_PRODUCT_NAME') ? BRAND_PRODUCT_NAME : 'TAPhish';
+	$brandCompany = defined('BRAND_COMPANY')      ? BRAND_COMPANY      : '';
+	$brandColor   = defined('BRAND_PRIMARY_COLOR') ? BRAND_PRIMARY_COLOR : '#0a3d62';
+	$reportTitle  = trim((string) ($engagement_name ?: $meta['campaign_name']));
+	$generatedAt  = gmdate('Y-m-d H:i') . ' UTC';
+
+	$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+	$pdf->SetCreator(PDF_CREATOR);
+	$pdf->SetAuthor($brandName);
+	$pdf->SetTitle($reportTitle . ' — Phishing Simulation Report');
+	$pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
+	$pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+	$pdf->SetMargins(15, 18, 15);
+	$pdf->setPrintHeader(false);
+	$pdf->setPrintFooter(true);
+	$pdf->SetFont('helvetica', '', 10, '', true);
+
+	$pdf->AddPage();
+	$pdf->writeHTML(renderCustomerReportHtml($reportTitle, $brandName, $brandCompany, $brandColor, $generatedAt, $meta, $kpis, $recipients), true, false, true, false, '');
+	$pdf->lastPage();
+	$fileName = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $reportTitle ?: 'campaign') . '.pdf';
+	$pdf->Output($fileName, 'I');
+}
+
+function renderCustomerReportHtml($title, $brandName, $brandCompany, $brandColor, $generatedAt, $meta, $kpis, $recipients) {
+	$esc = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES | ENT_HTML5);
+	$scheduled = !empty($meta['scheduled_time']) ? $esc($meta['scheduled_time']) : '—';
+
+	$kpiRows = '';
+	foreach ([
+		['Recipients',          $kpis['recipients']],
+		['Sent successfully',   $kpis['send_success_rate']],
+		['Failed',              $kpis['failed']],
+		['In-progress',         $kpis['in_progress']],
+		['Opened (unique)',     $kpis['open_rate_of_sent']],
+		['Total opens',         $kpis['total_opens']],
+	] as [$label, $value]) {
+		$kpiRows .= '<tr><td style="padding:6px;background:#f4f6f8;width:55%;">' . $esc($label)
+			. '</td><td style="padding:6px;border-bottom:1px solid #dde3ea;"><b>' . $esc((string) $value) . '</b></td></tr>';
+	}
+
+	$recipientRows = '';
+	if ($recipients === []) {
+		$recipientRows = '<tr><td colspan="5" style="padding:8px;color:#888;">No recipients recorded for this campaign.</td></tr>';
+	} else {
+		foreach ($recipients as $r) {
+			$recipientRows .= '<tr>'
+				. '<td style="padding:5px;border-bottom:1px solid #eee;">' . $esc($r['email']) . '</td>'
+				. '<td style="padding:5px;border-bottom:1px solid #eee;">' . $esc($r['name']) . '</td>'
+				. '<td style="padding:5px;border-bottom:1px solid #eee;">' . $esc($r['status']) . '</td>'
+				. '<td style="padding:5px;border-bottom:1px solid #eee;">' . $esc(customer_report_format_timestamp($r['send_time_ms'])) . '</td>'
+				. '<td style="padding:5px;border-bottom:1px solid #eee;">' . $esc(customer_report_format_timestamp($r['first_open_ms'])) . '</td>'
+				. '</tr>';
+		}
+	}
+
+	return '
+<h1 style="color:' . $esc($brandColor) . ';margin-bottom:0;">' . $esc($title) . '</h1>
+<p style="color:#666;margin-top:4px;">Phishing Simulation Report &mdash; prepared by ' . $esc($brandName) . ($brandCompany ? ' (' . $esc($brandCompany) . ')' : '') . '</p>
+<p style="color:#999;font-size:9pt;">Generated ' . $esc($generatedAt) . ' &middot; Campaign scheduled: ' . $scheduled . '</p>
+
+<h2 style="color:' . $esc($brandColor) . ';margin-top:20px;">Headline metrics</h2>
+<table cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">' . $kpiRows . '</table>
+
+<h2 style="color:' . $esc($brandColor) . ';margin-top:20px;">Recipient timeline</h2>
+<table cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;font-size:9pt;">
+  <thead>
+    <tr style="background:' . $esc($brandColor) . ';color:#fff;">
+      <th style="padding:6px;text-align:left;">Email</th>
+      <th style="padding:6px;text-align:left;">Name</th>
+      <th style="padding:6px;text-align:left;">Status</th>
+      <th style="padding:6px;text-align:left;">Sent</th>
+      <th style="padding:6px;text-align:left;">First open</th>
+    </tr>
+  </thead>
+  <tbody>' . $recipientRows . '</tbody>
+</table>
+
+<p style="margin-top:30px;color:#999;font-size:8pt;">This report was generated from authorized phishing-simulation data collected by the ' . $esc($brandName) . ' platform. Distribute only as part of the engagement deliverables agreed with the client.</p>
+';
 }
 ?>
