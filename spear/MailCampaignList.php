@@ -146,6 +146,14 @@
                               </div>
                            </div>
                            <div class="form-group row">
+                              <label for="mailTemplateBSelector" class="col-sm-4 text-left control-label col-form-label" title="Optional A/B test template — recipients are split 50/50 deterministically by RID" data-toggle="tooltip" data-placement="right">Mail Template B <small class="text-muted">(A/B, optional)</small>:</label>
+                              <div class="col-sm-7">
+                                 <select class="select2 form-control custom-select" id="mailTemplateBSelector" style="height: 36px;width: 100%;">
+                                    <option value="">— None (single-template campaign) —</option>
+                                 </select>
+                              </div>
+                           </div>
+                           <div class="form-group row">
                               <label for="mailSenderSelector" class="col-sm-4 text-left control-label col-form-label">Mail Sender:*</label>
                               <div class="col-sm-7">
                                  <select class="select2 form-control custom-select" id="mailSenderSelector" style="height: 36px;width: 100%;">
