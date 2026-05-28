@@ -2,6 +2,7 @@
 ini_set('max_execution_time', 0);
 require_once(dirname(__FILE__,2) . '/config/db.php');
 require_once(dirname(__FILE__,2) . '/manager/common_functions.php');
+require_once(dirname(__FILE__,2) . '/manager/ab_variants.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -126,6 +127,16 @@ function InitMailCampaign($conn, $campaign_id){
 	$mail_content_type = $MTEMPLATE_DATA['mail_content_type'];
 	$mail_attachment = $MTEMPLATE_DATA['attachment'];
 
+	// Phase 3.11: optional A/B template. If campaign_data.mail_template_b is
+	// set, we load it here and pick per-recipient inside the send loop based
+	// on a deterministic hash of the RID — same recipient always gets the
+	// same variant, no per-recipient storage required.
+	$MTEMPLATE_B_DATA = null;
+	$MC_mail_template_b_id = $MC_DATA['campaign_data']['mail_template_b']['id'] ?? null;
+	if (!empty($MC_mail_template_b_id) && $MC_mail_template_b_id !== $MC_mail_template_id) {
+		$MTEMPLATE_B_DATA = getMTEMPLATE($conn, $MC_mail_template_b_id);
+	}
+
 	$MSENDER_DATA = getMSENDER($conn, $MC_mail_sender_id);
 	$sender_name = $MSENDER_DATA['sender_name'];
 	$sender_SMTP_server = $MSENDER_DATA['sender_SMTP_server'];
@@ -209,12 +220,27 @@ function InitMailCampaign($conn, $campaign_id){
 	    if($message->getHeaders()->has('Message-ID'))
 	    	$message->getHeaders()->remove('Message-ID');
 	    $message->getHeaders()->addIdHeader('Message-ID', $RID.'@spmailer.generated');
-	
+
+		// Phase 3.11: pick A or B template for this recipient if B is configured.
+		$ab_variant = 'A';
+		$_subj = $mail_template_subject;
+		$_body = $mail_template_content;
+		$_ctype = $mail_content_type;
+		if ($MTEMPLATE_B_DATA !== null) {
+			$ab_variant = ab_assign_variant($RID);
+			if ($ab_variant === 'B') {
+				$_subj  = $MTEMPLATE_B_DATA['mail_template_subject'];
+				$_body  = $MTEMPLATE_B_DATA['mail_template_content'];
+				$_ctype = $MTEMPLATE_B_DATA['mail_content_type'];
+			}
+		}
+		$keyword_vals['{{VARIANT}}'] = $ab_variant;
+
 		// Create a message
-		$message->from(new Address($sender_from_mail, $sender_from_name))->subject((filterKeywords($mail_template_subject,$keyword_vals)));
-		$msg_body = filterKeywords($mail_template_content,$keyword_vals);  	
+		$message->from(new Address($sender_from_mail, $sender_from_name))->subject((filterKeywords($_subj,$keyword_vals)));
+		$msg_body = filterKeywords($_body,$keyword_vals);
 		$msg_body = filterQRBarCode($msg_body,$keyword_vals,$message);
-		if($mail_content_type == 'text/html')
+		if($_ctype == 'text/html')
             $message->html($msg_body);
         else
             $message->text($msg_body);

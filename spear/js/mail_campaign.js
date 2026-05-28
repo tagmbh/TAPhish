@@ -42,6 +42,7 @@ function pullMailCampaignFieldData() {
 
             $.each(data.mail_template, function() {
                 $('#mailTemplateSelector').append('<option value="' + this.mail_template_id + '">' + this.mail_template_name + '</option>');
+                $('#mailTemplateBSelector').append('<option value="' + this.mail_template_id + '">' + this.mail_template_name + '</option>');
             });
 
             $.each(data.mail_sender, function() {
@@ -86,6 +87,15 @@ function getMailCampaignFromCampaignListId(id) {
                 } catch (err) {}
 
                 try {
+                    if (data.campaign_data.mail_template_b && data.campaign_data.mail_template_b.id) {
+                        $("#mailTemplateBSelector").val(data.campaign_data.mail_template_b.id);
+                    } else {
+                        $("#mailTemplateBSelector").val('');
+                    }
+                    $("#mailTemplateBSelector").trigger('change');
+                } catch (err) {}
+
+                try {
                     $("#mailSenderSelector").val(data.campaign_data.mail_sender.id);
                     $("#mailSenderSelector").trigger('change');
                 } catch (err) {}
@@ -126,6 +136,12 @@ function saveMailCampaignAction() {
     var scheduled_time = moment.utc($("#datetimepicker_launch").data("DateTimePicker").date()).format('DD-MM-YYYY hh:mm A');
     campaignData.user_group = {id:$('#userGroupSelector').val(), name:$('#userGroupSelector :selected').text()};
     campaignData.mail_template = {id:$('#mailTemplateSelector').val(), name:$('#mailTemplateSelector :selected').text()};
+    var template_b_id = $('#mailTemplateBSelector').val();
+    if (template_b_id && template_b_id !== '' && template_b_id !== campaignData.mail_template.id) {
+        campaignData.mail_template_b = {id:template_b_id, name:$('#mailTemplateBSelector :selected').text()};
+    } else {
+        campaignData.mail_template_b = null;
+    }
     campaignData.mail_sender = {id:$('#mailSenderSelector').val(), name:$('#mailSenderSelector :selected').text()};
     campaignData.mail_config = {id:$('#mailConfigSelector').val(), name:$('#mailConfigSelector :selected').text()};
     campaignData.msg_interval = $('#tb_campaign_time_val').val();
