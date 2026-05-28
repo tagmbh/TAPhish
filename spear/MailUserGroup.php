@@ -163,6 +163,7 @@
                         </div>
                         <div class="col-md-2 m-t-25 text-right">
                            <div class="form-group">
+                              <button type="button" class="btn btn-warning mr-2" data-toggle="modal" data-target="#modal_osint_hunter" title="Discover company emails via Hunter.io"><i class="fas fa-search"></i> OSINT</button>
                               <div class="btn-group"  id="bt_save_config" >
                                   <button type="button" class="btn btn-success" onclick="addUserFromFile()" title="Import email list" data-toggle="tooltip">Import</button>
                                   <input type="file" id="fileinput" accept=".txt, .csv, .lst, .rtf" hidden />
@@ -170,7 +171,7 @@
                                   <div class="dropdown-menu">
                                       <a class="dropdown-item" href="#" onclick="exportUserAction()">Export as CSV</a>
                                   </div>
-                              </div>   
+                              </div>
                            </div>
                         </div>
                      </div>
@@ -303,6 +304,53 @@
                      </div>
                      <div class="modal-footer" >
                         <button type="button" class="btn btn-success" onclick="UserGroupCopy()"><i class="mdi mdi-content-copy"></i> Copy</button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <!-- OSINT — Hunter.io domain search -->
+            <div class="modal fade" id="modal_osint_hunter" tabindex="-1" role="dialog" aria-hidden="true">
+               <div class="modal-dialog modal-lg" role="document">
+                  <div class="modal-content">
+                     <div class="modal-header">
+                        <h5 class="modal-title">OSINT — Hunter.io domain search</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                     </div>
+                     <div class="modal-body">
+                        <p class="text-muted small">For authorized red-team engagements. The API key is kept in your browser's localStorage and sent on each request; it is not persisted server-side.</p>
+                        <div class="form-group row">
+                           <label for="osint_hunter_apikey" class="col-sm-3 control-label col-form-label">API key</label>
+                           <div class="col-sm-9">
+                              <input type="password" class="form-control" id="osint_hunter_apikey" placeholder="40-char Hunter.io v2 key">
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="osint_hunter_domain" class="col-sm-3 control-label col-form-label">Target domain</label>
+                           <div class="col-sm-7">
+                              <input type="text" class="form-control" id="osint_hunter_domain" placeholder="example.com">
+                           </div>
+                           <div class="col-sm-2">
+                              <button type="button" class="btn btn-info" onclick="osintHunterSearch($(this))"><i class="fas fa-search"></i> Search</button>
+                           </div>
+                        </div>
+                        <div id="osint_hunter_summary" class="text-muted small"></div>
+                        <div class="table-responsive">
+                           <table class="table table-sm table-striped" id="osint_hunter_results">
+                              <thead>
+                                 <tr>
+                                    <th><input type="checkbox" id="osint_hunter_select_all" onclick="osintHunterToggleAll(this)"></th>
+                                    <th>Email</th>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Conf.</th>
+                                 </tr>
+                              </thead>
+                              <tbody></tbody>
+                           </table>
+                        </div>
+                     </div>
+                     <div class="modal-footer">
+                        <button type="button" class="btn btn-success" onclick="osintHunterImportSelected()"><i class="fas fa-file-import"></i> Import selected</button>
                      </div>
                   </div>
                </div>

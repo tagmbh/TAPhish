@@ -1,6 +1,7 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/common_functions.php');
+require_once(dirname(__FILE__) . '/osint_hunter.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -74,6 +75,13 @@ if (isset($_POST)) {
 			sendTestMailVerification($conn,$POSTJ);
 		if($POSTJ['action_type'] == "send_test_mail_sample")
 			sendTestMailSample($conn,$POSTJ);
+		if($POSTJ['action_type'] == "osint_hunter_search") {
+			$domain = (string) ($POSTJ['domain'] ?? '');
+			$apiKey = (string) ($POSTJ['api_key'] ?? '');
+			$limit  = (int) ($POSTJ['limit'] ?? 25);
+			$result = osint_hunter_domain_search($domain, $apiKey, $limit);
+			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
+		}
 	}
 }
 

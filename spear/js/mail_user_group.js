@@ -428,3 +428,116 @@ function loadTableUserGroupList() {
         }).draw();        
     });   
 }
+
+
+// ---- OSINT — Hunter.io domain search ---------------------------------
+const OSINT_HUNTER_KEY_LS = "taphish_hunter_apikey";
+
+$(function () {
+    var saved = localStorage.getItem(OSINT_HUNTER_KEY_LS);
+    if (saved) $("#osint_hunter_apikey").val(saved);
+});
+
+function osintHunterSearch(e) {
+    var apiKey = $("#osint_hunter_apikey").val().trim();
+    var domain = $("#osint_hunter_domain").val().trim();
+    if (!apiKey || !domain) {
+        toastr.error("", "API key and domain are both required.");
+        return;
+    }
+    localStorage.setItem(OSINT_HUNTER_KEY_LS, apiKey);
+    enableDisableMe(e);
+    $("#osint_hunter_summary").text("Searching…");
+    $("#osint_hunter_results tbody").empty();
+    $.post({
+        url: "manager/userlist_campaignlist_mailtemplate_manager",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({
+            action_type: "osint_hunter_search",
+            domain: domain,
+            api_key: apiKey,
+            limit: 50
+        })
+    }).done(function (data) {
+        if (data && data.result === "success") {
+            renderOsintHunterResults(data);
+        } else {
+            $("#osint_hunter_summary").text("");
+            toastr.error("", (data && data.err) || "OSINT search failed.");
+        }
+    }).fail(function (xhr) {
+        $("#osint_hunter_summary").text("");
+        toastr.error("", "Request failed (HTTP " + xhr.status + ").");
+    }).always(function () {
+        enableDisableMe(e);
+    });
+}
+
+function renderOsintHunterResults(data) {
+    var summary = (data.organization ? data.organization + " — " : "") + (data.domain || "");
+    summary += " · " + (data.results ? data.results.length : 0) + " result(s)";
+    $("#osint_hunter_summary").text(summary);
+    var tbody = $("#osint_hunter_results tbody").empty();
+    if (!data.results || data.results.length === 0) {
+        tbody.append("<tr><td colspan=5 class=\"text-muted\">No emails returned.</td></tr>");
+        return;
+    }
+    data.results.forEach(function (r) {
+        var $tr = $("<tr>");
+        var cb = $("<input type=\"checkbox\" class=\"osint-row-cb\">")
+            .data("email", r.email).data("first", r.first_name).data("last", r.last_name);
+        $tr.append($("<td>").append(cb));
+        $tr.append($("<td>").append($("<code>").text(r.email)));
+        $tr.append($("<td>").text(r.name || "—"));
+        $tr.append($("<td>").text(r.position || "—"));
+        $tr.append($("<td>").text(r.confidence + "%"));
+        tbody.append($tr);
+    });
+}
+
+function osintHunterToggleAll(el) {
+    $(".osint-row-cb").prop("checked", el.checked);
+}
+
+function osintHunterImportSelected() {
+    var user_group_name = $("#user_group_name").val().trim();
+    if (RegTest(user_group_name, "COMMON") === false) {
+        $("#user_group_name").addClass("is-invalid");
+        toastr.error("", "Set a user-group name first.");
+        return;
+    }
+    var checked = $(".osint-row-cb:checked");
+    if (!checked.length) {
+        toastr.warning("", "Nothing selected.");
+        return;
+    }
+    var imported = 0;
+    var pending = checked.length;
+    checked.each(function () {
+        var $cb = $(this);
+        var first = $cb.data("first") || "Empty";
+        var last  = $cb.data("last")  || "Empty";
+        var email = $cb.data("email");
+        $.post({
+            url: "manager/userlist_campaignlist_mailtemplate_manager",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({
+                action_type: "add_user_to_table",
+                user_group_id: nextRandomId,
+                user_group_name: user_group_name,
+                fname: first,
+                lname: last,
+                email: email,
+                notes: "OSINT/Hunter.io"
+            })
+        }).always(function () {
+            imported++;
+            if (imported >= pending) {
+                toastr.success("", "Imported " + imported + " recipient(s).");
+                $("#modal_osint_hunter").modal("toggle");
+                if (typeof loadTableUserList === "function") loadTableUserList();
+                else location.reload();
+            }
+        });
+    });
+}

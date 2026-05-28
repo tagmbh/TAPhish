@@ -1,7 +1,12 @@
 <?php
-   require_once(dirname(__FILE__) . '/config/db.php');
+   $_db_file = dirname(__FILE__) . '/config/db.php';
+   if (!file_exists($_db_file)) {
+      header('Location: /install');
+      exit;
+   }
+   require_once($_db_file);
    require_once(dirname(__FILE__) . '/manager/common_functions.php');
-   if(isset($_GET['token'])){  
+   if(isset($_GET['token'])){
       if(!isTokenValid($conn,$_GET['token']))
         die("Incorrect request. Token may be invalid");
    }

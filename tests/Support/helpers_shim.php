@@ -9,4 +9,6 @@ require_once __DIR__ . '/../../spear/manager/site_cloner_filters.php';
 require_once __DIR__ . '/../../spear/manager/csrf.php';
 require_once __DIR__ . '/../../spear/manager/password_hash_helper.php';
 require_once __DIR__ . '/../../spear/manager/mail_presets.php';
+require_once __DIR__ . '/../../spear/manager/campaign_completion.php';
+require_once __DIR__ . '/../../spear/manager/osint_hunter.php';
 require_once __DIR__ . '/../../spear/manager/customer_report_aggregator.php';
