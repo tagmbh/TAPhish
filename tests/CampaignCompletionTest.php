@@ -90,4 +90,55 @@ final class CampaignCompletionTest extends TestCase
         self::assertSame(0, auto_complete_clamp_threshold(-20));
         self::assertSame(100, auto_complete_clamp_threshold(99999));
     }
+
+    // --- auto_complete_canonical_metric (Phase 3.15) ---------------------
+
+    public function testCanonicalMetricAcceptsAllowedValues(): void
+    {
+        self::assertSame('opens', auto_complete_canonical_metric('opens'));
+        self::assertSame('opens_clicks', auto_complete_canonical_metric('opens_clicks'));
+        self::assertSame('opens_clicks_submits', auto_complete_canonical_metric('opens_clicks_submits'));
+    }
+
+    public function testCanonicalMetricNormalizesUnknownAndMissing(): void
+    {
+        self::assertSame('opens', auto_complete_canonical_metric(null));
+        self::assertSame('opens', auto_complete_canonical_metric(''));
+        self::assertSame('opens', auto_complete_canonical_metric('clicks_only'));
+        self::assertSame('opens', auto_complete_canonical_metric(42));
+    }
+
+    // --- auto_complete_signals_for_metric --------------------------------
+
+    public function testSignalsForOpensOnly(): void
+    {
+        self::assertSame(
+            ['opens' => true, 'clicks' => false, 'submits' => false],
+            auto_complete_signals_for_metric('opens')
+        );
+    }
+
+    public function testSignalsForOpensClicks(): void
+    {
+        self::assertSame(
+            ['opens' => true, 'clicks' => true, 'submits' => false],
+            auto_complete_signals_for_metric('opens_clicks')
+        );
+    }
+
+    public function testSignalsForFullMetric(): void
+    {
+        self::assertSame(
+            ['opens' => true, 'clicks' => true, 'submits' => true],
+            auto_complete_signals_for_metric('opens_clicks_submits')
+        );
+    }
+
+    public function testSignalsForUnknownFallsBackToOpens(): void
+    {
+        self::assertSame(
+            ['opens' => true, 'clicks' => false, 'submits' => false],
+            auto_complete_signals_for_metric('nonsense')
+        );
+    }
 }

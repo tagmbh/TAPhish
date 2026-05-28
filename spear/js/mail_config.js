@@ -172,6 +172,9 @@ function saveConfigAction(e) {
     var auto_complete_raw = parseInt($('#tb_auto_complete_threshold_percent').val(), 10);
     if (isNaN(auto_complete_raw)) auto_complete_raw = 100;
     configData.auto_complete_threshold_percent = Math.max(0, Math.min(100, auto_complete_raw));
+    var metric_raw = $('#select_auto_complete_metric').val();
+    var metric_allowed = ['opens', 'opens_clicks', 'opens_clicks_submits'];
+    configData.auto_complete_metric = metric_allowed.indexOf(metric_raw) >= 0 ? metric_raw : 'opens';
     configData.msg_priority = $("#select_msg_priority").val();
 
     enableDisableMe(e);
@@ -280,6 +283,9 @@ function getMCampConfigFromConfigId(mconfig_id,quite) {
         $('#tb_failure_pause_percent').val(configData.failure_pause_percent != null ? configData.failure_pause_percent : 50);
         $('#tb_failure_pause_window').val(configData.failure_pause_window != null ? configData.failure_pause_window : 20);
         $('#tb_auto_complete_threshold_percent').val(configData.auto_complete_threshold_percent != null ? configData.auto_complete_threshold_percent : 100);
+        var loaded_metric = configData.auto_complete_metric || 'opens';
+        if (['opens','opens_clicks','opens_clicks_submits'].indexOf(loaded_metric) < 0) loaded_metric = 'opens';
+        $('#select_auto_complete_metric').val(loaded_metric);
         $('#select_msg_priority').val(configData.msg_priority).change();
 
         if(!($.isEmptyObject(configData.mail_sign.cert) || $.isEmptyObject(configData.mail_sign.pvk))){

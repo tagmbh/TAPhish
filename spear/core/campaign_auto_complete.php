@@ -29,18 +29,21 @@ if (!function_exists('autoCompleteEngagedCampaigns')) {
         $rows = autoCompleteListTrackingCampaigns($conn);
         $completed = 0;
         foreach ($rows as $row) {
-            $threshold = autoCompleteResolveThreshold($conn, $row['campaign_data']);
-            if ($threshold === 0) {
+            $config = autoCompleteResolveConfig($conn, $row['campaign_data']);
+            if ($config['threshold'] === 0) {
                 continue;
             }
-            [$opened, $total] = autoCompleteCountEngagement($conn, $row['campaign_id']);
-            if (auto_complete_should_trigger($opened, $total, $threshold)) {
+            [$engaged, $total] = autoCompleteCountEngagement(
+                $conn, $row['campaign_id'], $config['metric']
+            );
+            if (auto_complete_should_trigger($engaged, $total, $config['threshold'])) {
                 if (autoCompleteTransition($conn, $row['campaign_id'])) {
                     $completed++;
                     if (function_exists('logIt')) {
                         logIt(
-                            'Mail campaign auto-completed: ' . $opened . '/' . $total
-                            . ' recipients engaged (threshold ' . $threshold . '%)',
+                            'Mail campaign auto-completed: ' . $engaged . '/' . $total
+                            . ' recipients engaged (' . $config['metric']
+                            . ' >= ' . $config['threshold'] . '%)',
                             'cron'
                         );
                     }
@@ -85,13 +88,29 @@ if (!function_exists('autoCompleteResolveThreshold')) {
      */
     function autoCompleteResolveThreshold(mysqli $conn, array $campaignData): int
     {
+        return autoCompleteResolveConfig($conn, $campaignData)['threshold'];
+    }
+}
+
+if (!function_exists('autoCompleteResolveConfig')) {
+    /**
+     * Phase 3.15: pull both the threshold and the engagement metric from
+     * the campaign's mconfig in one query. Defaults: threshold=100,
+     * metric='opens' (Phase 3.3 behavior).
+     *
+     * @param array<mixed> $campaignData
+     * @return array{threshold: int, metric: string}
+     */
+    function autoCompleteResolveConfig(mysqli $conn, array $campaignData): array
+    {
+        $default = ['threshold' => 100, 'metric' => 'opens'];
         $mconfigId = $campaignData['mconfig_id'] ?? null;
         if (!is_string($mconfigId) || $mconfigId === '') {
-            return 100;
+            return $default;
         }
         $stmt = $conn->prepare("SELECT mconfig_data FROM tb_core_mailcamp_config WHERE mconfig_id = ?");
         if ($stmt === false) {
-            return 100;
+            return $default;
         }
         $stmt->bind_param('s', $mconfigId);
         $stmt->execute();
@@ -99,32 +118,44 @@ if (!function_exists('autoCompleteResolveThreshold')) {
         $row = $res ? $res->fetch_assoc() : null;
         $stmt->close();
         if (!$row) {
-            return 100;
+            return $default;
         }
         $decoded = json_decode((string) $row['mconfig_data'], true);
         if (!is_array($decoded)) {
-            return 100;
+            return $default;
         }
-        if (!array_key_exists('auto_complete_threshold_percent', $decoded)) {
-            return 100;
-        }
-        return auto_complete_clamp_threshold($decoded['auto_complete_threshold_percent']);
+        $threshold = array_key_exists('auto_complete_threshold_percent', $decoded)
+            ? auto_complete_clamp_threshold($decoded['auto_complete_threshold_percent'])
+            : 100;
+        $metric = auto_complete_canonical_metric($decoded['auto_complete_metric'] ?? null);
+        return ['threshold' => $threshold, 'metric' => $metric];
     }
 }
 
 if (!function_exists('autoCompleteCountEngagement')) {
     /**
-     * @return array{0: int, 1: int} [opened, total]
+     * Phase 3.15: count "engaged" recipients per the selected metric.
+     * Engagement = at least one of the signals enabled by the metric.
+     * For 'opens_clicks' we cross-reference tb_data_webpage_visit and for
+     * 'opens_clicks_submits' tb_data_webform_submit too, joining by RID
+     * (the same RID is set on both the mail row and any web-tracker hit).
+     *
+     * @return array{0: int, 1: int} [engaged, total]
      */
-    function autoCompleteCountEngagement(mysqli $conn, string $campaignId): array
-    {
+    function autoCompleteCountEngagement(
+        mysqli $conn,
+        string $campaignId,
+        string $metric = 'opens'
+    ): array {
+        $signals = auto_complete_signals_for_metric($metric);
+
+        // Collect every recipient RID + whether they opened the mail.
         $stmt = $conn->prepare(
-            "SELECT
-                COUNT(*) AS total,
-                SUM(CASE WHEN mail_open_times IS NOT NULL
+            "SELECT rid,
+                    CASE WHEN mail_open_times IS NOT NULL
                           AND mail_open_times <> ''
                           AND mail_open_times <> '[]'
-                         THEN 1 ELSE 0 END) AS opened
+                         THEN 1 ELSE 0 END AS opened
              FROM tb_data_mailcamp_live
              WHERE campaign_id = ?"
         );
@@ -134,12 +165,69 @@ if (!function_exists('autoCompleteCountEngagement')) {
         $stmt->bind_param('s', $campaignId);
         $stmt->execute();
         $res = $stmt->get_result();
-        $row = $res ? $res->fetch_assoc() : null;
+        $rids = [];
+        $opens = [];
+        while ($res && $row = $res->fetch_assoc()) {
+            $rid = (string) $row['rid'];
+            $rids[$rid] = true;
+            if ((int) $row['opened'] === 1) {
+                $opens[$rid] = true;
+            }
+        }
         $stmt->close();
-        if (!$row) {
+        $total = count($rids);
+        if ($total === 0) {
             return [0, 0];
         }
-        return [(int) ($row['opened'] ?? 0), (int) ($row['total'] ?? 0)];
+        $engaged = $opens; // start from openers
+
+        if ($signals['clicks']) {
+            $hits = autoCompleteHitsForRids($conn, 'tb_data_webpage_visit', array_keys($rids));
+            foreach ($hits as $rid) {
+                $engaged[$rid] = true;
+            }
+        }
+        if ($signals['submits']) {
+            $hits = autoCompleteHitsForRids($conn, 'tb_data_webform_submit', array_keys($rids));
+            foreach ($hits as $rid) {
+                $engaged[$rid] = true;
+            }
+        }
+        return [count($engaged), $total];
+    }
+}
+
+if (!function_exists('autoCompleteHitsForRids')) {
+    /**
+     * @param string[] $rids
+     * @return string[] unique rids present in $table
+     */
+    function autoCompleteHitsForRids(mysqli $conn, string $table, array $rids): array
+    {
+        if ($rids === []) {
+            return [];
+        }
+        // Whitelist the table name — never operator-supplied here, but
+        // belt-and-suspenders for the static analyzer.
+        if (!in_array($table, ['tb_data_webpage_visit', 'tb_data_webform_submit'], true)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($rids), '?'));
+        $types = str_repeat('s', count($rids));
+        $sql = "SELECT DISTINCT rid FROM `$table` WHERE rid IN ($placeholders)";
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return [];
+        }
+        $stmt->bind_param($types, ...$rids);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $hits = [];
+        while ($res && $row = $res->fetch_assoc()) {
+            $hits[] = (string) $row['rid'];
+        }
+        $stmt->close();
+        return $hits;
     }
 }
 

@@ -57,3 +57,40 @@ if (!function_exists('auto_complete_clamp_threshold')) {
         return $v;
     }
 }
+
+if (!function_exists('auto_complete_canonical_metric')) {
+    /**
+     * Phase 3.15: which engagement signals count toward the auto-complete
+     * threshold. Accepts the operator-supplied raw value (anything else
+     * normalizes to 'opens', the Phase 3.3 behavior).
+     *
+     * @param mixed $raw
+     * @return string  one of 'opens' | 'opens_clicks' | 'opens_clicks_submits'
+     */
+    function auto_complete_canonical_metric($raw): string
+    {
+        $allowed = ['opens', 'opens_clicks', 'opens_clicks_submits'];
+        if (is_string($raw) && in_array($raw, $allowed, true)) {
+            return $raw;
+        }
+        return 'opens';
+    }
+}
+
+if (!function_exists('auto_complete_signals_for_metric')) {
+    /**
+     * Decompose a metric into the constituent boolean signals so the SQL
+     * builder knows which tables to consult.
+     *
+     * @return array{opens: bool, clicks: bool, submits: bool}
+     */
+    function auto_complete_signals_for_metric(string $metric): array
+    {
+        $m = auto_complete_canonical_metric($metric);
+        return [
+            'opens'   => true, // always counted; it's the baseline signal
+            'clicks'  => in_array($m, ['opens_clicks', 'opens_clicks_submits'], true),
+            'submits' => $m === 'opens_clicks_submits',
+        ];
+    }
+}

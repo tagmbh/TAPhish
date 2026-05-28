@@ -294,12 +294,12 @@
                            <h6 class="hbar">Auto-complete on Engagement</h6>
                         </div>
                         <div class="col-md-12">
-                           <i class="small">When the share of recipients who opened the email reaches the threshold, the campaign moves from tracking to completed. Set threshold to 0 to disable. Default: 100%.</i>
+                           <i class="small">When the share of recipients showing the selected engagement signal reaches the threshold, the campaign moves from tracking to completed. Set threshold to 0 to disable. Default: 100% of opens.</i>
                         </div>
                         <div class="col-md-6">
                            <div class="row">
                               <div class="col-md-12">
-                                 <label for="tb_auto_complete_threshold_percent" class="col-md-12 text-left control-label col-form-label m-t-10">Threshold (% opened):</label>
+                                 <label for="tb_auto_complete_threshold_percent" class="col-md-12 text-left control-label col-form-label m-t-10">Threshold (% engaged):</label>
                                  <div class="col-md-8">
                                     <div class="input-group number-spinner">
                                        <span class="input-group-btn">
@@ -310,6 +310,20 @@
                                           <button class="btn btn-outline-secondary btn-sm" data-dir="up"><span class="fas fa-plus"></span></button>
                                        </span>
                                     </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                        <div class="col-md-6">
+                           <div class="row">
+                              <div class="col-md-12">
+                                 <label for="select_auto_complete_metric" class="col-md-12 text-left control-label col-form-label m-t-10">Engagement signal:</label>
+                                 <div class="col-md-10">
+                                    <select class="form-control form-control-sm" id="select_auto_complete_metric">
+                                       <option value="opens">Opens only</option>
+                                       <option value="opens_clicks">Opens + web-tracker clicks</option>
+                                       <option value="opens_clicks_submits">Opens + clicks + form submissions</option>
+                                    </select>
                                  </div>
                               </div>
                            </div>
