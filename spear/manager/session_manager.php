@@ -1,6 +1,8 @@
 <?php
 require_once(dirname(__FILE__) . '/csrf.php');
 require_once(dirname(__FILE__) . '/password_hash_helper.php');
+require_once(dirname(__FILE__) . '/security_headers.php');
+taphish_emit_security_headers();
 if (session_status() === PHP_SESSION_NONE) {
    @ob_start();
    session_start();
