@@ -4,78 +4,174 @@ title: Changelog
 permalink: /changelog.html
 ---
 
-This is the running fork changelog. See individual commit messages on
-[GitHub](https://github.com/tagmbh/TAPhish/commits/) for the full
+Running fork changelog. See individual commits on
+[GitHub](https://github.com/tagmbh/TAPhish/commits/) for full
 diffs and test counts.
 
-## Phase 2 — Feature work + hardening (draft PR #1)
+## Phase 3 — Features + hardening on top of Phase 2
+
+### 3.18 — Per-recipient timezone-aware scheduling
+
+When enabled in mconfig, each recipient is sent at their local target
+hour. Timezone is inferred from the email's country-code TLD
+(.ch → Europe/Zurich, .de → Europe/Berlin, …); generic TLDs (.com,
+.org) fall back to the server timezone. Recipients outside their
+window are deferred — no row created in `tb_data_mailcamp_live` — and
+the campaign transitions to a new `camp_status = 5`. The main cron
+loop's resume pass re-runs the campaign every tick; the inner send
+loop dedups against existing rows so only the previously-deferred
+recipients are sent on subsequent passes.
+
+### 3.17 — AI landing-page generator (Claude API)
+
+Operator describes a landing page in prose, backend proxies to
+Anthropic `/v1/messages`, returned HTML drops into the existing
+CodeMirror editor on `/spear/sniperhost/LandingPage`. API key in
+browser localStorage (Hunter.io pattern), default model
+`claude-3-5-haiku-latest`, system prompt clamps output to raw HTML.
+
+### 3.16 — Deployment docs
+
+Top-level docs page covering Hostpoint, Infomaniak, VPS, modern
+PaaS, AWS Lightsail with a fit guide and a sample systemd unit for
+the cron worker. Explicit "GitHub Pages can't run the app" callout.
+
+### 3.15 — Click + submit engagement metric
+
+Auto-complete metric becomes operator-configurable: opens-only,
+opens + clicks, or opens + clicks + form submissions. Clicks and
+submits join by RID across `tb_data_webpage_visit` and
+`tb_data_webform_submit`.
+
+### 3.14 — crt.sh subdomain enumeration
+
+Free-tier OSINT alongside Hunter.io: pulls `*.<target>` from
+Certificate Transparency logs, deduplicates, anchored subdomain
+check defends against unrelated names (e.g. `myexample.com` does
+NOT count as a subdomain of `example.com`).
+
+### 3.13 — Hunter.io email-finder
+
+Per-person lookup (first + last + domain → email + score) alongside
+the Phase 3.8 domain-search. Same modal, same localStorage key.
+
+### 3.12 — Cron-loop bounce auto-poll
+
+Removes the manual "Refresh bounces" click: main cron loop now polls
+each campaign every 60 minutes. State stored as a per-campaign touch
+file in `spear/uploads/bounce_poll_state/`.
+
+### 3.11 — A/B template variants
+
+Operator picks an optional Template B for any campaign. Send loop
+assigns each recipient A or B deterministically via
+`crc32($rid) % 2` so the same RID always lands on the same variant
+— no per-recipient storage needed.
+
+### 3.10 — Defense-in-depth security headers
+
+`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: strict-origin-when-cross-origin`, HSTS,
+`Permissions-Policy`. Emitted from `session_manager.php` on every
+authenticated request. CSP deferred to a separate slice
+(requires migrating inline `onclick` handlers first).
+
+### 3.9 — Force change of default password
+
+Escalates the Phase 1 default-creds banner from warning to
+enforcement: operator gets redirected to *Settings → My Profile*
+until they change the `sniperphish` bootstrap password.
+
+### 3.8 — OSINT Hunter.io domain-search
+
+Discover company emails for a domain via Hunter.io v2/domain-search.
+API key in browser localStorage. Modal on the User Group page;
+selected rows import as recipients with a "OSINT/Hunter.io" note.
+
+### 3.6 — CSRF-XHR header on download buttons
+
+Latent regression fix: raw `XMLHttpRequest` calls (Quick Tracker
+export, system log download, Web-Mail campaign export) didn't pick
+up the Phase 2.2 `$.ajaxSetup` CSRF header. Three two-line patches.
+
+### 3.5 — IMAP bounce-poll worker
+
+"Refresh bounces" button on the Mail Campaign Dashboard. Opens the
+sender mailbox, scans the last 14 days for delivery-failure
+envelopes, pins each bounce to a recipient via the injected
+`{{RID}}@spmailer.generated` Message-ID marker, flips the row to
+`sending_status = 3` with a "Bounced: …" annotation.
+
+### 3.4 — Features docs page
+
+Top-level page covering Phase 2 capabilities (site cloner, CSRF,
+bcrypt, SMTP presets) with usage notes for operators.
+
+### 3.3 — Auto-complete campaign on engagement threshold
+
+Once a campaign reaches `camp_status = 4` (mails done sending), the
+cron loop transitions it to `camp_status = 3` (terminal) once the
+share of recipients who engaged crosses the operator-configured
+threshold (default 100%, 0 disables).
+
+### 3.1 — Customer-facing campaign PDF report
+
+Branded, client-ready PDF deliverable on the Mail Campaign Dashboard.
+Headline KPIs + per-recipient timeline sorted with openers first.
+Pure aggregation in `customer_report_aggregator.php`.
+
+## Phase 2 — Feature work + hardening
+
+### 2.6 — GH Pages docs site + explicit Jekyll workflow
+
+`/docs/` directory rendered via `.github/workflows/jekyll.yml`.
+Pages source switched from "Deploy from a branch" to "GitHub
+Actions" mode for stability.
 
 ### 2.5 — Site Cloner tracker dropdown + Infomaniak/M365 presets
-*Commit `8d62240`*
 
-- Site Cloner replaces the free-text tracker URL with a dropdown
-  populated from the operator's existing Web Trackers; URL auto-fills
-  the canonical `{baseurl}/mod?tlink={tracker_id}` pattern.
-- New SMTP presets: Infomaniak SSL (`mail.infomaniak.com:465`),
-  Infomaniak TLS (`mail.infomaniak.com:587`), Microsoft 365 with a
-  custom domain (`smtp.office365.com:587` + `imap.outlook.office365.com:993`).
-- Tests: 83 → 88.
+Site Cloner's tracker URL field becomes a dropdown of the operator's
+existing Web Trackers. Infomaniak SSL/TLS + Microsoft 365
+custom-domain SMTP presets added.
 
 ### 2.4 — Hostpoint SMTP provider preset
-*Commit `4fb6cce`*
 
-- `Hostpoint (hostpoint.ch) - SSL` (`asmtp.mail.hostpoint.ch:465`) and
-  `TLS` (`asmtp.mail.hostpoint.ch:587`) variants.
-- Idempotent `taphish_ensure_mail_presets()` ensures existing installs
-  gain new presets without manual SQL.
-- Tests: 76 → 83.
+Two Hostpoint presets (SSL/465, TLS/587). Idempotent
+`taphish_ensure_mail_presets()` ensures existing installs gain new
+presets without manual SQL.
 
 ### 2.3 — bcrypt password storage with transparent legacy upgrade
-*Commit `9af5b85`*
 
-- New helper `spear/manager/password_hash_helper.php`.
-- `validateLogin`, `doReLogin`, `isCurrentPwdCorrect`,
-  `addAccount`, `modifyAccount`, `doChangePwd`, and the install seed
-  all migrated.
-- Reset tokens move to `bin2hex(random_bytes(32))`.
-- Default-creds banner now uses `verify_user_password(...)`, working
-  against both legacy SHA-256 and bcrypt installs.
-- Tests: 62 → 76.
+`password_hash(PASSWORD_BCRYPT, ['cost' => 12])` for all new
+passwords. Existing operators with the upstream unsalted SHA-256
+keep working; first successful login rehashes transparently.
+Reset tokens move to `bin2hex(random_bytes(32))`.
 
 ### 2.2 — CSRF protection across the admin panel
-*Commit `149b582`*
 
-- `spear/manager/csrf.php` with token issuance, rotation, extraction
-  (header / JSON body / form post), verification, and a
-  `csrf_require()` middleware.
-- jQuery `$.ajaxSetup` auto-attaches `X-CSRF-Token` on every non-GET.
-- Wired into 13 dispatchers and the initial login form. Public
-  dashboard-share reads and `re_login` are explicitly exempt with
-  reasoning in code.
-- Tests: 45 → 62.
+`spear/manager/csrf.php` with token issuance, rotation, extraction
+(header / JSON body / form post), verification, and a
+`csrf_require()` middleware. jQuery `$.ajaxSetup` auto-attaches
+`X-CSRF-Token`. Wired into 13 dispatchers + the initial login form.
 
 ### 2.1 — Site Cloner module
-*Commit `66c9f59`*
 
-- Admin page at `/spear/SiteCloner` (under Hosted Pages in the menu).
-- Pure-rewrite helpers in `spear/manager/site_cloner_filters.php`:
-  slug normalization, SSRF-safe URL check, CSP-meta strip, URL
-  resolution, HTML rewrite + asset collection.
-- `ClonedSite` class encapsulates cURL fetch with size/asset caps.
-- Tests: 19 → 45.
+Admin page at `/spear/SiteCloner`. Pure rewrite helpers in
+`spear/manager/site_cloner_filters.php`. `ClonedSite` class
+encapsulates cURL fetch with size/asset caps. SSRF guard blocks
+private/loopback/reserved IPs by default.
 
-## Phase 1 — Rebrand + hardening + CI/test scaffold
-*Commit `58166f2`*
+## Phase 1 — Rebrand + hardening + CI scaffold
 
-- Brand abstraction (`spear/config/brand.php`) + asset placeholders.
-- Auto-secure session cookie, `executeCron()` arg validation,
-  `mod.php` mime/whitelist hardening, default-creds banner.
-- Campaign auto-pause on failure-rate spike.
-- Composer / PHPUnit / PHPCS / GitHub Actions CI matrix.
-- 19 baseline tests.
+- Brand abstraction layer in `spear/config/brand.php`
+- Auto-secure session cookie under HTTPS
+- `executeCron()` arg validation, `mod.php` mime whitelist
+- Default-creds banner on dashboard
+- Campaign auto-pause on failure-rate spike
+- Composer / PHPUnit / PHPCS / GitHub Actions CI matrix
 
 ## Upstream
 
 Forked from [GemGeorge/SniperPhish](https://github.com/GemGeorge/SniperPhish).
-The upstream README, credits, and `SPAbout.php` attribution paragraph
-are kept intact.
+The upstream README, credits, and `SPAbout.php` attribution
+paragraph are kept intact.

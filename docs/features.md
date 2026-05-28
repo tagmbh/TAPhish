@@ -124,19 +124,128 @@ script `composer run lint` runs the same `php -l` sweep CI uses.
 site from `/docs` on every change to `docs/**` or the workflow itself.
 The Pages source is set to **GitHub Actions** mode.
 
-## Notes for follow-up engagement deliverables
+## Customer-facing PDF report
 
-Two more features are in open PRs at time of writing:
+`MailCmpDashboard` → **Customer Report** button. Generates a
+branded, client-ready PDF deliverable summarizing a campaign's
+headline KPIs and per-recipient timeline (openers first, sorted
+by first-open time). Rendered via the existing TCPDF bundle; the
+operator picks an *engagement name* that overrides the internal
+campaign id on the cover page. Pure aggregation in
+`spear/manager/customer_report_aggregator.php` is unit-tested.
 
-- **Customer-facing campaign PDF report** (PR #3) — a branded,
-  client-ready PDF deliverable summarizing one campaign's headline
-  KPIs and per-recipient timeline. Rendered via the existing TCPDF
-  bundle. Available as a **Customer Report** button on the Mail
-  Campaign Dashboard.
-- **Auto-complete campaign on engagement threshold** (PR #7) —
-  transitions a campaign from tracking (`camp_status = 4`) to terminal
-  (`camp_status = 3`) once the share of recipients who opened the email
-  crosses the operator-configured threshold (default 100%, 0 disables).
-  New section under **Auto-pause on Failure Rate** in MailConfig.
+## Auto-complete on engagement
 
-Once merged, this page will be updated to describe them.
+MailConfig → **Auto-complete on Engagement** section. When the
+share of recipients showing the selected engagement signal
+crosses the threshold, the cron loop transitions the campaign
+from tracking (`camp_status = 4`) to terminal (`camp_status = 3`).
+
+Three signal options:
+
+- **Opens only** — `mail_open_times` non-empty.
+- **Opens + clicks** — also joins `tb_data_webpage_visit` by RID.
+- **Opens + clicks + form submissions** — also joins
+  `tb_data_webform_submit` by RID.
+
+Threshold defaults to 100%; setting it to 0 disables the check
+entirely.
+
+## IMAP bounce-poll
+
+Two ways to flip bounced recipients to `sending_status = 3` with
+a `Bounced: <reason>` annotation:
+
+- **Manual** — *Refresh bounces* button on the Mail Campaign
+  Dashboard.
+- **Automatic** — the main cron loop polls each campaign every
+  60 minutes. State stored as a per-campaign touch file in
+  `spear/uploads/bounce_poll_state/`.
+
+Bounces are pinned to their originating recipient via the
+`{{RID}}@spmailer.generated` Message-ID marker the cron worker
+injects on every outbound message — same mechanism the
+reply-tracker uses.
+
+## OSINT
+
+MailUserGroup → **OSINT** button. One modal, three lookups:
+
+- **Hunter.io domain search** — list company emails for a target
+  domain. Pasted API key is held in browser localStorage; the
+  backend proxies the call but never persists the key.
+- **Hunter.io email finder** — per-person lookup (first + last +
+  domain → email + position + confidence score).
+- **crt.sh subdomain enumeration** — free, no API key. Pulls
+  `*.<target-domain>` from Certificate Transparency logs.
+
+Selected rows from any of the three import as recipients of the
+current user group with a *OSINT/Hunter.io* note.
+
+## A/B template variants
+
+`MailCampaignList` → campaign edit form → **Mail Template B
+(A/B, optional)** dropdown next to the primary template
+selector. When set, the send loop assigns each recipient A or B
+deterministically via `crc32($rid) % 2` — same RID always lands
+on the same variant, no per-recipient storage needed, and the
+assignment is recoverable at report-time from the RID alone.
+
+A new `{{VARIANT}}` placeholder (`A` or `B`) is exposed in the
+template body so operators can tag variant-specific tracker
+parameters.
+
+## Per-recipient timezone-aware scheduling
+
+MailConfig → **Per-Recipient Timezone Scheduling** section.
+When enabled, each recipient is sent at their local target hour.
+Timezone is inferred from the email's country-code TLD
+(.ch → Europe/Zurich, .de → Europe/Berlin, …); generic TLDs
+(.com, .org, .net) fall back to the server timezone from
+`tb_main_variables`.
+
+Recipients outside their local window are deferred — no row
+created in `tb_data_mailcamp_live` — and the campaign moves to
+`camp_status = 5`. The main cron loop's resume pass re-runs the
+campaign on every tick; the send loop dedups against existing
+rows so only the previously-deferred recipients are sent on
+subsequent passes. The cycle finishes when every recipient has
+been picked up in their own window.
+
+## AI landing-page generator
+
+`/spear/sniperhost/LandingPage` → **AI Generate** button.
+Operator describes the page they want in prose, the backend
+proxies to Anthropic `/v1/messages`, and the returned HTML drops
+straight into the existing CodeMirror editor.
+
+- API key in browser localStorage (same pattern as Hunter.io).
+- Default model: `claude-3-5-haiku-latest`. Operator can switch
+  to Sonnet / Opus per request.
+- The system prompt clamps Claude to "raw HTML only, no markdown
+  fences, no commentary". An `ai_landing_extract_html()` helper
+  strips fences / cuts preludes / trims whitespace as
+  belt-and-suspenders.
+
+## Force change of default password
+
+If the `admin` account is still using the bootstrap `sniperphish`
+password (legacy SHA-256 or post-migration bcrypt — the check is
+format-agnostic via `verify_user_password`), the operator is
+redirected to *Settings → My Profile* with a red banner on every
+authenticated page load until they change it. Clears the moment
+the stored hash no longer matches.
+
+## Defense-in-depth security headers
+
+Every authenticated request from `session_manager.php` now emits:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(),
+  payment=(), usb=(), interest-cohort=()`
+
+CSP is deferred to a separate slice — it requires migrating
+inline `onclick` handlers to `addEventListener` first.
