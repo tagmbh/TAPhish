@@ -1,0 +1,29 @@
+title: TAPhish
+description: >-
+  t-alpha's fork of SniperPhish, modernized for authorized red-team
+  engagements: bcrypt password storage, CSRF middleware, site cloner,
+  Swiss SMTP presets, and PHP 8.x compatibility.
+url: ""
+baseurl: "/TAPhish"
+
+theme: minima
+minima:
+  skin: dark
+  social_links:
+    github: tagmbh/TAPhish
+
+show_excerpts: true
+
+header_pages:
+  - install.md
+  - security.md
+  - changelog.md
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
