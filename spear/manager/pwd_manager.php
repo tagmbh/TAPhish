@@ -26,7 +26,7 @@ function sendPwdReset($conn, &$POSTJ){
 	$contact_mail = $POSTJ['contact_mail'];
 	if(isUserExist($conn, $contact_mail))
 		if(sendNewReset($conn, $contact_mail)){
-			$new_v_hash = md5(uniqid(rand(), true));
+			$new_v_hash = make_secure_token();
 			$curr_time = time();
 			$stmt = $conn->prepare("UPDATE tb_main SET v_hash=?, v_hash_time=? WHERE contact_mail=?");
 			$stmt->bind_param('sss', $new_v_hash,$curr_time,$contact_mail);
@@ -82,7 +82,7 @@ function doChangePwd($conn, &$POSTJ){
 	if(!(isset($POSTJ['new_pwd']) && isset($POSTJ['token'])))
 		die(json_encode(['error' => 'Invalid request']));
 
-	$new_pwd_hash = hash("sha256", $POSTJ['new_pwd'], false);
+	$new_pwd_hash = hash_user_password($POSTJ['new_pwd']);
 	$token = $POSTJ['token'];
 
 	$stmt = $conn->prepare("SELECT COUNT(*) FROM tb_main WHERE v_hash = ?");

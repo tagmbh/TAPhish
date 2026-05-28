@@ -3,16 +3,19 @@
    isSessionValid(true);
 
    // Default-credentials warning: render the banner while admin still has the
-   // SHA-256 hash of the bootstrap "sniperphish" password. Goes away the moment
-   // the admin changes their password — no schema migration, no dismiss flag.
-   $default_admin_hash = '23d119e1749d0d0f21dd751c52d3ca221462867669acaf58f209aa237a3955a3';
+   // bootstrap "sniperphish" password. Works against both legacy SHA-256 hex
+   // and post-migration bcrypt; goes away the moment the admin changes their
+   // password — no schema migration, no dismiss flag.
    $show_default_creds_warning = false;
    if (isset($conn)) {
-      $stmt = $conn->prepare("SELECT COUNT(*) FROM tb_main WHERE username='admin' AND password=?");
+      $stmt = $conn->prepare("SELECT password FROM tb_main WHERE username='admin'");
       if ($stmt) {
-         $stmt->bind_param('s', $default_admin_hash);
          $stmt->execute();
-         $show_default_creds_warning = ($stmt->get_result()->fetch_row()[0] > 0);
+         $result = $stmt->get_result();
+         if ($result->num_rows > 0) {
+            $stored = $result->fetch_assoc()['password'];
+            $show_default_creds_warning = verify_user_password('sniperphish', $stored);
+         }
          $stmt->close();
       }
    }

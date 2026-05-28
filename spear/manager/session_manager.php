@@ -1,5 +1,6 @@
 <?php
 require_once(dirname(__FILE__) . '/csrf.php');
+require_once(dirname(__FILE__) . '/password_hash_helper.php');
 if (session_status() === PHP_SESSION_NONE) {
    @ob_start();
    session_start();
@@ -18,22 +19,32 @@ $entry_time = (new DateTime())->format('d-m-Y h:i A');
 error_reporting(E_ERROR | E_PARSE); //Disable warnings
 //-----------------------------
 
-function validateLogin($username,$pwd){	
+function validateLogin($username,$pwd){
 	global $conn;
-	$pwdhash = hash("sha256", $pwd, false);
-	$stmt = $conn->prepare("SELECT COUNT(*) FROM tb_main where username=? AND password=?");
-	$stmt->bind_param('ss', $username,$pwdhash);
+	$stmt = $conn->prepare("SELECT password FROM tb_main WHERE username=?");
+	$stmt->bind_param('s', $username);
 	$stmt->execute();
-	$row = $stmt->get_result()->fetch_row();
-	if($row[0] > 0){
-		updateLoginLogout($conn, $username, $GLOBALS['entry_time'], true);
-		$os = getOSType();
-		if(!isProcessRunning($conn,$os))
-			startProcess($os);
-		return true;
-	}
-	else
+	$result = $stmt->get_result();
+	if ($result->num_rows === 0) {
 		return false;
+	}
+	$stored = $result->fetch_assoc()['password'];
+	if (!verify_user_password($pwd, $stored)) {
+		return false;
+	}
+	if (password_should_rehash($stored)) {
+		// Transparent upgrade: re-hash with bcrypt and persist.
+		$newHash = hash_user_password($pwd);
+		$upd = $conn->prepare("UPDATE tb_main SET password=? WHERE username=?");
+		$upd->bind_param('ss', $newHash, $username);
+		$upd->execute();
+		$upd->close();
+	}
+	updateLoginLogout($conn, $username, $GLOBALS['entry_time'], true);
+	$os = getOSType();
+	if(!isProcessRunning($conn,$os))
+		startProcess($os);
+	return true;
 }
 
 function isSessionValid($f_redirection=false){	//this check refreshes session expiry
@@ -209,17 +220,28 @@ function doReLogin($username, $pwd){
 	header('Content-Type: application/json');
 	global $conn;
 
-	$pwdhash = hash("sha256", $pwd, false);
-	$stmt = $conn->prepare("SELECT COUNT(*) FROM tb_main where username=? AND password=?");
-	$stmt->bind_param('ss', $username,$pwdhash);
+	$stmt = $conn->prepare("SELECT password FROM tb_main WHERE username=?");
+	$stmt->bind_param('s', $username);
 	$stmt->execute();
-	$row = $stmt->get_result()->fetch_row();
-	if($row[0] > 0){
-		createSession(true,$username);
-		echo json_encode(['result' => 'success']);	
+	$result = $stmt->get_result();
+	if ($result->num_rows === 0) {
+		echo json_encode(['result' => 'failed']);
+		return;
 	}
-	else
-		echo json_encode(['result' => 'failed']);	
+	$stored = $result->fetch_assoc()['password'];
+	if (!verify_user_password($pwd, $stored)) {
+		echo json_encode(['result' => 'failed']);
+		return;
+	}
+	if (password_should_rehash($stored)) {
+		$newHash = hash_user_password($pwd);
+		$upd = $conn->prepare("UPDATE tb_main SET password=? WHERE username=?");
+		$upd->bind_param('ss', $newHash, $username);
+		$upd->execute();
+		$upd->close();
+	}
+	createSession(true, $username);
+	echo json_encode(['result' => 'success']);
 }
 
 function createSession($f_regenerate,$username){

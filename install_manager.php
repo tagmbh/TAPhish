@@ -2,6 +2,7 @@
 error_reporting(E_ALL ^ E_WARNING); //display error but not warnings
 ini_set('display_errors', true);    //display error on screen
 require_once (dirname(__FILE__) . '/spear/manager/common_functions.php');
+require_once (dirname(__FILE__) . '/spear/manager/password_hash_helper.php');
 header('Content-Type: application/json');
 date_default_timezone_set('UTC');
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
@@ -169,8 +170,9 @@ function modifySniperPhishSettings($conn, $time_zone, $user_contact_mail){
         return false;
     $stmt->close(); 
       
-    $stmt = $conn->prepare("INSERT INTO tb_main(id,name,username,password,contact_mail,dp_name,date) VALUES(1,'Admin','admin','23d119e1749d0d0f21dd751c52d3ca221462867669acaf58f209aa237a3955a3',?,1,?)");
-    $stmt->bind_param('ss', $user_contact_mail,$GLOBALS['entry_time']);
+    $default_pwd_hash = hash_user_password('sniperphish');
+    $stmt = $conn->prepare("INSERT INTO tb_main(id,name,username,password,contact_mail,dp_name,date) VALUES(1,'Admin','admin',?,?,1,?)");
+    $stmt->bind_param('sss', $default_pwd_hash, $user_contact_mail, $GLOBALS['entry_time']);
     if ($stmt->execute() === TRUE)
         return true;
     else

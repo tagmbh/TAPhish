@@ -7,3 +7,4 @@
 require_once __DIR__ . '/../../spear/manager/filters.php';
 require_once __DIR__ . '/../../spear/manager/site_cloner_filters.php';
 require_once __DIR__ . '/../../spear/manager/csrf.php';
+require_once __DIR__ . '/../../spear/manager/password_hash_helper.php';
