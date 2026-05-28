@@ -17,6 +17,18 @@ if (typeof $ !== 'undefined' && $.ajaxSetup) {
     });
 }
 
+// Phase 3.9: force the operator off any other page if they're still using
+// the bootstrap "sniperphish" password. The PHP side rechecks the stored
+// hash on each request, so this flag clears as soon as the password is
+// actually changed.
+(function () {
+    if (!window.TAPHISH_MUST_CHANGE_PWD) return;
+    var path = location.pathname;
+    if (path.endsWith('/SettingsUser') || path.endsWith('SettingsUser')) return;
+    if (path.endsWith('/logout') || path.endsWith('logout')) return;
+    location.href = '/spear/SettingsUser?must_change=1';
+})();
+
 $(function() {
     checkSniperPhishProcess();
     $('[data-toggle="tooltip"]').tooltip({

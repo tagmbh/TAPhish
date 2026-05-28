@@ -22,6 +22,24 @@ date_default_timezone_set('UTC');
 if (isset($conn) && $conn instanceof mysqli) {
 	taphish_ensure_mail_presets($conn);
 }
+// Phase 3.9: detect operators still using the bootstrap "sniperphish"
+// password so the JS guard in z_menu.php can redirect them to
+// SettingsUser. Format-agnostic: works for legacy SHA-256 and bcrypt.
+$GLOBALS['TAPHISH_MUST_CHANGE_PWD'] = false;
+if (!empty($_SESSION['username']) && isset($conn) && $conn instanceof mysqli) {
+	$_taphish_uname = $_SESSION['username'];
+	$_taphish_stmt = $conn->prepare("SELECT password FROM tb_main WHERE username = ?");
+	if ($_taphish_stmt) {
+		$_taphish_stmt->bind_param('s', $_taphish_uname);
+		$_taphish_stmt->execute();
+		$_taphish_res = $_taphish_stmt->get_result();
+		$_taphish_row = $_taphish_res ? $_taphish_res->fetch_assoc() : null;
+		$_taphish_stmt->close();
+		if ($_taphish_row && verify_user_password('sniperphish', $_taphish_row['password'])) {
+			$GLOBALS['TAPHISH_MUST_CHANGE_PWD'] = true;
+		}
+	}
+}
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
 error_reporting(E_ERROR | E_PARSE); //Disable warnings
 //-----------------------------
