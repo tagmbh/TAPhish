@@ -946,3 +946,32 @@ function hideMeFromPublic(){
     $(".item_private").hide();
 }
 
+function pollBounces(e) {
+    if (!g_campaign_id) {
+        toastr.error('', 'Select a campaign first.');
+        return;
+    }
+    enableDisableMe(e);
+    $.post({
+        url: "manager/mail_campaign_manager",
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({
+            action_type: 'poll_bounces',
+            campaign_id: g_campaign_id
+        })
+    }).done(function (data) {
+        if (data && data.result === 'success') {
+            var msg = 'Scanned ' + data.scanned + ', matched ' + data.matched + ', updated ' + data.updated + '.';
+            toastr.success('', msg);
+            if (data.updated > 0) loadTableCampaignResult();
+        } else {
+            var err = (data && data.errors && data.errors.length) ? data.errors[0] : 'Bounce poll failed.';
+            toastr.error('', err);
+        }
+    }).fail(function (xhr) {
+        toastr.error('', 'Request failed (HTTP ' + xhr.status + ').');
+    }).always(function () {
+        enableDisableMe(e);
+    });
+}
+

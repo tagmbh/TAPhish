@@ -1,5 +1,6 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
+require_once(dirname(__FILE__) . '/bounce_poll.php');
 require_once(dirname(__FILE__) . '/customer_report_aggregator.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 require_once(dirname(__FILE__,2) . '/config/brand.php');
@@ -57,6 +58,10 @@ if (isset($_POST)) {
 			multi_get_mcampinfo_from_mcamp_list_id_get_live_mcamp_data($conn,$POSTJ);
 		if($POSTJ['action_type'] == "download_report")
 			downloadReport($conn, $POSTJ['campaign_id'],$POSTJ['selected_col'],$POSTJ['dic_all_col'],$POSTJ['file_name'],$POSTJ['file_format'],$POSTJ['tb_data_single']);
+		if($POSTJ['action_type'] == "poll_bounces") {
+			$result = bounce_poll_for_campaign($conn, (string) $POSTJ['campaign_id']);
+			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
+		}
 		if($POSTJ['action_type'] == "generate_customer_pdf_report")
 			generateCustomerPdfReport($conn, $POSTJ['campaign_id'], $POSTJ['engagement_name'] ?? null);
 	}
