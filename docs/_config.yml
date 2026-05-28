@@ -17,6 +17,7 @@ show_excerpts: true
 header_pages:
   - install.md
   - features.md
+  - deployment.md
   - security.md
   - changelog.md
 
