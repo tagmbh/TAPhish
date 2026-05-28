@@ -1537,9 +1537,10 @@ function exportReportAction(e) {
         var xhr = new XMLHttpRequest();
         xhr.open('POST', 'manager/web_mail_campaign_manager', true);
         xhr.responseType = 'arraybuffer';
-        
+        if (window.TAPHISH_CSRF) xhr.setRequestHeader('X-CSRF-Token', window.TAPHISH_CSRF);
+
         enableDisableMe(e);
-        xhr.send(JSON.stringify({ 
+        xhr.send(JSON.stringify({
             action_type: "download_report",
             campaign_id: g_campaign_id,
             tracker_id: g_tracker_id,
