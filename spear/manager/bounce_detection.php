@@ -108,3 +108,22 @@ if (!function_exists('bounce_compose_send_error')) {
         return 'Bounced: ' . $reason;
     }
 }
+
+if (!function_exists('bounce_poll_due')) {
+    /**
+     * Phase 3.12: pure throttle helper. Returns true if the last poll was
+     * more than $intervalSeconds ago (or never polled). Lives in this pure
+     * module so unit tests reach it without mysqli-typed code from
+     * bounce_poll.php.
+     */
+    function bounce_poll_due(?int $lastPolledAt, int $intervalSeconds, int $nowAt): bool
+    {
+        if ($intervalSeconds <= 0) {
+            return false;
+        }
+        if ($lastPolledAt === null) {
+            return true;
+        }
+        return ($nowAt - $lastPolledAt) >= $intervalSeconds;
+    }
+}
