@@ -14,7 +14,14 @@ if (file_exists(dirname(__FILE__,2) . '/config/db.php'))
 else
 	die("Can not find db.php. Visit <a href='/install'>here</a> to install TAPhish");	//shows if login page is opened before install
 require_once(dirname(__FILE__) . '/common_functions.php');
+require_once(dirname(__FILE__) . '/mail_presets.php');
 date_default_timezone_set('UTC');
+// Idempotently top up TAPhish-shipped mail-sender presets so existing
+// installs gain new providers without manual SQL. Cheap: one indexed
+// SELECT against tb_store; INSERT only on miss.
+if (isset($conn) && $conn instanceof mysqli) {
+	taphish_ensure_mail_presets($conn);
+}
 $entry_time = (new DateTime())->format('d-m-Y h:i A');
 error_reporting(E_ERROR | E_PARSE); //Disable warnings
 //-----------------------------
