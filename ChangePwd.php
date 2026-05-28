@@ -1,12 +1,10 @@
 <?php
-   require_once(dirname(__FILE__) . '/db.php');
-   require_once(dirname(__FILE__) . '/common_functions.php');
-   if(isset($_GET['token'])){  
-      if(!isTokenValid($conn,$_GET['token']))
-        die("Incorrect request");
-   }
-   else
-    die();
+   // The real password-reset page is /spear/ChangePwd (the link sent in
+   // pwd_manager.php's email). This root-level copy is kept to avoid breaking
+   // any existing bookmarks; it redirects to the canonical location.
+   $_q = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] !== '' ? ('?' . $_SERVER['QUERY_STRING']) : '';
+   header('Location: /spear/ChangePwd' . $_q);
+   exit;
 ?>
 <!DOCTYPE html>
 <html dir="ltr">

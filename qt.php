@@ -1,5 +1,10 @@
 <?php
-require_once(dirname(__FILE__) . '/spear/config/db.php');
+$_db_file = dirname(__FILE__) . '/spear/config/db.php';
+if (!file_exists($_db_file)) {
+    http_response_code(404);
+    exit;
+}
+require_once($_db_file);
 require_once(dirname(__FILE__) . '/spear/manager/common_functions.php');
 require_once(dirname(__FILE__) . '/spear/libs/browser_detect/BrowserDetection.php');
 date_default_timezone_set('UTC');
