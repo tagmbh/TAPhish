@@ -3,6 +3,7 @@
 require_once(dirname(__FILE__,3) . '/config/db.php');
 require_once(dirname(__FILE__,3) . '/manager/session_manager.php');
 require_once(dirname(__FILE__,3) . '/manager/common_functions.php');
+require_once(dirname(__FILE__,3) . '/manager/ai_landing_page.php');
 require_once(dirname(__FILE__,2) . '/lib/Base32.php');
 require_once(dirname(__FILE__,2) . '/lib/base85.class.php');
 if(isSessionValid() == false)
@@ -48,6 +49,13 @@ if (isset($_POST)) {
 			getLandPageList($conn);	
 		if($POSTJ['action_type'] == "delete_landpage")
 			deleteLandPage($conn, $POSTJ['hlp_id']);
+		if($POSTJ['action_type'] == "ai_generate_landing_page") {
+			$prompt = (string) ($POSTJ['prompt'] ?? '');
+			$apiKey = (string) ($POSTJ['api_key'] ?? '');
+			$model  = (string) ($POSTJ['model'] ?? '');
+			$result = ai_landing_generate($prompt, $apiKey, $model);
+			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
+		}
 	}
 }
 

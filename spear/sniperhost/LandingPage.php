@@ -95,6 +95,7 @@
                                  </div>
                               </div>
                               <div class="col-md-4 align-items-right text-right float-right">
+                                 <button type="button" class="btn btn-warning mr-2" data-toggle="modal" data-target="#modal_ai_landing" title="Generate page HTML with Claude API"><i class="fas fa-robot"></i> AI Generate</button>
                                  <button type="button" class="btn btn-info" onclick="saveLandPage($(this))"><i class="fa fas fa-save"></i> Save</button>
                               </div>
                            </div>
@@ -270,6 +271,48 @@
                      </div>
                      <div class="modal-footer" >
                         <button type="button" class="btn btn-success" onclick="insertMedia('video')"><i class="mdi mdi-arrow-bottom-left"></i> Insert</button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <!-- AI landing-page generator (Phase 3.17) -->
+            <div class="modal fade" id="modal_ai_landing" tabindex="-1" role="dialog" aria-hidden="true">
+               <div class="modal-dialog modal-lg" role="document">
+                  <div class="modal-content">
+                     <div class="modal-header">
+                        <h5 class="modal-title">AI landing-page generator</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                     </div>
+                     <div class="modal-body">
+                        <p class="text-muted small">For authorized engagements only. Generated HTML will replace the current page content. API key is kept in your browser localStorage and sent on each request; it is not persisted server-side.</p>
+                        <div class="form-group row">
+                           <label for="ai_landing_apikey" class="col-sm-3 control-label col-form-label">Anthropic API key</label>
+                           <div class="col-sm-9">
+                              <input type="password" class="form-control" id="ai_landing_apikey" placeholder="sk-ant-...">
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="ai_landing_model" class="col-sm-3 control-label col-form-label">Model</label>
+                           <div class="col-sm-9">
+                              <select class="form-control" id="ai_landing_model">
+                                 <option value="claude-3-5-haiku-latest">Claude 3.5 Haiku (fast, cheap)</option>
+                                 <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+                                 <option value="claude-3-7-sonnet-latest">Claude 3.7 Sonnet</option>
+                                 <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                                 <option value="claude-opus-4-5">Claude Opus 4.5</option>
+                              </select>
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="ai_landing_prompt" class="col-sm-3 control-label col-form-label">Describe the page</label>
+                           <div class="col-sm-9">
+                              <textarea class="form-control" id="ai_landing_prompt" rows="5" placeholder="e.g. A corporate IT password reset confirmation page with a centered card, blue accent color, a single password and confirm-password field, and a Submit button."></textarea>
+                           </div>
+                        </div>
+                        <div id="ai_landing_summary" class="text-muted small"></div>
+                     </div>
+                     <div class="modal-footer">
+                        <button type="button" class="btn btn-info" onclick="aiLandingGenerate($(this))"><i class="fas fa-robot"></i> Generate &amp; load into editor</button>
                      </div>
                   </div>
                </div>

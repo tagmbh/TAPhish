@@ -357,3 +357,57 @@ function copyCode(e,copy_code_class){
         }, 2000);
     });    
 }
+
+// ---- Phase 3.17: AI landing-page generator -------------------------
+const AI_LANDING_KEY_LS = "taphish_anthropic_apikey";
+const AI_LANDING_MODEL_LS = "taphish_anthropic_model";
+
+$(function () {
+    var k = localStorage.getItem(AI_LANDING_KEY_LS);
+    if (k) $("#ai_landing_apikey").val(k);
+    var m = localStorage.getItem(AI_LANDING_MODEL_LS);
+    if (m) $("#ai_landing_model").val(m);
+});
+
+function aiLandingGenerate(e) {
+    var apiKey = $("#ai_landing_apikey").val().trim();
+    var model  = $("#ai_landing_model").val();
+    var prompt = $("#ai_landing_prompt").val().trim();
+    if (!apiKey || !prompt) {
+        toastr.error("", "API key and prompt are both required.");
+        return;
+    }
+    if (apiKey.indexOf("sk-ant-") !== 0) {
+        toastr.error("", "Anthropic keys start with sk-ant-.");
+        return;
+    }
+    localStorage.setItem(AI_LANDING_KEY_LS, apiKey);
+    localStorage.setItem(AI_LANDING_MODEL_LS, model);
+    enableDisableMe(e);
+    $("#ai_landing_summary").text("Calling Claude API…");
+    $.post({
+        url: "manager/sniperhost_manager",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({
+            action_type: "ai_generate_landing_page",
+            prompt: prompt,
+            api_key: apiKey,
+            model: model
+        })
+    }).done(function (data) {
+        if (data && data.result === "success") {
+            $("#summernote").summernote("code", data.html);
+            $("#ai_landing_summary").text(
+                "Loaded " + (data.html ? data.html.length : 0) + " bytes — model: " + (data.model || "?") + 
+                ", in/out tokens: " + (data.input_tokens || 0) + "/" + (data.output_tokens || 0));
+            toastr.success("", "Generated page loaded into the editor.");
+            setTimeout(function () { $("#modal_ai_landing").modal("hide"); }, 600);
+        } else {
+            $("#ai_landing_summary").text("");
+            toastr.error("", (data && data.err) || "Generation failed.");
+        }
+    }).fail(function (xhr) {
+        $("#ai_landing_summary").text("");
+        toastr.error("", "Request failed (HTTP " + xhr.status + ").");
+    }).always(function () { enableDisableMe(e); });
+}
