@@ -20,6 +20,16 @@
 
 require_once dirname(__FILE__) . '/bounce_detection.php';
 
+// Phase 3.12: cron-loop auto-poll interval (60 minutes per campaign).
+// Hardcoded for now; promote to mconfig in a follow-up once we have a
+// real operator complaint about the cadence.
+if (!defined('BOUNCE_POLL_DEFAULT_INTERVAL_SECONDS')) {
+    define('BOUNCE_POLL_DEFAULT_INTERVAL_SECONDS', 3600);
+}
+if (!defined('BOUNCE_POLL_STATE_DIR')) {
+    define('BOUNCE_POLL_STATE_DIR', dirname(__FILE__, 2) . '/uploads/bounce_poll_state');
+}
+
 if (!function_exists('bounce_poll_for_campaign')) {
     /**
      * Run one bounce-poll pass against a single campaign's sender mailbox.
@@ -217,5 +227,107 @@ if (!function_exists('bounce_poll_collect_imap_errors')) {
             return '';
         }
         return implode('; ', array_map('strval', $errors));
+    }
+}
+
+// ---- Phase 3.12: cron auto-poll ----------------------------------------
+
+// bounce_poll_due lives in bounce_detection.php so unit tests can reach it
+// without loading mysqli-typed helpers below.
+
+if (!function_exists('bounce_poll_state_path')) {
+    function bounce_poll_state_path(string $campaignId): string
+    {
+        $slug = preg_replace('/[^A-Za-z0-9_-]+/', '', $campaignId);
+        return BOUNCE_POLL_STATE_DIR . '/' . $slug . '.touch';
+    }
+}
+
+if (!function_exists('bounce_poll_last_polled_at')) {
+    function bounce_poll_last_polled_at(string $campaignId): ?int
+    {
+        $path = bounce_poll_state_path($campaignId);
+        if (!is_file($path)) {
+            return null;
+        }
+        $mtime = @filemtime($path);
+        return $mtime === false ? null : (int) $mtime;
+    }
+}
+
+if (!function_exists('bounce_poll_mark_polled')) {
+    function bounce_poll_mark_polled(string $campaignId): void
+    {
+        if (!is_dir(BOUNCE_POLL_STATE_DIR)) {
+            @mkdir(BOUNCE_POLL_STATE_DIR, 0775, true);
+        }
+        @touch(bounce_poll_state_path($campaignId));
+    }
+}
+
+if (!function_exists('bounce_poll_eligible_campaigns')) {
+    /**
+     * Campaigns in sending (2), tracking (4), or terminal (3 — late bounces
+     * arrive after auto-complete fires). camp_lock=0 so we don't trip over a
+     * campaign mid-save.
+     *
+     * @return string[]
+     */
+    function bounce_poll_eligible_campaigns(mysqli $conn): array
+    {
+        $out = [];
+        $res = $conn->query(
+            "SELECT campaign_id FROM tb_core_mailcamp_list
+             WHERE camp_status IN (2, 3, 4) AND camp_lock = 0"
+        );
+        if (!$res) {
+            return $out;
+        }
+        while ($row = $res->fetch_assoc()) {
+            $out[] = (string) $row['campaign_id'];
+        }
+        $res->free();
+        return $out;
+    }
+}
+
+if (!function_exists('bounce_poll_cron_pass')) {
+    /**
+     * One pass over all eligible campaigns; polls each that's due. Returns
+     * a small summary keyed by campaign_id so the operator log shows what
+     * actually ran. Designed to be called from SniperPhish_Manager.php's
+     * main loop once per tick — cheap when nothing is due (one indexed
+     * SELECT + N filemtime calls).
+     *
+     * @return array<int, array{
+     *   campaign_id: string,
+     *   scanned: int, matched: int, updated: int, ok: bool,
+     *   errors?: string[],
+     * }>
+     */
+    function bounce_poll_cron_pass(mysqli $conn, ?int $intervalSeconds = null): array
+    {
+        if ($intervalSeconds === null) {
+            $intervalSeconds = BOUNCE_POLL_DEFAULT_INTERVAL_SECONDS;
+        }
+        $now = time();
+        $report = [];
+        foreach (bounce_poll_eligible_campaigns($conn) as $campaignId) {
+            $last = bounce_poll_last_polled_at($campaignId);
+            if (!bounce_poll_due($last, $intervalSeconds, $now)) {
+                continue;
+            }
+            $result = bounce_poll_for_campaign($conn, $campaignId);
+            bounce_poll_mark_polled($campaignId);
+            $report[] = ['campaign_id' => $campaignId] + $result;
+            if (function_exists('logIt') && $result['updated'] > 0) {
+                logIt(
+                    'Auto bounce-poll: ' . $campaignId . ' updated=' . $result['updated']
+                    . ' matched=' . $result['matched'] . ' scanned=' . $result['scanned'],
+                    'cron'
+                );
+            }
+        }
+        return $report;
     }
 }

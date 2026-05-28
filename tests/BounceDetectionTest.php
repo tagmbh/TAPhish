@@ -140,4 +140,32 @@ final class BounceDetectionTest extends TestCase
     {
         self::assertSame('Bounced: 550 mailbox full', bounce_compose_send_error('550 mailbox full'));
     }
+
+    // --- bounce_poll_due (Phase 3.12 cron auto-poll) ---------------------
+
+    public function testPollDueWhenNeverPolled(): void
+    {
+        self::assertTrue(bounce_poll_due(null, 3600, 1000000));
+    }
+
+    public function testPollDueWhenIntervalElapsed(): void
+    {
+        $now = 1700000000;
+        self::assertTrue(bounce_poll_due($now - 3600, 3600, $now));
+        self::assertTrue(bounce_poll_due($now - 7200, 3600, $now));
+    }
+
+    public function testPollNotDueWhenWithinInterval(): void
+    {
+        $now = 1700000000;
+        self::assertFalse(bounce_poll_due($now - 100, 3600, $now));
+        self::assertFalse(bounce_poll_due($now - 3599, 3600, $now));
+    }
+
+    public function testPollDisabledWhenIntervalZeroOrNegative(): void
+    {
+        self::assertFalse(bounce_poll_due(null, 0, 1000000));
+        self::assertFalse(bounce_poll_due(null, -1, 1000000));
+        self::assertFalse(bounce_poll_due(0, 0, 1000000));
+    }
 }
