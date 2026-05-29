@@ -393,7 +393,9 @@ function getMailReplied($conn, $campaign_id, $quite=false){
     if($result->num_rows > 0){
         $row = $result->fetch_assoc() ;
         $sender_username = $row['sender_acc_username'];
-        $sender_acc_pwd = $row['sender_acc_pwd'];
+        $sender_acc_pwd = function_exists('mail_sender_unseal_pwd')
+            ? mail_sender_unseal_pwd($row['sender_acc_pwd'])
+            : $row['sender_acc_pwd']; //Phase 3.27: decrypt at-rest envelope; fallback for partial loads
         $sender_mailbox = $row['sender_mailbox'];
 
         //------------------Get mail subject---------

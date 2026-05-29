@@ -19,6 +19,7 @@
  */
 
 require_once dirname(__FILE__) . '/bounce_detection.php';
+require_once dirname(__FILE__) . '/secret_at_rest.php';
 
 // Phase 3.12: cron-loop auto-poll interval (60 minutes per campaign).
 // Hardcoded for now; promote to mconfig in a follow-up once we have a
@@ -167,7 +168,7 @@ if (!function_exists('bounce_poll_get_sender_credentials')) {
         return [
             'mailbox'  => (string) $row['sender_mailbox'],
             'username' => (string) ($row['sender_acc_username'] ?? ''),
-            'password' => (string) ($row['sender_acc_pwd'] ?? ''),
+            'password' => (string) mail_sender_unseal_pwd($row['sender_acc_pwd'] ?? ''),
         ];
     }
 }

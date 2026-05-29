@@ -4,6 +4,7 @@ require_once(dirname(__FILE__,2) . '/config/db.php');
 require_once(dirname(__FILE__,2) . '/manager/common_functions.php');
 require_once(dirname(__FILE__,2) . '/manager/ab_variants.php');
 require_once(dirname(__FILE__,2) . '/manager/recipient_tz.php');
+require_once(dirname(__FILE__,2) . '/manager/secret_at_rest.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -145,7 +146,8 @@ function InitMailCampaign($conn, $campaign_id){
 	$sender_from_mail = preg_match("/[\._a-zA-Z0-9-]+@[\._a-zA-Z0-9-]+/i", $MSENDER_DATA['sender_from'], $matches);
 	$sender_from_mail = $matches[0];
 	$sender_acc_username = $MSENDER_DATA['sender_acc_username'];
-	$sender_acc_pwd = $MSENDER_DATA['sender_acc_pwd'];
+	// Phase 3.27: passwords stored at-rest are encrypted; decrypt for use.
+	$sender_acc_pwd = mail_sender_unseal_pwd($MSENDER_DATA['sender_acc_pwd']);
 	$cust_headers = $MSENDER_DATA['cust_headers'];
 	$sender_dsn_type = $MSENDER_DATA['dsn_type'];
 

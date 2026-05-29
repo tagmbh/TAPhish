@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/csrf.php');
 require_once(dirname(__FILE__) . '/password_hash_helper.php');
 require_once(dirname(__FILE__) . '/security_headers.php');
 require_once(dirname(__FILE__) . '/totp.php');
+require_once(dirname(__FILE__) . '/secret_at_rest.php');
 taphish_emit_security_headers();
 if (session_status() === PHP_SESSION_NONE) {
    @ob_start();
