@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/common_functions.php');
 require_once(dirname(__FILE__) . '/osint_hunter.php');
 require_once(dirname(__FILE__) . '/osint_crt_sh.php');
+require_once(dirname(__FILE__) . '/secret_at_rest.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -524,6 +525,10 @@ function saveSenderList($conn, &$POSTJ){
 	$sender_list_mail_sender_from = $POSTJ['sender_list_mail_sender_from'];
 	$sender_list_mail_sender_acc_username = $POSTJ['sender_list_mail_sender_acc_username'];
 	$sender_list_mail_sender_acc_pwd = $POSTJ['sender_list_mail_sender_acc_pwd'];
+	// Phase 3.27: seal the SMTP password before storing.
+	if ($sender_list_mail_sender_acc_pwd !== '') {
+		$sender_list_mail_sender_acc_pwd = mail_sender_seal_pwd($sender_list_mail_sender_acc_pwd);
+	}
 	$auto_mailbox = $POSTJ['cb_auto_mailbox'];
 	$mail_sender_mailbox = $POSTJ['mail_sender_mailbox'];
 	$sender_list_cust_headers = json_encode($POSTJ['sender_list_cust_headers']); 
@@ -695,9 +700,9 @@ function sendTestMailSample($conn,$POSTJ){
 		$stmt->execute();
 		$result = $stmt->get_result();
 		if($row = $result->fetch_assoc())
-			$sender_pwd = $row['sender_acc_pwd'];
+			$sender_pwd = mail_sender_unseal_pwd($row['sender_acc_pwd']);
 		else
-			die(json_encode(['result' => 'failed', 'error' => "Sender list does not exist. Please fill the password field"]));	
+			die(json_encode(['result' => 'failed', 'error' => "Sender list does not exist. Please fill the password field"]));
 	}
 
 	$message = (new Email());
@@ -725,7 +730,7 @@ function getSenderPwd(&$conn, &$sender_list_id){
 	$stmt->execute();
 	$result = $stmt->get_result();
 	if($row = $result->fetch_assoc())
-		return $row['sender_acc_pwd'];
+		return mail_sender_unseal_pwd($row['sender_acc_pwd']); //Phase 3.27: decrypt at-rest envelope
 	else
 		return "";
 }
