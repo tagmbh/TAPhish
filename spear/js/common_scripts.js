@@ -400,3 +400,35 @@ function doReLogin(){
             }                 
     });
 }
+
+// ---- Phase 3.22: client-side password-strength meter ----------------
+function scorePasswordStrength(pw) {
+    if (!pw) return 0;
+    var score = 0;
+    if (pw.length >= 8)  score++;
+    if (pw.length >= 12) score++;
+    if (pw.length >= 16) score++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    // Penalize obvious-bad picks.
+    var lower = pw.toLowerCase();
+    var bad = ["password","123456","sniperphish","qwerty","letmein","admin","welcome","passw0rd"];
+    for (var i = 0; i < bad.length; i++) {
+        if (lower.indexOf(bad[i]) !== -1) { score = Math.max(0, score - 3); break; }
+    }
+    return Math.max(0, Math.min(4, score - 2));
+}
+
+function renderPwdStrength(pw, containerSelector) {
+    var $wrap = $(containerSelector);
+    if (!$wrap.length) return;
+    if (!pw) { $wrap.hide(); return; }
+    $wrap.show();
+    var s = scorePasswordStrength(pw);
+    var pcts   = [10, 30, 55, 80, 100];
+    var colors = ["#dc3545", "#fd7e14", "#ffc107", "#198754", "#0d6efd"];
+    var labels = ["Very weak", "Weak", "OK", "Strong", "Excellent"];
+    $wrap.find(".pwd-strength-fill").css({ width: pcts[s] + "%", background: colors[s] });
+    $wrap.find(".pwd-strength-label").text(labels[s]).css("color", colors[s]);
+}

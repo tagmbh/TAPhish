@@ -325,7 +325,13 @@
                         <div class="form-group row">
                            <label for="tb_update_new_pwd" class="col-sm-3 text-left control-label col-form-label">New Password:</label>
                            <div class="col-sm-9">
-                              <input type="password" class="form-control" id="tb_update_new_pwd" placeholder="New Password Here">
+                              <input type="password" class="form-control" id="tb_update_new_pwd" placeholder="New Password Here" oninput="renderPwdStrength(this.value, '#pwd_strength_settings')">
+                              <div id="pwd_strength_settings" class="pwd-strength-meter mt-1" style="display:none;">
+                                 <div class="pwd-strength-bar" style="height:4px;border-radius:2px;background:#e9ecef;overflow:hidden;">
+                                    <div class="pwd-strength-fill" style="height:100%;width:0%;transition:width .15s ease, background .15s ease;"></div>
+                                 </div>
+                                 <small class="pwd-strength-label text-muted"></small>
+                              </div>
                            </div>
                         </div>
                         <div class="form-group row">

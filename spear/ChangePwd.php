@@ -64,7 +64,13 @@
                                  <div class="input-group-prepend">
                                     <span class="input-group-text bg-info text-white" id="basic-addon1"><i class="fa fas fa-key"></i></span>
                                  </div>
-                                 <input type="password" class="form-control form-control-lg" placeholder="New Password" id="tb_pwd" aria-label="Username" aria-describedby="basic-addon1" required>
+                                 <input type="password" class="form-control form-control-lg" placeholder="New Password" id="tb_pwd" aria-label="Username" aria-describedby="basic-addon1" required oninput="renderPwdStrength(this.value, '#pwd_strength_reset')">
+                              </div>
+                              <div id="pwd_strength_reset" class="pwd-strength-meter mb-3" style="display:none;">
+                                 <div class="pwd-strength-bar" style="height:4px;border-radius:2px;background:rgba(255,255,255,0.15);overflow:hidden;">
+                                    <div class="pwd-strength-fill" style="height:100%;width:0%;transition:width .15s ease, background .15s ease;"></div>
+                                 </div>
+                                 <small class="pwd-strength-label text-muted"></small>
                               </div>
                               <div class="input-group mb-3">
                                  <div class="input-group-prepend">
@@ -103,7 +109,13 @@
       <!-- ============================================================== -->
       <script>
         $(".preloader").fadeOut();
-        // ============================================================== 
+        // ==============================================================
+        // Phase 3.22: inline copy of common_scripts.js's strength scorer
+        // (ChangePwd runs pre-session and intentionally does not load
+        // common_scripts.js).
+        function scorePasswordStrength(pw){if(!pw)return 0;var s=0;if(pw.length>=8)s++;if(pw.length>=12)s++;if(pw.length>=16)s++;if(/[a-z]/.test(pw)&&/[A-Z]/.test(pw))s++;if(/[0-9]/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;var l=pw.toLowerCase();var b=["password","123456","sniperphish","qwerty","letmein","admin","welcome","passw0rd"];for(var i=0;i<b.length;i++){if(l.indexOf(b[i])!==-1){s=Math.max(0,s-3);break;}}return Math.max(0,Math.min(4,s-2));}
+        function renderPwdStrength(pw,sel){var $w=$(sel);if(!$w.length)return;if(!pw){$w.hide();return;}$w.show();var s=scorePasswordStrength(pw);var p=[10,30,55,80,100];var c=["#dc3545","#fd7e14","#ffc107","#198754","#0d6efd"];var n=["Very weak","Weak","OK","Strong","Excellent"];$w.find(".pwd-strength-fill").css({width:p[s]+"%",background:c[s]});$w.find(".pwd-strength-label").text(n[s]).css("color",c[s]);}
+
 
         $("#doPwdReset").submit(function(event) {
             event.preventDefault();
