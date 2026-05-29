@@ -133,6 +133,82 @@ The public `track.php`, `qt.php`, and `mod.php` endpoints obviously
 need to be reachable from the targets' browsers; the rest of the
 panel doesn't.
 
+## Automated deploy via GitHub Actions
+
+`.github/workflows/deploy.yml` is a manual-trigger workflow that
+`rsync`s the working tree (minus dev artifacts + on-host secrets)
+to a single configured host over SSH. Works against Hostpoint,
+Infomaniak, a VPS, or anything else with SSH/SFTP access.
+
+### One-time setup
+
+1. **Generate an SSH keypair** locally:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/taphish_deploy -C 'taphish-github-actions'
+   ```
+
+2. **Register the public key on the host.** On Hostpoint:
+   *Control panel → SSH access → Public keys → paste contents of
+   `~/.ssh/taphish_deploy.pub`*.
+
+3. **Add four secrets** to the repo (Settings → Secrets and
+   variables → Actions → New repository secret):
+
+   | Secret | Value |
+   |---|---|
+   | `DEPLOY_HOST` | e.g. `taphish.yourdomain.ch` |
+   | `DEPLOY_USER` | your Hostpoint SSH username |
+   | `DEPLOY_PATH` | remote dir, e.g. `/home/<user>/public_html` |
+   | `DEPLOY_SSH_KEY` | full contents of `~/.ssh/taphish_deploy` (the private key) |
+
+   Optional:
+   - `DEPLOY_PORT` — defaults to 22
+   - `DEPLOY_KNOWN_HOSTS` — pre-trusted host key from
+     `ssh-keyscan -p 22 yourhost`. If you skip this, the first
+     deploy uses `accept-new` which is less safe but more
+     convenient.
+
+### Triggering a deploy
+
+Actions tab → *Deploy to operator host* → **Run workflow**.
+
+Two checkboxes:
+
+- **Dry-run** — runs `rsync -n`, prints exactly what would change
+  without uploading. Always do this first.
+- **Run composer install --no-dev** — for hosts where you can't
+  run composer over SSH directly. Skip on Hostpoint shared
+  hosting, which doesn't include composer.
+
+### What's NOT uploaded
+
+The workflow excludes:
+
+- `.git/`, `.github/`, `tests/`, `docs/`, `node_modules/`, dev
+  config files
+- `spear/config/db.php` — the host's database credentials
+- `spear/config/secret.key` — the host's at-rest encryption key
+  (Phase 3.27)
+- `spear/uploads/cloned/`, `spear/uploads/bounce_poll_state/`,
+  `spear/uploads/login_attempts/` — operator-generated state
+- `*.log`
+
+So you keep whatever's on the host for those paths; the deploy
+only updates code.
+
+### After the first deploy
+
+1. Open `https://yourhost/install` in a browser, run the wizard.
+2. Change the default `admin/sniperphish` password (Phase 3.9
+   will redirect you on first login).
+3. Register the cron worker. On Hostpoint: *Control panel →
+   Cronjobs → Add → every minute → command:*
+   ```
+   /usr/local/bin/php /home/<user>/public_html/spear/core/SniperPhish_Manager.php
+   ```
+   The script's own `isProcessRunning` guard keeps only one
+   instance running.
+
 ## Monitoring
 
 `/health` returns a minimal JSON body suitable for uptime monitors
