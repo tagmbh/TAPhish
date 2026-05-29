@@ -272,3 +272,92 @@ function isPwdSecure(new_pwd, confirm_pwd, new_pwd_field, confirm_pwd_field){
     }
     return f_valid;
 }
+// ---- Phase 3.25: TOTP 2FA management ---------------------------------
+
+function totpPost(payload) {
+    return $.ajax({
+        url: 'manager/settings_manager',
+        method: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify(payload),
+        dataType: 'json'
+    });
+}
+
+function totpRefreshStatus() {
+    totpPost({ action_type: 'totp_get_status' }).done(function (data) {
+        if (!data || data.result !== 'success') return;
+        if (data.enabled) {
+            $('#totp_status_badge').removeClass().addClass('badge badge-success').text('Enabled');
+            $('#btn_totp_enable').hide();
+            $('#btn_totp_disable').show();
+        } else {
+            $('#totp_status_badge').removeClass().addClass('badge badge-secondary').text('Disabled');
+            $('#btn_totp_enable').show();
+            $('#btn_totp_disable').hide();
+        }
+    });
+}
+
+$(function () {
+    totpRefreshStatus();
+});
+
+function totpStartEnrollment() {
+    $('#totp_enroll_err').text('');
+    $('#totp_enroll_code').val('');
+    totpPost({ action_type: 'totp_begin_enrollment' }).done(function (data) {
+        if (!data || data.result !== 'success') {
+            toastr.error('', (data && data.error) || 'Could not start 2FA enrollment.');
+            return;
+        }
+        $('#totp_enroll_secret').val(data.secret);
+        $('#totp_enroll_secret_text').text(data.secret);
+        $('#totp_enroll_qr').attr('src', 'data:image/png;base64,' + data.qr_b64);
+        $('#modal_totp_enroll').modal('show');
+    });
+}
+
+function totpConfirmEnrollment(btn) {
+    var secret = $('#totp_enroll_secret').val();
+    var code   = $('#totp_enroll_code').val();
+    if (!secret || !code) { $('#totp_enroll_err').text('Enter the 6-digit code.'); return; }
+    enableDisableMe(btn);
+    totpPost({ action_type: 'totp_confirm_enrollment', secret: secret, code: code })
+        .done(function (data) {
+            if (data && data.result === 'success') {
+                $('#modal_totp_enroll').modal('hide');
+                toastr.success('', '2FA is now enabled on your account.');
+                totpRefreshStatus();
+            } else {
+                $('#totp_enroll_err').text((data && data.error) || 'Verification failed.');
+            }
+        })
+        .fail(function (xhr) {
+            $('#totp_enroll_err').text('Request failed (HTTP ' + xhr.status + ').');
+        })
+        .always(function () { enableDisableMe(btn); });
+}
+
+function totpDoDisable(btn) {
+    var pwd  = $('#totp_disable_pwd').val();
+    var code = $('#totp_disable_code').val();
+    if (!pwd || !code) { $('#totp_disable_err').text('Both fields are required.'); return; }
+    enableDisableMe(btn);
+    totpPost({ action_type: 'totp_disable', current_pwd: pwd, code: code })
+        .done(function (data) {
+            if (data && data.result === 'success') {
+                $('#modal_totp_disable').modal('hide');
+                $('#totp_disable_pwd').val('');
+                $('#totp_disable_code').val('');
+                toastr.success('', '2FA has been disabled.');
+                totpRefreshStatus();
+            } else {
+                $('#totp_disable_err').text((data && data.error) || 'Disable failed.');
+            }
+        })
+        .fail(function (xhr) {
+            $('#totp_disable_err').text('Request failed (HTTP ' + xhr.status + ').');
+        })
+        .always(function () { enableDisableMe(btn); });
+}

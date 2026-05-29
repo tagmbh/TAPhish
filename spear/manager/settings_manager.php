@@ -26,6 +26,16 @@ if (isset($_POST)) {
 		if($POSTJ['action_type'] == "get_current_user")
 			getCurrentUser($conn);
 
+		// Phase 3.25: TOTP 2FA enrollment + disable
+		if($POSTJ['action_type'] == "totp_begin_enrollment")
+			totpBeginEnrollment($conn);
+		if($POSTJ['action_type'] == "totp_confirm_enrollment")
+			totpConfirmEnrollment($conn, $POSTJ['secret'] ?? '', $POSTJ['code'] ?? '');
+		if($POSTJ['action_type'] == "totp_disable")
+			totpDisable($conn, $POSTJ['current_pwd'] ?? '', $POSTJ['code'] ?? '');
+		if($POSTJ['action_type'] == "totp_get_status")
+			totpGetStatus($conn);
+
 		if($POSTJ['action_type'] == "modify_timestamp_settings")
 			modifyTimestampSettings($conn, json_encode($POSTJ['time_zone']), json_encode($POSTJ['time_format']));
 		if($POSTJ['action_type'] == "get_timestamp_settings")
@@ -475,11 +485,95 @@ function downloadLogs($conn,$file_format){
 
 function clearLog(&$conn){
     if ($conn->query('DELETE FROM tb_log') === TRUE) 
-        echo(json_encode(['result' => 'success']));	
+        echo(json_encode(['result' => 'success']));
     else
         echo json_encode(['result' => 'failed', 'error' => $conn->error]);
-    
+
     $conn->close();
 }
 //-------------------------------------
+
+// ==== Phase 3.25: TOTP 2FA management ====
+
+function totpGetStatus($conn) {
+    $username = $_SESSION['username'] ?? null;
+    if (!$username) { echo json_encode(['result' => 'failed', 'error' => 'No session']); return; }
+    $stmt = $conn->prepare("SELECT totp_enabled FROM tb_main WHERE username = ?");
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    echo json_encode(['result' => 'success', 'enabled' => !empty($row['totp_enabled'])]);
+}
+
+function totpBeginEnrollment($conn) {
+    $username = $_SESSION['username'] ?? null;
+    if (!$username) { echo json_encode(['result' => 'failed', 'error' => 'No session']); return; }
+    $secret = totp_generate_secret();
+    $issuer = defined('BRAND_PRODUCT_NAME') ? BRAND_PRODUCT_NAME : 'TAPhish';
+    $uri = totp_provisioning_uri($secret, $username, $issuer);
+    $qrPng = generateQRBarCode('qr_b64', $uri);
+    $qrB64 = $qrPng !== null ? base64_encode($qrPng) : '';
+    // We do NOT persist the secret yet — only after totpConfirmEnrollment
+    // verifies the operator can produce a valid code.
+    echo json_encode([
+        'result' => 'success',
+        'secret' => $secret,
+        'uri'    => $uri,
+        'qr_b64' => $qrB64,
+    ]);
+}
+
+function totpConfirmEnrollment($conn, $secret, $code) {
+    $username = $_SESSION['username'] ?? null;
+    if (!$username) { echo json_encode(['result' => 'failed', 'error' => 'No session']); return; }
+    $secret = (string) $secret;
+    $code   = (string) $code;
+    if (!preg_match('/^[A-Z2-7=]+$/i', $secret) || strlen($secret) < 16) {
+        echo json_encode(['result' => 'failed', 'error' => 'Invalid secret payload']);
+        return;
+    }
+    if (!totp_verify_code($secret, $code, time())) {
+        echo json_encode(['result' => 'failed', 'error' => 'Code did not match — check your authenticator app clock and try again.']);
+        return;
+    }
+    $stmt = $conn->prepare("UPDATE tb_main SET totp_secret = ?, totp_enabled = 1 WHERE username = ?");
+    $stmt->bind_param('ss', $secret, $username);
+    if ($stmt->execute()) {
+        logIt('2FA enabled for ' . $username);
+        echo json_encode(['result' => 'success']);
+    } else {
+        echo json_encode(['result' => 'failed', 'error' => 'Database update failed']);
+    }
+    $stmt->close();
+}
+
+function totpDisable($conn, $current_pwd, $code) {
+    $username = $_SESSION['username'] ?? null;
+    if (!$username) { echo json_encode(['result' => 'failed', 'error' => 'No session']); return; }
+    // Require BOTH the current password AND a valid 2FA code to disable —
+    // a stolen session alone shouldn't be able to weaken the account.
+    if (!isCurrentPwdCorrect($conn, $current_pwd)) {
+        echo json_encode(['result' => 'failed', 'error' => 'Current password is wrong.']);
+        return;
+    }
+    $stmt = $conn->prepare("SELECT totp_secret FROM tb_main WHERE username = ?");
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row || empty($row['totp_secret']) || !totp_verify_code($row['totp_secret'], $code, time())) {
+        echo json_encode(['result' => 'failed', 'error' => 'Code did not match.']);
+        return;
+    }
+    $stmt = $conn->prepare("UPDATE tb_main SET totp_secret = NULL, totp_enabled = 0 WHERE username = ?");
+    $stmt->bind_param('s', $username);
+    if ($stmt->execute()) {
+        logIt('2FA disabled for ' . $username);
+        echo json_encode(['result' => 'success']);
+    } else {
+        echo json_encode(['result' => 'failed', 'error' => 'Database update failed']);
+    }
+    $stmt->close();
+}
 ?>

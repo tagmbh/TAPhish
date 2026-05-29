@@ -489,7 +489,9 @@ CREATE TABLE `tb_main` (
   `v_hash_time` varchar(111) DEFAULT NULL,
   `date` varchar(111) DEFAULT NULL,
   `last_login` varchar(111) DEFAULT NULL,
-  `last_logout` varchar(111) DEFAULT NULL
+  `last_logout` varchar(111) DEFAULT NULL,
+  `totp_secret` varchar(64) DEFAULT NULL,
+  `totp_enabled` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------

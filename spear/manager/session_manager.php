@@ -2,6 +2,7 @@
 require_once(dirname(__FILE__) . '/csrf.php');
 require_once(dirname(__FILE__) . '/password_hash_helper.php');
 require_once(dirname(__FILE__) . '/security_headers.php');
+require_once(dirname(__FILE__) . '/totp.php');
 taphish_emit_security_headers();
 if (session_status() === PHP_SESSION_NONE) {
    @ob_start();
@@ -23,6 +24,7 @@ date_default_timezone_set('UTC');
 // SELECT against tb_store; INSERT only on miss.
 if (isset($conn) && $conn instanceof mysqli) {
 	taphish_ensure_mail_presets($conn);
+	totp_ensure_schema($conn);	//Phase 3.25: add totp_secret + totp_enabled columns if missing
 }
 // Phase 3.9: detect operators still using the bootstrap "sniperphish"
 // password so the JS guard in z_menu.php can redirect them to
@@ -48,14 +50,24 @@ error_reporting(E_ERROR | E_PARSE); //Disable warnings
 
 function validateLogin($username,$pwd){
 	global $conn;
-	$stmt = $conn->prepare("SELECT password FROM tb_main WHERE username=?");
+	// Phase 3.25: also pull totp_secret + totp_enabled so we can decide
+	// whether a second factor is required without a second query. Wrapped
+	// in defined()-style defense in case the schema migration hasn't run
+	// yet (taphish_ensure_schema is idempotent but new installs that
+	// haven't completed the session_manager boot block could race).
+	$stmt = $conn->prepare("SELECT password, totp_secret, totp_enabled FROM tb_main WHERE username=?");
+	if ($stmt === false) {
+		// Fall back to password-only on schema-missing.
+		$stmt = $conn->prepare("SELECT password FROM tb_main WHERE username=?");
+	}
 	$stmt->bind_param('s', $username);
 	$stmt->execute();
 	$result = $stmt->get_result();
 	if ($result->num_rows === 0) {
 		return false;
 	}
-	$stored = $result->fetch_assoc()['password'];
+	$row = $result->fetch_assoc();
+	$stored = $row['password'];
 	if (!verify_user_password($pwd, $stored)) {
 		return false;
 	}
@@ -67,10 +79,43 @@ function validateLogin($username,$pwd){
 		$upd->execute();
 		$upd->close();
 	}
+	// Phase 3.25: if the user enrolled in TOTP, return 'pending_totp'
+	// instead of completing the login. The caller renders a code-entry
+	// form and finishes the login via completeTotpLogin().
+	if (!empty($row['totp_enabled']) && !empty($row['totp_secret'])) {
+		return 'pending_totp';
+	}
 	updateLoginLogout($conn, $username, $GLOBALS['entry_time'], true);
 	$os = getOSType();
 	if(!isProcessRunning($conn,$os))
 		startProcess($os);
+	return true;
+}
+
+// Phase 3.25: second-factor completion. Called by spear/index.php after
+// the user submits the 6-digit code from their authenticator app. We
+// re-fetch the stored secret here (instead of trusting a value held in
+// $_SESSION) so an attacker who can write to $_SESSION still can't bypass
+// the check — the secret is loaded from tb_main on every verification.
+function completeTotpLogin($username, $code) {
+	global $conn;
+	$stmt = $conn->prepare("SELECT totp_secret, totp_enabled FROM tb_main WHERE username=?");
+	if ($stmt === false) return false;
+	$stmt->bind_param('s', $username);
+	$stmt->execute();
+	$row = $stmt->get_result()->fetch_assoc();
+	$stmt->close();
+	if (!$row || empty($row['totp_enabled']) || empty($row['totp_secret'])) {
+		return false;
+	}
+	if (!totp_verify_code($row['totp_secret'], $code, time())) {
+		return false;
+	}
+	updateLoginLogout($conn, $username, $GLOBALS['entry_time'], true);
+	$os = getOSType();
+	if (!isProcessRunning($conn, $os)) {
+		startProcess($os);
+	}
 	return true;
 }
 
