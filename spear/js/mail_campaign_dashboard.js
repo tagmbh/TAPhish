@@ -198,6 +198,15 @@ function campaignSelected(campaign_id) {
             $('#disp_camp_start').text(data.scheduled_time);
             $('#disp_camp_status').html(camp_status_def[data.camp_status]);
             $('#Modal_export_file_name').val(data.campaign_name);
+
+            // Phase 3.21: engagement notes
+            var notes = (data.campaign_data && data.campaign_data.notes) ? String(data.campaign_data.notes) : '';
+            if (notes.trim() !== '') {
+                $('#disp_camp_notes').text(notes);
+                $('#disp_camp_notes_wrap').show();
+            } else {
+                $('#disp_camp_notes_wrap').hide();
+            }
             //-----------------------------     
             
             var sent_failed_count=data.live_mcamp_data.sent_failed_count;

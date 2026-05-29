@@ -96,6 +96,10 @@ function getMailCampaignFromCampaignListId(id) {
                 } catch (err) {}
 
                 try {
+                    $("#tb_campaign_notes").val(data.campaign_data.notes || '');
+                } catch (err) {}
+
+                try {
                     $("#mailSenderSelector").val(data.campaign_data.mail_sender.id);
                     $("#mailSenderSelector").trigger('change');
                 } catch (err) {}
@@ -142,6 +146,7 @@ function saveMailCampaignAction() {
     } else {
         campaignData.mail_template_b = null;
     }
+    campaignData.notes = ($('#tb_campaign_notes').val() || '').slice(0, 2000);
     campaignData.mail_sender = {id:$('#mailSenderSelector').val(), name:$('#mailSenderSelector :selected').text()};
     campaignData.mail_config = {id:$('#mailConfigSelector').val(), name:$('#mailConfigSelector :selected').text()};
     campaignData.msg_interval = $('#tb_campaign_time_val').val();
