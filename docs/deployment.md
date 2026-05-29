@@ -135,44 +135,34 @@ panel doesn't.
 
 ## Automated deploy via GitHub Actions (SFTP)
 
-`.github/workflows/deploy.yml` is a manual-trigger workflow that
-mirrors the working tree to a configured **SFTP** host. Built for
-Hostpoint Shared Hosting (and any other PHP host that exposes
-SFTP without a real shell) — on shared infrastructure, SSH grants
-broader access than a deployer actually needs, so SFTP-scoped
-access is the right choice.
-
-Under the hood it uses `lftp mirror -R`: differential upload,
-exclude globs, dry-run, the lot. No SSH or shell required on the
-remote.
+`.github/workflows/deploy.yml` mirrors the working tree to a
+configured **SFTP** host. Built for Hostpoint Shared Hosting (and
+any other PHP host that exposes SFTP without a real shell). Uses
+`lftp mirror -R` — differential upload, exclude globs, dry-run,
+no SSH or shell required on the remote.
 
 ### One-time setup
 
-1. **Get your Hostpoint SFTP credentials.**
-   Control panel → *FTP / SFTP access* → note the SFTP host,
-   username, password, and the path to your document root
-   (typically `/sites/yourdomain.ch/www`).
+1. **Get your SFTP credentials from Hostpoint.**
+   Control panel → *FTP / SFTP access* → note the host, username,
+   password, and the absolute path to your document root (e.g.
+   `/home/<account>/www/<domain>`).
 
-2. **Add three or four repo secrets**
+2. **Add the secrets** in the repo
    (Settings → Secrets and variables → Actions → New repository
    secret):
 
-   | Secret | Value |
+   | Name | Value |
    |---|---|
-   | `DEPLOY_HOST` | SFTP host from the control panel |
-   | `DEPLOY_USER` | SFTP username |
-   | `DEPLOY_PATH` | absolute path to docroot, e.g. `/sites/yourdomain.ch/www` |
-   | `DEPLOY_PASSWORD` | SFTP password |
+   | `DEPLOY_HOST` | SFTP host from Hostpoint, e.g. `sl1737.web.hostpoint.ch` |
+   | `DEPLOY_USER` | SFTP username (verify spelling in the panel — silent failure on typo) |
+   | `DEPLOY_PATH` | absolute docroot path |
+   | `DEPLOY_PASSWORD` | SFTP password (Hostpoint Shared default) |
 
    Optional:
    - `DEPLOY_PORT` — defaults to 22.
-   - `DEPLOY_SSH_KEY` — for hosts that allow SFTP key auth (some
-     Hostpoint plans, VPSes). If you set this, the workflow uses
-     key auth instead of password.
-
-   **Why no `DEPLOY_KNOWN_HOSTS`?** First contact uses
-   `StrictHostKeyChecking=accept-new` which is OK for SFTP into a
-   shared host you've already verified out-of-band.
+   - `DEPLOY_SSH_KEY` — for hosts that allow SFTP over key auth
+     (some Hostpoint plans, VPSes). When set, key auth is used.
 
 ### Triggering a deploy
 
@@ -180,28 +170,25 @@ Actions tab → *Deploy to operator host (SFTP)* → **Run workflow**.
 
 Three checkboxes:
 
-- **Dry-run** *(default on)* — preview what `lftp` would upload
-  without actually transferring. Always run this first.
-- **Delete remote files that no longer exist locally**
-  *(default off)* — turn this on once your deploy is stable and
-  you trust the exclude list. Leave it off for first deploy so
-  you don't accidentally wipe something on the remote.
-- **Run composer install --no-dev** — for hosts where you can't
-  install Composer over SFTP. Skip on Hostpoint Shared Hosting.
+- **Dry-run** *(default on)* — `lftp mirror --dry-run`: prints
+  every file it *would* upload, no transfer. Always run this
+  first.
+- **Delete remote files that no longer exist locally** *(default
+  off)* — leave off for first deploy; enable once you trust the
+  exclude list.
+- **Run composer install --no-dev** — leave off on Hostpoint
+  Shared (which doesn't include Composer).
 
 ### What's NOT uploaded
 
-The workflow excludes:
-
 - `.git/`, `.github/`, `tests/`, `docs/`, `node_modules/`, dev
-  config files (`.editorconfig`, `phpcs.xml.dist`, `phpunit.xml.dist`,
-  `composer.lock`)
-- **`spear/config/db.php`** — the host's database credentials
-  (created by the install wizard, must not be overwritten)
+  config files (`phpcs.xml.dist`, `phpunit.xml.dist`,
+  `composer.lock`, etc.)
+- **`spear/config/db.php`** — the host's DB credentials (created
+  by the install wizard; must not be overwritten)
 - **`spear/config/secret.key`** — the at-rest encryption key
-  (Phase 3.27, created lazily on first use, must not be
-  overwritten or every encrypted SMTP password becomes
-  unreadable)
+  (Phase 3.27; must not be overwritten or every encrypted SMTP
+  password becomes unreadable)
 - `spear/uploads/cloned/`, `spear/uploads/bounce_poll_state/`,
   `spear/uploads/login_attempts/` — operator-generated state
 - `*.log`
@@ -209,33 +196,27 @@ The workflow excludes:
 ### After the first deploy
 
 1. Open `https://yourhost/install` in a browser, run the wizard.
-   This creates `spear/config/db.php` (which is excluded from
-   subsequent deploys, so it won't be overwritten).
+   This creates `spear/config/db.php` (excluded from subsequent
+   deploys, so it survives all future updates).
 2. Change the default `admin/sniperphish` password — Phase 3.9
    redirects you on first login.
-3. **Enrol in 2FA** (Phase 3.25): *Settings → My Profile →
-   Two-Factor Authentication*. Scan the QR with Google
-   Authenticator / Authy / 1Password / Bitwarden.
+3. **Enrol in 2FA** (Phase 3.25): *Settings → My Profile → Two-
+   Factor Authentication*. Scan the QR with Google Authenticator
+   / Authy / 1Password / Bitwarden.
 4. Register the cron worker. On Hostpoint:
    *Control panel → Cronjobs → Add* → every minute, command:
    ```
-   /usr/local/bin/php /sites/yourdomain.ch/www/spear/core/SniperPhish_Manager.php
+   /usr/local/bin/php /home/<account>/www/<domain>/spear/core/SniperPhish_Manager.php
    ```
    The script's own `isProcessRunning` guard keeps only one
    instance running.
 
-### Why not SSH on Hostpoint Shared Hosting?
+### Why SFTP and not SSH on Hostpoint Shared Hosting
 
-Hostpoint Shared Hosting's SSH access (when available) puts you
-in a shell that can reach beyond just your hosting bucket — for
-a deployer that only needs to write files, that's strictly more
-privilege than necessary. SFTP is the same TCP socket as SSH but
-without the shell — exactly what we want for a deploy pipe.
-
-The Phase 3.28 SSH+rsync workflow has been replaced (Phase 3.29)
-with this SFTP-only `lftp mirror` flow for that reason. The
-behavior is the same — differential upload, exclude list,
-dry-run preview — only the wire protocol differs.
+Shared-host SSH (when available) drops you in a shell that can
+reach beyond your hosting bucket — strictly more privilege than a
+file-pushing deployer needs. SFTP is the same transport without
+the shell — exactly the scope the deploy pipe wants.
 
 ## Monitoring
 

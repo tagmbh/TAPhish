@@ -3,24 +3,23 @@ name: Deploy to operator host (SFTP)
 # Manual-trigger SFTP deploy. Mirrors the working tree (minus dev
 # artifacts and host-local config/state) to a configured SFTP host.
 # Designed for Hostpoint Shared Hosting and any other PHP host that
-# exposes SFTP without a real shell — that's a *good* thing for shared
-# infrastructure, where SSH gives broader access than the deployer
-# actually needs.
+# exposes SFTP without a real shell — on shared infrastructure, SSH
+# gives the deployer broader access than necessary, so SFTP-scoped
+# access is the right choice.
 #
 # Uses lftp's `mirror -R` for the differential upload — same idea as
-# rsync, no SSH/shell required on the remote.
+# rsync, no SSH shell required on the remote.
 #
 # Required repo secrets:
-#   DEPLOY_HOST     SFTP host (e.g. sftp.yourdomain.ch or
-#                   a generic Hostpoint host)
-#   DEPLOY_USER     SFTP username (often your control-panel username)
+#   DEPLOY_HOST     SFTP host (e.g. sl1737.web.hostpoint.ch)
+#   DEPLOY_USER     SFTP username
 #   DEPLOY_PATH     remote target directory, absolute path
-#                   (e.g. /sites/yourdomain.ch/www)
+#                   (e.g. /home/azitufem/www/ptbe.autodiscover.li)
 #
-# Auth — supply ONE of these:
+# Auth — supply exactly ONE of these:
 #   DEPLOY_PASSWORD  SFTP password (Hostpoint Shared default)
-#   DEPLOY_SSH_KEY   PEM private key, if your host allows SFTP
-#                    over key auth (some Hostpoint plans / VPSes)
+#   DEPLOY_SSH_KEY   PEM private key (for plans/hosts that allow
+#                    SFTP over key auth)
 #
 # Optional:
 #   DEPLOY_PORT      defaults to 22
@@ -87,16 +86,23 @@ jobs:
           sudo apt-get install -y -qq lftp
 
       - name: Stage SSH key (if key auth)
-        if: ${{ secrets.DEPLOY_SSH_KEY != '' }}
+        # GitHub Actions doesn't allow secrets.* in step-level `if:`, so
+        # we gate inside bash: the step always runs, but the body is a
+        # no-op when DEPLOY_SSH_KEY is unset.
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "DEPLOY_SSH_KEY not set — skipping key staging (will use password auth)"
+            exit 0
+          fi
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
+          echo "SSH key staged at ~/.ssh/id_deploy"
 
-      - name: Compose lftp exclude list
+      - name: Compose lftp exclude args
         run: |
           cat > /tmp/lftp-excludes <<'EOF'
           .git/
@@ -113,7 +119,8 @@ jobs:
           node_modules/
           phpcs.xml.dist
           phpunit.xml.dist
-          # Host-local files that must NOT be overwritten:
+          composer.lock
+          # Host-local files that MUST NOT be overwritten:
           spear/config/db.php
           spear/config/secret.key
           # Generated state on the live host — leave alone:
@@ -122,21 +129,19 @@ jobs:
           spear/uploads/login_attempts/
           *.log
           EOF
-          # Convert one-per-line to repeated --exclude-glob '...' args lftp can use.
+          # Convert one-per-line to repeated --exclude-glob '...' args.
           EXCLUDES=""
           while IFS= read -r line; do
             case "$line" in
               ''|\#*) continue ;;
             esac
-            # Trim trailing slash for directories — lftp mirror's
-            # --exclude-glob matches patterns against names, not paths,
-            # so we want bare names.
             pat="${line%/}"
             EXCLUDES="$EXCLUDES --exclude-glob '$pat'"
           done < /tmp/lftp-excludes
-          echo "$EXCLUDES" > /tmp/lftp-exclude-args
+          printf '%s' "$EXCLUDES" > /tmp/lftp-exclude-args
           echo "Resolved exclude args:"
           cat /tmp/lftp-exclude-args
+          echo
 
       - name: Composer install (production deps only)
         if: ${{ inputs.install_composer == true }}
@@ -149,9 +154,11 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          # LFTP_PASSWORD is the env name lftp's --env-password mode reads.
           LFTP_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_DELETE_REMOTE: ${{ inputs.delete_remote }}
         run: |
           set -e
           PORT="${DEPLOY_PORT:-22}"
@@ -161,31 +168,27 @@ jobs:
           if [ -n "$DEPLOY_SSH_KEY" ]; then
             AUTH_SETUP="set sftp:connect-program 'ssh -a -x -i $HOME/.ssh/id_deploy -o StrictHostKeyChecking=accept-new';"
             OPEN_CMD="open sftp://${DEPLOY_USER}@${DEPLOY_HOST}:${PORT}"
-            echo "Using SSH key authentication"
+            echo "Authenticating with SSH key"
           else
             AUTH_SETUP=""
             # --env-password reads $LFTP_PASSWORD so the literal password
-            # never appears in the lftp command line / process listing.
+            # never appears in the command line or process listing.
             OPEN_CMD="open --env-password -u ${DEPLOY_USER} sftp://${DEPLOY_HOST}:${PORT}"
-            echo "Using password authentication"
+            echo "Authenticating with password"
           fi
 
-          DRY="--dry-run"
-          if [ "${{ inputs.dry_run }}" != "true" ]; then
-            DRY=""
-          else
+          DRY=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            DRY="--dry-run"
             echo "::notice::DRY RUN — no files will be transferred"
           fi
 
           DEL=""
-          if [ "${{ inputs.delete_remote }}" = "true" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
-            DEL="--delete"
-          elif [ "${{ inputs.delete_remote }}" = "true" ]; then
+          if [ "$INPUT_DELETE_REMOTE" = "true" ]; then
             DEL="--delete"
           fi
 
-          # Build the lftp script. eval is needed so the quoted
-          # --exclude-glob args expand correctly.
+          # eval lets the quoted --exclude-glob args expand correctly.
           eval lftp -c \"\
             set sftp:auto-confirm yes\; \
             set net:max-retries 3\; \
@@ -194,11 +197,17 @@ jobs:
             $OPEN_CMD\; \
             mirror -R $DRY $DEL --verbose --no-perms --parallel=2 $EXCLUDE_ARGS ./ '${DEPLOY_PATH}/'\
           \"
-          echo "Deploy ${{ inputs.dry_run == true && 'dry-run' || 'transfer' }} complete."
+
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            echo "Dry-run complete. Re-run with dry-run unchecked to actually upload."
+          else
+            echo "Deploy transfer complete."
+          fi
 
       - name: First-deploy reminder
         run: |
           echo "::notice::First time? Open https://<your-host>/install in a browser to run the wizard."
           echo "::notice::Default admin login is admin/sniperphish — change it immediately (Phase 3.9 redirects you on first login)."
           echo "::notice::Enrol in 2FA (Phase 3.25): Settings → My Profile → Two-Factor Authentication."
-          echo "::notice::Register the cron worker on Hostpoint: control panel → Cronjobs → every minute → /usr/local/bin/php /sites/yourdomain.ch/www/spear/core/SniperPhish_Manager.php"
+          echo "::notice::Register the cron worker in Hostpoint control panel: every minute, command:"
+          echo "::notice::  /usr/local/bin/php \${DEPLOY_PATH}/spear/core/SniperPhish_Manager.php"
