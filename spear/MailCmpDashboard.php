@@ -104,6 +104,10 @@
                                  <div class="progress m-t-15" title="Sending status" data-toggle="tooltip" data-placement="top" id="progressbar_status" style="height:20px; background-color:#ccccff;">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
                                  </div>
+                                 <div id="disp_camp_notes_wrap" class="m-t-10 p-10" style="background:#f4f6f8;border-left:3px solid #0a3d62;display:none;">
+                                    <small class="text-muted d-block mb-1"><i class="fas fa-sticky-note"></i> Engagement notes</small>
+                                    <span id="disp_camp_notes" style="white-space:pre-wrap;"></span>
+                                 </div>
                               </div>
                         </div>
                     </div>

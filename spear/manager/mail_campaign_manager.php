@@ -567,11 +567,15 @@ function downloadReport($conn,$campaign_id,$selected_col,$dic_all_col,$file_name
  */
 function generateCustomerPdfReport($conn, $campaign_id, $engagement_name) {
 	// Campaign metadata
-	$stmt = $conn->prepare("SELECT campaign_name, scheduled_time FROM tb_core_mailcamp_list WHERE campaign_id = ?");
+	$stmt = $conn->prepare("SELECT campaign_name, scheduled_time, campaign_data FROM tb_core_mailcamp_list WHERE campaign_id = ?");
 	$stmt->bind_param('s', $campaign_id);
 	$stmt->execute();
-	$meta = $stmt->get_result()->fetch_assoc() ?: ['campaign_name' => '(unknown)', 'scheduled_time' => ''];
+	$meta = $stmt->get_result()->fetch_assoc() ?: ['campaign_name' => '(unknown)', 'scheduled_time' => '', 'campaign_data' => '{}'];
 	$stmt->close();
+	// Phase 3.21: pull engagement notes from campaign_data JSON for the
+	// report cover.
+	$_meta_cd = json_decode((string) ($meta['campaign_data'] ?? '{}'), true);
+	$meta['notes'] = is_array($_meta_cd) ? (string) ($_meta_cd['notes'] ?? '') : '';
 
 	// Recipient rows
 	$stmt = $conn->prepare("SELECT user_email, user_name, sending_status, send_time, mail_open_times FROM tb_data_mailcamp_live WHERE campaign_id = ?");
@@ -639,11 +643,19 @@ function renderCustomerReportHtml($title, $brandName, $brandCompany, $brandColor
 		}
 	}
 
+	$notesBlock = '';
+	if (!empty($meta['notes'])) {
+		$notesHtml = nl2br($esc((string) $meta['notes']));
+		$notesBlock = '<h2 style="color:' . $esc($brandColor) . ';margin-top:20px;">Engagement notes</h2>'
+			. '<div style="background:#f4f6f8;border-left:3px solid ' . $esc($brandColor) . ';padding:10px;font-size:10pt;">'
+			. $notesHtml . '</div>';
+	}
+
 	return '
 <h1 style="color:' . $esc($brandColor) . ';margin-bottom:0;">' . $esc($title) . '</h1>
 <p style="color:#666;margin-top:4px;">Phishing Simulation Report &mdash; prepared by ' . $esc($brandName) . ($brandCompany ? ' (' . $esc($brandCompany) . ')' : '') . '</p>
 <p style="color:#999;font-size:9pt;">Generated ' . $esc($generatedAt) . ' &middot; Campaign scheduled: ' . $scheduled . '</p>
-
+' . $notesBlock . '
 <h2 style="color:' . $esc($brandColor) . ';margin-top:20px;">Headline metrics</h2>
 <table cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">' . $kpiRows . '</table>
 

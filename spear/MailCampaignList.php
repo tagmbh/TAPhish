@@ -211,8 +211,17 @@
                                     </label>
                                  </div>
                                  <div class="col-md-4 text-right m-t-10">
-                                    <button type="button" class="btn btn-info" id="bt_saveMailCamp" onclick="promptSaveMailCampaign()"><i class="fa fas fa-save"></i> Save</button>   
+                                    <button type="button" class="btn btn-info" id="bt_saveMailCamp" onclick="promptSaveMailCampaign()"><i class="fa fas fa-save"></i> Save</button>
                                  </div>
+                              </div>
+                           </div>
+                        </div>
+                        <div class="col-sm-12">
+                           <div class="form-group row">
+                              <label for="tb_campaign_notes" class="col-sm-2 text-left control-label col-form-label">Engagement notes:</label>
+                              <div class="col-sm-9">
+                                 <textarea class="form-control" id="tb_campaign_notes" rows="3" maxlength="2000" placeholder="Operator-only notes for this engagement. Shown on the dashboard and included in the Customer Report PDF. e.g. 'Acme Q2 quarterly phishing exercise. Authorized by IT director on 2026-02-15. Targets: Finance dept (45 recipients).'"></textarea>
+                                 <small class="text-muted">Plain text only, max 2000 chars. Visible to anyone with dashboard-share access via the public link.</small>
                               </div>
                            </div>
                         </div>
