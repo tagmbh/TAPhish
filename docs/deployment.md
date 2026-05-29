@@ -133,81 +133,90 @@ The public `track.php`, `qt.php`, and `mod.php` endpoints obviously
 need to be reachable from the targets' browsers; the rest of the
 panel doesn't.
 
-## Automated deploy via GitHub Actions
+## Automated deploy via GitHub Actions (SFTP)
 
-`.github/workflows/deploy.yml` is a manual-trigger workflow that
-`rsync`s the working tree (minus dev artifacts + on-host secrets)
-to a single configured host over SSH. Works against Hostpoint,
-Infomaniak, a VPS, or anything else with SSH/SFTP access.
+`.github/workflows/deploy.yml` mirrors the working tree to a
+configured **SFTP** host. Built for Hostpoint Shared Hosting (and
+any other PHP host that exposes SFTP without a real shell). Uses
+`lftp mirror -R` — differential upload, exclude globs, dry-run,
+no SSH or shell required on the remote.
 
 ### One-time setup
 
-1. **Generate an SSH keypair** locally:
-   ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/taphish_deploy -C 'taphish-github-actions'
-   ```
+1. **Get your SFTP credentials from Hostpoint.**
+   Control panel → *FTP / SFTP access* → note the host, username,
+   password, and the absolute path to your document root (e.g.
+   `/home/<account>/www/<domain>`).
 
-2. **Register the public key on the host.** On Hostpoint:
-   *Control panel → SSH access → Public keys → paste contents of
-   `~/.ssh/taphish_deploy.pub`*.
+2. **Add the secrets** in the repo
+   (Settings → Secrets and variables → Actions → New repository
+   secret):
 
-3. **Add four secrets** to the repo (Settings → Secrets and
-   variables → Actions → New repository secret):
-
-   | Secret | Value |
+   | Name | Value |
    |---|---|
-   | `DEPLOY_HOST` | e.g. `taphish.yourdomain.ch` |
-   | `DEPLOY_USER` | your Hostpoint SSH username |
-   | `DEPLOY_PATH` | remote dir, e.g. `/home/<user>/public_html` |
-   | `DEPLOY_SSH_KEY` | full contents of `~/.ssh/taphish_deploy` (the private key) |
+   | `DEPLOY_HOST` | SFTP host from Hostpoint, e.g. `sl1737.web.hostpoint.ch` |
+   | `DEPLOY_USER` | SFTP username (verify spelling in the panel — silent failure on typo) |
+   | `DEPLOY_PATH` | absolute docroot path |
+   | `DEPLOY_PASSWORD` | SFTP password (Hostpoint Shared default) |
 
    Optional:
-   - `DEPLOY_PORT` — defaults to 22
-   - `DEPLOY_KNOWN_HOSTS` — pre-trusted host key from
-     `ssh-keyscan -p 22 yourhost`. If you skip this, the first
-     deploy uses `accept-new` which is less safe but more
-     convenient.
+   - `DEPLOY_PORT` — defaults to 22.
+   - `DEPLOY_SSH_KEY` — for hosts that allow SFTP over key auth
+     (some Hostpoint plans, VPSes). When set, key auth is used.
 
 ### Triggering a deploy
 
-Actions tab → *Deploy to operator host* → **Run workflow**.
+Actions tab → *Deploy to operator host (SFTP)* → **Run workflow**.
 
-Two checkboxes:
+Three checkboxes:
 
-- **Dry-run** — runs `rsync -n`, prints exactly what would change
-  without uploading. Always do this first.
-- **Run composer install --no-dev** — for hosts where you can't
-  run composer over SSH directly. Skip on Hostpoint shared
-  hosting, which doesn't include composer.
+- **Dry-run** *(default on)* — `lftp mirror --dry-run`: prints
+  every file it *would* upload, no transfer. Always run this
+  first.
+- **Delete remote files that no longer exist locally** *(default
+  off)* — leave off for first deploy; enable once you trust the
+  exclude list.
+- **Run composer install --no-dev** — leave off on Hostpoint
+  Shared (which doesn't include Composer).
 
 ### What's NOT uploaded
 
-The workflow excludes:
-
 - `.git/`, `.github/`, `tests/`, `docs/`, `node_modules/`, dev
-  config files
-- `spear/config/db.php` — the host's database credentials
-- `spear/config/secret.key` — the host's at-rest encryption key
-  (Phase 3.27)
+  config files (`phpcs.xml.dist`, `phpunit.xml.dist`,
+  `composer.lock`, etc.)
+- **`spear/config/db.php`** — the host's DB credentials (created
+  by the install wizard; must not be overwritten)
+- **`spear/config/secret.key`** — the at-rest encryption key
+  (Phase 3.27; must not be overwritten or every encrypted SMTP
+  password becomes unreadable)
 - `spear/uploads/cloned/`, `spear/uploads/bounce_poll_state/`,
   `spear/uploads/login_attempts/` — operator-generated state
 - `*.log`
 
-So you keep whatever's on the host for those paths; the deploy
-only updates code.
-
 ### After the first deploy
 
 1. Open `https://yourhost/install` in a browser, run the wizard.
-2. Change the default `admin/sniperphish` password (Phase 3.9
-   will redirect you on first login).
-3. Register the cron worker. On Hostpoint: *Control panel →
-   Cronjobs → Add → every minute → command:*
+   This creates `spear/config/db.php` (excluded from subsequent
+   deploys, so it survives all future updates).
+2. Change the default `admin/sniperphish` password — Phase 3.9
+   redirects you on first login.
+3. **Enrol in 2FA** (Phase 3.25): *Settings → My Profile → Two-
+   Factor Authentication*. Scan the QR with Google Authenticator
+   / Authy / 1Password / Bitwarden.
+4. Register the cron worker. On Hostpoint:
+   *Control panel → Cronjobs → Add* → every minute, command:
    ```
-   /usr/local/bin/php /home/<user>/public_html/spear/core/SniperPhish_Manager.php
+   /usr/local/bin/php /home/<account>/www/<domain>/spear/core/SniperPhish_Manager.php
    ```
    The script's own `isProcessRunning` guard keeps only one
    instance running.
+
+### Why SFTP and not SSH on Hostpoint Shared Hosting
+
+Shared-host SSH (when available) drops you in a shell that can
+reach beyond your hosting bucket — strictly more privilege than a
+file-pushing deployer needs. SFTP is the same transport without
+the shell — exactly the scope the deploy pipe wants.
 
 ## Monitoring
 
