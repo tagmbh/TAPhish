@@ -270,27 +270,79 @@ function RegTest(str,type){
 window.onbeforeunload = function(e) {   //deny navigation for unsaved activity
     return g_deny_navigation;
 };
-/*------Idle Timer------*/
-var idleMax = 3600; // Logout after x seconds of IDLE. (in sec). 3600=1hr
+/*------Idle Timer------
+ * Phase 3.20: ticks every second so idleMax can be interpreted as
+ * seconds (matching the original "3600=1hr" comment intent). The previous
+ * code used a 60s tick with idleMax=3600 which gave a 60-hour effective
+ * timeout — i.e. auto-logout never fired in practice.
+ *
+ * idleWarnAt fires a non-blocking heads-up modal at idleMax - 5 minutes
+ * so the operator can extend their session before it dies mid-edit.
+ */
+var idleMax = 3600;          // seconds; auto-logout threshold (1 hour)
+var idleWarnAt = idleMax - 300; // 5-minute warning before logout
 var idleTime = 0;
-var timerInterval = 60000 // idle check interval  (in ms). 60000=1 minute
-var idleInterval = setInterval("idleTimerFun()", timerInterval);  
+var idleWarned = false;
+var timerInterval = 1000;    // tick every second
+var idleInterval = setInterval("idleTimerFun()", timerInterval);
 $("body").mousemove(function( event ) {
-    idleTime = 0; // reset to zero
+    idleTime = 0;
+    if (idleWarned) {
+        idleWarned = false;
+        $('#modal_idle_warning').modal('hide');
+    }
 });
+$(document).on("keydown", function () { idleTime = 0; });
+
+function showIdleWarningModal() {
+    if ($('#modal_idle_warning').length === 0) {
+        $('footer').append(`<div class="modal fade" id="modal_idle_warning" data-keyboard="false" data-backdrop="static" tabindex="-1" aria-hidden="true">
+           <div class="modal-dialog">
+              <div class="modal-content">
+                 <div class="modal-header">
+                    <h5 class="modal-title">Still there?</h5>
+                 </div>
+                 <div class="modal-body">
+                    <p>You've been idle for a while. Your session will end in <strong><span id="idle_warning_remaining">5</span></strong> minute(s) unless you click "Stay signed in".</p>
+                 </div>
+                 <div class="modal-footer">
+                    <button type="button" class="btn btn-info" onclick="stayIdleSignedIn()">Stay signed in</button>
+                 </div>
+              </div>
+           </div>
+        </div>`);
+    }
+    $('#modal_idle_warning').modal('show');
+}
+
+function stayIdleSignedIn() {
+    idleTime = 0;
+    idleWarned = false;
+    $('#modal_idle_warning').modal('hide');
+}
 
 function idleTimerFun() {
     idleTime++;
+    if (!idleWarned && idleTime >= idleWarnAt && idleTime < idleMax) {
+        idleWarned = true;
+        showIdleWarningModal();
+    }
+    if (idleWarned) {
+        var remainingSec = Math.max(0, idleMax - idleTime);
+        var remainingMin = Math.ceil(remainingSec / 60);
+        $('#idle_warning_remaining').text(remainingMin);
+    }
     if (idleTime > idleMax){
+        $('#modal_idle_warning').modal('hide');
         $.post({
             url: window.location.origin + "/spear/manager/session_manager",
             contentType: 'application/json; charset=utf-8',
-            data: JSON.stringify({ 
+            data: JSON.stringify({
                     action_type: "terminate_session"
                 })
             });
-                  
-        clearTimeout(idleInterval); //stop timer 
+
+        clearTimeout(idleInterval); //stop timer
         $('footer').append(`<div class="modal fade" id="modal_relogin" data-keyboard="false" data-backdrop="static" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
            <div class="modal-dialog">
               <div class="modal-content">
