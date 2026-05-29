@@ -132,3 +132,24 @@ deployments put it behind:
 The public `track.php`, `qt.php`, and `mod.php` endpoints obviously
 need to be reachable from the targets' browsers; the rest of the
 panel doesn't.
+
+## Monitoring
+
+`/health` returns a minimal JSON body suitable for uptime monitors
+(Pingdom / UptimeRobot / a custom status page):
+
+```bash
+$ curl https://yourhost/health
+{"status":"ok","time":"2026-05-29T07:32:11+00:00"}
+```
+
+- HTTP **200** when the app can talk to MySQL.
+- HTTP **503** when it can't.
+- Intentionally minimal — no cron PID, no DB host, no schema
+  version. Uptime monitors don't need that, and exposing it
+  would leak fingerprintable internals to anyone who can
+  reach the endpoint.
+
+No session, no CSRF, no auth. If the operator panel sits behind
+a reverse proxy auth layer, allow-list `/health` so the monitor
+can reach it.
