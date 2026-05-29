@@ -1,0 +1,153 @@
+name: Deploy to operator host
+
+# Manual-trigger deploy: rsync the working tree (minus dev artifacts and
+# secrets) to a single configured host over SSH. Designed for Hostpoint
+# but works against any SFTP/SSH-capable PHP host (Infomaniak, a VPS,
+# etc).
+#
+# Required repo secrets:
+#   DEPLOY_HOST        host or "user@host" for ssh (Hostpoint SFTP host)
+#   DEPLOY_USER        ssh username on the host
+#   DEPLOY_SSH_KEY     PEM private key (the public key is registered on
+#                      the host's authorized_keys)
+#   DEPLOY_PATH        remote directory rsync target (e.g. /home/USER/public_html)
+# Optional:
+#   DEPLOY_PORT        ssh port (defaults to 22)
+#   DEPLOY_KNOWN_HOSTS pre-trusted host key — paste the host's `ssh-keyscan`
+#                      output here. If omitted, the workflow uses
+#                      StrictHostKeyChecking=accept-new which is convenient
+#                      for first-time setup but slightly less safe.
+#
+# What's NOT pushed (see .deployignore equivalent below):
+#   .git, .github, tests/, docs/, vendor/, node_modules/, .phpunit.cache,
+#   spear/config/db.php, spear/config/secret.key, spear/uploads/cloned/*,
+#   spear/uploads/bounce_poll_state/*, spear/uploads/login_attempts/*
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry-run (rsync -n; list what would change without uploading)'
+        type: boolean
+        default: false
+      install_composer:
+        description: 'Run composer install --no-dev after deploy (skip if shared hosting blocks it)'
+        type: boolean
+        default: false
+
+# Required by actions/checkout's read-only token.
+permissions:
+  contents: read
+
+# Allow only one deploy at a time. Don't cancel one in progress — letting
+# rsync finish a half-baked transfer is safer than killing it.
+concurrency:
+  group: "deploy"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy via rsync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets are configured
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          missing=()
+          [ -z "$DEPLOY_HOST" ]    && missing+=("DEPLOY_HOST")
+          [ -z "$DEPLOY_USER" ]    && missing+=("DEPLOY_USER")
+          [ -z "$DEPLOY_PATH" ]    && missing+=("DEPLOY_PATH")
+          [ -z "$DEPLOY_SSH_KEY" ] && missing+=("DEPLOY_SSH_KEY")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required repo secret(s): ${missing[*]}"
+            echo "Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+
+      - name: Stage SSH key + known_hosts
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          if [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+            echo "Using DEPLOY_KNOWN_HOSTS for strict host-key checking"
+          else
+            echo "::warning::DEPLOY_KNOWN_HOSTS not set — using StrictHostKeyChecking=accept-new for first contact"
+          fi
+
+      - name: Write deploy excludes
+        run: |
+          cat > /tmp/rsync-excludes <<'EOF'
+          .git/
+          .github/
+          .gitattributes
+          .gitignore
+          .editorconfig
+          .deployignore
+          .phpunit.cache/
+          .phpunit.result.cache
+          .DS_Store
+          tests/
+          docs/
+          node_modules/
+          phpcs.xml.dist
+          phpunit.xml.dist
+          composer.lock
+          # Local config that must NOT be overwritten on the live host:
+          spear/config/db.php
+          spear/config/secret.key
+          # Generated state — keep what's on the live host:
+          spear/uploads/cloned/
+          spear/uploads/bounce_poll_state/
+          spear/uploads/login_attempts/
+          *.log
+          EOF
+          echo "Excludes:"
+          cat /tmp/rsync-excludes
+
+      - name: Composer install (production deps only)
+        if: ${{ inputs.install_composer == true }}
+        run: |
+          composer install --no-dev --prefer-dist --no-progress --no-interaction --optimize-autoloader
+
+      - name: Rsync
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          PORT="${DEPLOY_PORT:-22}"
+          STRICT="StrictHostKeyChecking=accept-new"
+          if [ -s ~/.ssh/known_hosts ]; then STRICT="StrictHostKeyChecking=yes"; fi
+          SSH_CMD="ssh -p $PORT -i ~/.ssh/id_deploy -o $STRICT -o UserKnownHostsFile=~/.ssh/known_hosts"
+          DRY=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY="--dry-run"
+            echo "::notice::DRY RUN — no files will be transferred"
+          fi
+          rsync -av --delete \
+            $DRY \
+            -e "$SSH_CMD" \
+            --exclude-from=/tmp/rsync-excludes \
+            ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH%/}/"
+          echo "Deploy ${{ inputs.dry_run == true && 'dry-run' || 'transfer' }} complete."
+
+      - name: Reminder
+        run: |
+          echo "::notice::If this was a first install, open https://<your-host>/install in a browser to run the wizard."
+          echo "::notice::Default admin login is admin/sniperphish — change it immediately (Phase 3.9 will redirect you on first login)."
+          echo "::notice::Don't forget to register the cron worker on the host: php -f /path/to/spear/core/SniperPhish_Manager.php"
