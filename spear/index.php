@@ -6,13 +6,38 @@
   }
    
   $login_error = null;
-  if (!empty($_POST['username']) && !empty($_POST['password'])) {
+  $totp_step  = false;
+  $totp_username = '';
+  // Step 2 — operator submitting their TOTP code after a previous
+  // username+password that returned 'pending_totp'.
+  if (!empty($_POST['totp_code']) && !empty($_POST['totp_username'])) {
+      if (!csrf_verify($_POST['_csrf'] ?? null)) {
+          $login_error = 'Session token expired. Please retry.';
+      } elseif (completeTotpLogin($_POST['totp_username'], $_POST['totp_code'])) {
+          createSession(true, $_POST['totp_username']);
+          header("Location: Home");
+          die();
+      } else {
+          $login_error = 'Invalid 2FA code.';
+          $totp_step = true;
+          $totp_username = $_POST['totp_username'];
+      }
+  }
+  // Step 1 — username + password.
+  elseif (!empty($_POST['username']) && !empty($_POST['password'])) {
       if (!csrf_verify($_POST['_csrf'] ?? null)) {
          $login_error = 'Session token expired. Please retry.';
-      } elseif(validateLogin($_POST['username'],$_POST['password']) == true){
-         createSession(true,$_POST['username']);
-         header("Location: Home");
-         die();
+      } else {
+         $loginResult = validateLogin($_POST['username'],$_POST['password']);
+         if ($loginResult === true) {
+            createSession(true,$_POST['username']);
+            header("Location: Home");
+            die();
+         } elseif ($loginResult === 'pending_totp') {
+            // Render the TOTP form on the next pass.
+            $totp_step = true;
+            $totp_username = $_POST['username'];
+         }
       }
    }
 ?>
@@ -55,6 +80,38 @@
                   <div class="text-center p-t-20 p-b-20">
                      <span class="db"><img src="images/brand/logo-icon2x.png" alt="logo" /><img src="images/brand/logo.png" alt="logo" /> v<?php getSniperPhishVersion(); ?></span>
                   </div>
+                  <?php if ($totp_step): ?>
+                  <!-- Phase 3.25: step 2 — TOTP code entry -->
+                  <form class="form-horizontal m-t-20" action="index" method="post">
+                     <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_HTML5); ?>">
+                     <input type="hidden" name="totp_username" value="<?php echo htmlspecialchars($totp_username, ENT_QUOTES | ENT_HTML5); ?>">
+                     <div class="row p-b-30">
+                        <div class="col-12">
+                           <p class="text-white text-center">Open your authenticator app and enter the 6-digit code for <code><?php echo htmlspecialchars($totp_username, ENT_QUOTES | ENT_HTML5); ?></code>.</p>
+                           <div class="input-group mb-3">
+                              <div class="input-group-prepend">
+                                 <span class="input-group-text bg-info text-white"><i class="fa fas fa-shield-alt"></i></span>
+                              </div>
+                              <input type="text" class="form-control form-control-lg text-center" name="totp_code" inputmode="numeric" pattern="[0-9 ]{6,7}" placeholder="123 456" autocomplete="one-time-code" autofocus required>
+                           </div>
+                           <?php
+                              if ($login_error !== null) {
+                                 echo '<div class="text-danger">' . htmlspecialchars($login_error, ENT_QUOTES | ENT_HTML5) . '</div>';
+                              }
+                           ?>
+                        </div>
+                     </div>
+                     <div class="row border-top border-secondary">
+                        <div class="col-12">
+                           <div class="form-group">
+                              <div class="p-t-20">
+                                 <button class="btn btn-info float-right" type="submit"><i class="fa fas fa-sign-in-alt"></i> Verify</button>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </form>
+                  <?php else: ?>
                   <!-- Form -->
                   <form class="form-horizontal m-t-20" id="loginform" action="index" method="post" onsubmit="doLogin()">
                      <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_HTML5); ?>">
@@ -93,6 +150,7 @@
                         </div>
                      </div>
                   </form>
+                  <?php endif; ?>
                </div>
                <div id="recoverform">
                   <div class="text-center">

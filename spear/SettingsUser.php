@@ -131,6 +131,70 @@
                         </div>
                      </div>
                   </div>
+                  <!-- Phase 3.25: Two-factor authentication -->
+                  <div class="card">
+                     <div class="card-body">
+                        <div class="d-flex align-items-center mb-2">
+                           <h5 class="card-title mb-0"><i class="fas fa-shield-alt mr-2"></i>Two-Factor Authentication (TOTP)</h5>
+                           <span class="badge ml-3" id="totp_status_badge">…</span>
+                        </div>
+                        <p class="text-muted small">Adds a 6-digit code from an authenticator app (Google Authenticator, Authy, 1Password, Bitwarden, etc.) to your login. A leaked password alone is no longer enough.</p>
+                        <button type="button" class="btn btn-info" id="btn_totp_enable" onclick="totpStartEnrollment()"><i class="fas fa-qrcode"></i> Enable 2FA</button>
+                        <button type="button" class="btn btn-outline-danger" id="btn_totp_disable" data-toggle="modal" data-target="#modal_totp_disable" style="display:none;"><i class="fas fa-shield-virus"></i> Disable 2FA</button>
+                     </div>
+                  </div>
+
+                  <!-- 2FA enrollment modal -->
+                  <div class="modal fade" id="modal_totp_enroll" tabindex="-1" role="dialog" aria-hidden="true">
+                     <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                           <div class="modal-header">
+                              <h5 class="modal-title">Enable 2FA — scan with your authenticator app</h5>
+                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                           </div>
+                           <div class="modal-body text-center">
+                              <p class="small text-muted">Scan this QR code with Google Authenticator, Authy, 1Password, Bitwarden, or any TOTP app. Then enter the 6-digit code below to confirm.</p>
+                              <img id="totp_enroll_qr" alt="2FA QR code" style="max-width:240px;border:1px solid #dde3ea;border-radius:4px;padding:4px;">
+                              <div class="mt-2 small text-muted">Or enter the secret manually: <code id="totp_enroll_secret_text"></code></div>
+                              <input type="hidden" id="totp_enroll_secret">
+                              <div class="mt-3">
+                                 <input type="text" class="form-control text-center" id="totp_enroll_code" inputmode="numeric" pattern="[0-9 ]{6,7}" placeholder="6-digit code" autocomplete="one-time-code" maxlength="7">
+                              </div>
+                              <div id="totp_enroll_err" class="text-danger small mt-2"></div>
+                           </div>
+                           <div class="modal-footer">
+                              <button type="button" class="btn btn-success" onclick="totpConfirmEnrollment($(this))"><i class="fas fa-check"></i> Confirm and enable</button>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- 2FA disable modal -->
+                  <div class="modal fade" id="modal_totp_disable" tabindex="-1" role="dialog" aria-hidden="true">
+                     <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                           <div class="modal-header">
+                              <h5 class="modal-title">Disable 2FA</h5>
+                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                           </div>
+                           <div class="modal-body">
+                              <p class="small text-muted">Both your current password AND a current 2FA code are required. This protects against a stolen session being used to weaken the account.</p>
+                              <div class="form-group">
+                                 <label>Current password</label>
+                                 <input type="password" class="form-control" id="totp_disable_pwd">
+                              </div>
+                              <div class="form-group">
+                                 <label>2FA code</label>
+                                 <input type="text" class="form-control" id="totp_disable_code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7">
+                              </div>
+                              <div id="totp_disable_err" class="text-danger small"></div>
+                           </div>
+                           <div class="modal-footer">
+                              <button type="button" class="btn btn-danger" onclick="totpDoDisable($(this))"><i class="fas fa-shield-virus"></i> Disable 2FA</button>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
                   <!-- ============================================================== -->
                   <!-- End PAge Content -->
                   <!-- ============================================================== -->
