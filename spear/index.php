@@ -1,23 +1,37 @@
 <?php
    require_once(dirname(__FILE__) . '/manager/session_manager.php');
+   require_once(dirname(__FILE__) . '/manager/login_throttle.php');
    if(isSessionValid() == true){
       header("Location: Home");
       die();
   }
-   
+
+  // Phase 3.26: check the per-IP throttle before doing any password
+  // work. The check is cheap (one filesystem stat) and decisive — a
+  // locked-out client never gets to attempt verification at all.
   $login_error = null;
   $totp_step  = false;
   $totp_username = '';
+  $throttle_block = login_throttle_check();
+  // Phase 3.26: if locked out, render an explanation and refuse to even
+  // attempt verification. Cheaper than the password check and harder
+  // for an attacker to enumerate timing differences against.
+  if ($throttle_block['blocked']) {
+      $minutes = (int) ceil($throttle_block['retry_after'] / 60);
+      $login_error = 'Too many failed attempts from this address. Try again in about ' . $minutes . ' minute(s).';
+  }
   // Step 2 — operator submitting their TOTP code after a previous
   // username+password that returned 'pending_totp'.
-  if (!empty($_POST['totp_code']) && !empty($_POST['totp_username'])) {
+  elseif (!empty($_POST['totp_code']) && !empty($_POST['totp_username'])) {
       if (!csrf_verify($_POST['_csrf'] ?? null)) {
           $login_error = 'Session token expired. Please retry.';
       } elseif (completeTotpLogin($_POST['totp_username'], $_POST['totp_code'])) {
+          login_throttle_register_success();
           createSession(true, $_POST['totp_username']);
           header("Location: Home");
           die();
       } else {
+          login_throttle_register_failure();
           $login_error = 'Invalid 2FA code.';
           $totp_step = true;
           $totp_username = $_POST['totp_username'];
@@ -30,13 +44,18 @@
       } else {
          $loginResult = validateLogin($_POST['username'],$_POST['password']);
          if ($loginResult === true) {
+            login_throttle_register_success();
             createSession(true,$_POST['username']);
             header("Location: Home");
             die();
          } elseif ($loginResult === 'pending_totp') {
-            // Render the TOTP form on the next pass.
+            // Don't clear throttle yet — password was right but the second
+            // factor hasn't been verified. The TOTP step records its own
+            // failures / success.
             $totp_step = true;
             $totp_username = $_POST['username'];
+         } else {
+            login_throttle_register_failure();
          }
       }
    }
