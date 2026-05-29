@@ -10,6 +10,37 @@ diffs and test counts.
 
 ## Phase 3 — Features + hardening on top of Phase 2
 
+### 3.23 — `/health` endpoint for uptime monitors
+
+Minimal JSON endpoint at the repo root: 200 + `{status:ok, time:...}`
+when the app can talk to MySQL, 503 otherwise. Intentionally minimal
+body — no PID, no DB host, no schema version. No session, no CSRF,
+no auth.
+
+### 3.22 — Client-side password-strength meter
+
+Five-tier strength meter (Very weak / Weak / OK / Strong / Excellent)
+under the new-password field on both the authenticated profile edit
+modal and the unauthenticated forgot-password reset page. Penalizes
+obvious bad picks (`password`, `123456`, `sniperphish`, `qwerty`, …).
+
+### 3.21 — Per-campaign engagement notes
+
+Free-text operator notes attached to every campaign. Stored inside
+the existing `campaign_data` JSON column — no schema change. 2000-
+char cap. Rendered on the Mail Campaign Dashboard above the timeline
+AND on the Customer PDF report as an "Engagement notes" block between
+the cover paragraphs and the headline-metrics table.
+
+### 3.20 — Idle-timeout warning + 60-hour math bug fix
+
+The previous idle timer ran every 60 seconds and used `idleMax=3600`
+with a `>` comparison, giving a 60-hour effective session timeout
+(auto-logout effectively never fired). This patch drops the tick to
+1 second so `idleMax` means seconds (default 1 hour) and adds a
+5-minute pre-logout warning modal with a "Stay signed in" button.
+Tracks keystrokes too, not just mousemove.
+
 ### 3.18 — Per-recipient timezone-aware scheduling
 
 When enabled in mconfig, each recipient is sent at their local target
