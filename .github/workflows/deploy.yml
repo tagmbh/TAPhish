@@ -195,7 +195,7 @@ jobs:
             set net:timeout 30\; \
             $AUTH_SETUP \
             $OPEN_CMD\; \
-            mirror -R $DRY $DEL --verbose --no-perms --parallel=2 $EXCLUDE_ARGS ./ '${DEPLOY_PATH}/'\
+            mirror -R $DRY $DEL --verbose --no-perms --parallel=1 $EXCLUDE_ARGS ./ '${DEPLOY_PATH}/'\
           \"
 
           if [ "$INPUT_DRY_RUN" = "true" ]; then
