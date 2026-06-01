@@ -10,3 +10,8 @@
 .DS_Store
 .idea/
 .vscode/
+# Local-only originals downloaded from t-alpha.ch (Phase 3.33).
+# Don't commit third-party PNGs to the repo — the derivatives under
+# spear/images/brand/ are what the app uses.
+/brand-source/
+.superpowers/

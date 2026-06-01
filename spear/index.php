@@ -104,9 +104,7 @@
                <div id="loginform">
                   <div class="text-center p-t-20 p-b-20">
                      <span class="db">
-                        <img src="images/brand/logo-icon2x.png" alt="TAPhish" />
-                        <img src="images/brand/logo.png" alt="TAPhish" />
-                        Operator console &nbsp;·&nbsp; v<?php getSniperPhishVersion(); ?>
+                        <img src="images/brand/logo.png" alt="t-alpha" />
                      </span>
                   </div>
                   <?php if ($totp_step): ?>
