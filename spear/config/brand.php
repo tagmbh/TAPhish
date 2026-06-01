@@ -16,7 +16,7 @@ if (!defined('BRAND_PRODUCT_NAME')) {
     define('BRAND_COMPANY',       't-alpha GmbH');
     define('BRAND_TAGLINE',       'Web-Email Spear Phishing Toolkit');
     define('BRAND_PRODUCT_VERSION', '2.1');
-    define('BRAND_COPYRIGHT_YEAR',  '2024');
+    define('BRAND_COPYRIGHT_YEAR',  '2026');
 
     define('BRAND_PRIMARY_COLOR',   '#0a3d62');
     define('BRAND_ACCENT_COLOR',    '#3c6382');
