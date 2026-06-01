@@ -199,3 +199,213 @@ if (!function_exists('totp_provisioning_uri')) {
         return 'otpauth://totp/' . rawurlencode($label) . '?' . $params;
     }
 }
+
+// ==== Phase 3.31: TOTP recovery codes ====
+//
+// One-shot codes the operator prints/saves at enrollment. If their
+// authenticator goes missing they can still get past the second
+// factor by burning one of these codes. After consumption a code is
+// dead — single-use is the only safe model.
+//
+// Format: ten lowercase a-z / 2-7 characters with a single dash in
+// the middle ("xxxxx-xxxxx"). Dashes are cosmetic — verification
+// normalizes them away. 10 codes × 10 chars × log2(32) = ~50 bits of
+// entropy per code, which is plenty for a single-use second factor
+// gated by the password check upstream.
+
+if (!function_exists('totp_generate_recovery_codes')) {
+    /**
+     * Generate $count distinct plaintext recovery codes. CSPRNG-backed.
+     */
+    function totp_generate_recovery_codes(int $count = 10): array
+    {
+        if ($count < 1) {
+            return [];
+        }
+        $alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
+        $seen = [];
+        $out = [];
+        while (count($out) < $count) {
+            $raw = '';
+            for ($i = 0; $i < 10; $i++) {
+                $raw .= $alphabet[random_int(0, 31)];
+            }
+            if (isset($seen[$raw])) {
+                continue;
+            }
+            $seen[$raw] = true;
+            $out[] = substr($raw, 0, 5) . '-' . substr($raw, 5, 5);
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('totp_normalize_recovery_code')) {
+    /**
+     * Strip whitespace and dashes, lowercase. The verifier compares
+     * against the normalized form so users can type the code with or
+     * without the cosmetic dash, in either case.
+     */
+    function totp_normalize_recovery_code(string $input): string
+    {
+        $stripped = preg_replace('/[\s\-]+/', '', $input);
+        return strtolower((string) $stripped);
+    }
+}
+
+if (!function_exists('totp_recovery_code_looks_valid')) {
+    /**
+     * Cheap structural check before the (more expensive) bcrypt verify
+     * loop. Catches typos and obviously-wrong input without a DB round.
+     */
+    function totp_recovery_code_looks_valid(string $normalized): bool
+    {
+        return (bool) preg_match('/^[a-z2-7]{10}$/', $normalized);
+    }
+}
+
+if (!function_exists('totp_ensure_recovery_schema')) {
+    /**
+     * Idempotently create the recovery-codes table. Cheap: a single
+     * information_schema lookup, CREATE TABLE only on first run.
+     */
+    function totp_ensure_recovery_schema(\mysqli $conn): void
+    {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_totp_recovery_codes'"
+        );
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_row();
+        $stmt->close();
+        if ($row && (int) $row[0] > 0) {
+            return;
+        }
+        @$conn->query(
+            "CREATE TABLE tb_totp_recovery_codes (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                code_hash VARCHAR(255) NOT NULL,
+                used_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_username_unused (username, used_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    }
+}
+
+if (!function_exists('totp_store_recovery_codes')) {
+    /**
+     * Replace any existing codes for $username with hashes of $plain.
+     * Returns true on success. Uses bcrypt for the hash — same family
+     * as the password column, no new crypto dependency.
+     */
+    function totp_store_recovery_codes(\mysqli $conn, string $username, array $plain): bool
+    {
+        $del = $conn->prepare("DELETE FROM tb_totp_recovery_codes WHERE username = ?");
+        if ($del === false) return false;
+        $del->bind_param('s', $username);
+        $del->execute();
+        $del->close();
+
+        $ins = $conn->prepare(
+            "INSERT INTO tb_totp_recovery_codes (username, code_hash) VALUES (?, ?)"
+        );
+        if ($ins === false) return false;
+        foreach ($plain as $p) {
+            $normalized = totp_normalize_recovery_code((string) $p);
+            $hash = password_hash($normalized, PASSWORD_BCRYPT);
+            $ins->bind_param('ss', $username, $hash);
+            if (!$ins->execute()) {
+                $ins->close();
+                return false;
+            }
+        }
+        $ins->close();
+        return true;
+    }
+}
+
+if (!function_exists('totp_consume_recovery_code')) {
+    /**
+     * Verify $code against the unused codes for $username; on a match,
+     * mark that row used_at = NOW() and return true. False otherwise.
+     *
+     * Walks every unused row because the hash is salted — there's no
+     * index lookup we can do. For 10 codes this is trivially cheap.
+     */
+    function totp_consume_recovery_code(\mysqli $conn, string $username, string $code): bool
+    {
+        $normalized = totp_normalize_recovery_code($code);
+        if (!totp_recovery_code_looks_valid($normalized)) {
+            return false;
+        }
+        $stmt = $conn->prepare(
+            "SELECT id, code_hash FROM tb_totp_recovery_codes
+             WHERE username = ? AND used_at IS NULL"
+        );
+        if ($stmt === false) return false;
+        $stmt->bind_param('s', $username);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $hit = null;
+        while ($row = $res->fetch_assoc()) {
+            if (password_verify($normalized, $row['code_hash'])) {
+                $hit = (int) $row['id'];
+                break;
+            }
+        }
+        $stmt->close();
+        if ($hit === null) {
+            return false;
+        }
+        $upd = $conn->prepare(
+            "UPDATE tb_totp_recovery_codes SET used_at = NOW() WHERE id = ? AND used_at IS NULL"
+        );
+        if ($upd === false) return false;
+        $upd->bind_param('i', $hit);
+        $ok = $upd->execute() && $upd->affected_rows === 1;
+        $upd->close();
+        return $ok;
+    }
+}
+
+if (!function_exists('totp_remaining_recovery_codes')) {
+    /**
+     * Count unused codes for $username. Used by the UI to warn when
+     * the operator is running low.
+     */
+    function totp_remaining_recovery_codes(\mysqli $conn, string $username): int
+    {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM tb_totp_recovery_codes
+             WHERE username = ? AND used_at IS NULL"
+        );
+        if ($stmt === false) return 0;
+        $stmt->bind_param('s', $username);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_row();
+        $stmt->close();
+        return $row ? (int) $row[0] : 0;
+    }
+}
+
+if (!function_exists('totp_invalidate_recovery_codes')) {
+    /**
+     * Wipe all codes for $username. Called when 2FA is disabled
+     * (no point keeping recovery codes for a disabled second factor)
+     * or when the operator regenerates a fresh set.
+     */
+    function totp_invalidate_recovery_codes(\mysqli $conn, string $username): bool
+    {
+        $stmt = $conn->prepare("DELETE FROM tb_totp_recovery_codes WHERE username = ?");
+        if ($stmt === false) return false;
+        $stmt->bind_param('s', $username);
+        $ok = $stmt->execute();
+        $stmt->close();
+        return $ok;
+    }
+}

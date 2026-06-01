@@ -10,6 +10,29 @@ diffs and test counts.
 
 ## Phase 3 — Features + hardening on top of Phase 2
 
+### 3.31 — TOTP recovery codes
+
+Ten single-use codes generated on 2FA enrollment, format `xxxxx-xxxxx`
+(50 bits of entropy each, RFC 4648 Crockford-ish alphabet — no
+ambiguous `0/O/1/I/8/B`). Stored as bcrypt hashes; plaintext is shown
+once at enrollment and once on regenerate.
+
+Login path accepts either a TOTP code or an unused recovery code —
+on a match the recovery row is marked `used_at = NOW()` and the same
+string can't replay. Settings page shows remaining count and warns
+under 3. "Regenerate codes" wipes the existing set and mints a fresh
+ten; current 2FA code required so a stolen session can't quietly
+issue new bypass tokens. Disabling 2FA also clears the codes.
+
+Schema migration is idempotent (`tb_totp_recovery_codes` created on
+first session boot if absent). 10 new tests, 38 assertions.
+
+### 3.30 — `/status` alias for `/health` (Hostpoint compat)
+
+Hostpoint Shared reserves `/health` and serves a 404 before PHP sees
+the request. `status.php` is a one-line alias that requires
+`health.php` so monitors work on hosts that intercept `/health`.
+
 ### 3.23 — `/health` endpoint for uptime monitors
 
 Minimal JSON endpoint at the repo root: 200 + `{status:ok, time:...}`

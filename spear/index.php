@@ -106,12 +106,12 @@
                      <input type="hidden" name="totp_username" value="<?php echo htmlspecialchars($totp_username, ENT_QUOTES | ENT_HTML5); ?>">
                      <div class="row p-b-30">
                         <div class="col-12">
-                           <p class="text-white text-center">Open your authenticator app and enter the 6-digit code for <code><?php echo htmlspecialchars($totp_username, ENT_QUOTES | ENT_HTML5); ?></code>.</p>
+                           <p class="text-white text-center">Open your authenticator app and enter the 6-digit code for <code><?php echo htmlspecialchars($totp_username, ENT_QUOTES | ENT_HTML5); ?></code>, or use a recovery code if you've lost the device.</p>
                            <div class="input-group mb-3">
                               <div class="input-group-prepend">
                                  <span class="input-group-text bg-info text-white"><i class="fa fas fa-shield-alt"></i></span>
                               </div>
-                              <input type="text" class="form-control form-control-lg text-center" name="totp_code" inputmode="numeric" pattern="[0-9 ]{6,7}" placeholder="123 456" autocomplete="one-time-code" autofocus required>
+                              <input type="text" class="form-control form-control-lg text-center" name="totp_code" placeholder="123 456 — or recovery code" autocomplete="one-time-code" autofocus required>
                            </div>
                            <?php
                               if ($login_error !== null) {
