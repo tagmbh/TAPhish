@@ -141,6 +141,59 @@
                         <p class="text-muted small">Adds a 6-digit code from an authenticator app (Google Authenticator, Authy, 1Password, Bitwarden, etc.) to your login. A leaked password alone is no longer enough.</p>
                         <button type="button" class="btn btn-info" id="btn_totp_enable" onclick="totpStartEnrollment()"><i class="fas fa-qrcode"></i> Enable 2FA</button>
                         <button type="button" class="btn btn-outline-danger" id="btn_totp_disable" data-toggle="modal" data-target="#modal_totp_disable" style="display:none;"><i class="fas fa-shield-virus"></i> Disable 2FA</button>
+                        <!-- Phase 3.31: recovery code controls, only shown when 2FA is on -->
+                        <button type="button" class="btn btn-outline-secondary" id="btn_totp_regenerate" data-toggle="modal" data-target="#modal_totp_regenerate" style="display:none;"><i class="fas fa-key"></i> Regenerate recovery codes</button>
+                        <div class="small text-muted mt-2" id="totp_recovery_summary" style="display:none;"></div>
+                     </div>
+                  </div>
+
+                  <!-- 2FA recovery codes shown after enrollment / regeneration -->
+                  <div class="modal fade" id="modal_totp_recovery_codes" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+                     <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                           <div class="modal-header">
+                              <h5 class="modal-title">Save your recovery codes</h5>
+                           </div>
+                           <div class="modal-body">
+                              <p class="small text-muted">If you lose access to your authenticator app, each of these one-shot codes can stand in for a TOTP code <strong>exactly once</strong>. Print them, store them in a password manager, or write them on paper. They are not shown again.</p>
+                              <pre id="totp_recovery_codes_list" style="background:#f5f7fa;border:1px solid #dde3ea;padding:12px;border-radius:4px;font-size:14px;line-height:1.7;text-align:center;letter-spacing:2px;"></pre>
+                              <div class="text-center">
+                                 <button type="button" class="btn btn-sm btn-outline-info" onclick="totpCopyRecoveryCodes()"><i class="fas fa-copy"></i> Copy all</button>
+                                 <button type="button" class="btn btn-sm btn-outline-info" onclick="totpDownloadRecoveryCodes()"><i class="fas fa-download"></i> Download .txt</button>
+                              </div>
+                              <div id="totp_recovery_warning" class="text-warning small mt-2" style="display:none;"></div>
+                           </div>
+                           <div class="modal-footer">
+                              <label class="custom-control custom-checkbox mr-auto">
+                                 <input type="checkbox" class="custom-control-input" id="totp_recovery_ack" onchange="$('#totp_recovery_close').prop('disabled', !this.checked)">
+                                 <span class="custom-control-label">I have saved these codes somewhere safe</span>
+                              </label>
+                              <button type="button" class="btn btn-success" id="totp_recovery_close" data-dismiss="modal" disabled>Done</button>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- Regenerate confirmation modal -->
+                  <div class="modal fade" id="modal_totp_regenerate" tabindex="-1" role="dialog" aria-hidden="true">
+                     <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                           <div class="modal-header">
+                              <h5 class="modal-title">Regenerate recovery codes</h5>
+                              <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                           </div>
+                           <div class="modal-body">
+                              <p class="small text-muted">All current recovery codes (used and unused) are wiped and 10 new ones take their place. Enter your current 2FA code to confirm — a stolen session alone can't mint new bypass codes this way.</p>
+                              <div class="form-group">
+                                 <label>2FA code</label>
+                                 <input type="text" class="form-control" id="totp_regenerate_code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7">
+                              </div>
+                              <div id="totp_regenerate_err" class="text-danger small"></div>
+                           </div>
+                           <div class="modal-footer">
+                              <button type="button" class="btn btn-warning" onclick="totpDoRegenerate($(this))"><i class="fas fa-key"></i> Regenerate</button>
+                           </div>
+                        </div>
                      </div>
                   </div>
 

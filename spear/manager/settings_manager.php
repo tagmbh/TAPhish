@@ -36,6 +36,12 @@ if (isset($_POST)) {
 		if($POSTJ['action_type'] == "totp_get_status")
 			totpGetStatus($conn);
 
+		// Phase 3.31: TOTP recovery codes
+		if($POSTJ['action_type'] == "totp_regenerate_recovery_codes")
+			totpRegenerateRecoveryCodes($conn, $POSTJ['code'] ?? '');
+		if($POSTJ['action_type'] == "totp_recovery_status")
+			totpRecoveryStatus($conn);
+
 		if($POSTJ['action_type'] == "modify_timestamp_settings")
 			modifyTimestampSettings($conn, json_encode($POSTJ['time_zone']), json_encode($POSTJ['time_format']));
 		if($POSTJ['action_type'] == "get_timestamp_settings")
@@ -539,13 +545,78 @@ function totpConfirmEnrollment($conn, $secret, $code) {
     }
     $stmt = $conn->prepare("UPDATE tb_main SET totp_secret = ?, totp_enabled = 1 WHERE username = ?");
     $stmt->bind_param('ss', $secret, $username);
-    if ($stmt->execute()) {
-        logIt('2FA enabled for ' . $username);
-        echo json_encode(['result' => 'success']);
-    } else {
+    if (!$stmt->execute()) {
+        $stmt->close();
         echo json_encode(['result' => 'failed', 'error' => 'Database update failed']);
+        return;
     }
     $stmt->close();
+    // Phase 3.31: generate 10 recovery codes on first enrollment so the
+    // operator has something printed before their authenticator can fail
+    // them. We display the plaintext exactly once in the response — the
+    // DB only ever holds bcrypt hashes.
+    $codes = totp_generate_recovery_codes(10);
+    if (!totp_store_recovery_codes($conn, $username, $codes)) {
+        logIt('2FA enabled but recovery code generation failed for ' . $username);
+        echo json_encode([
+            'result' => 'success',
+            'recovery_codes' => [],
+            'recovery_warning' => 'Recovery codes could not be generated. Open Settings → 2FA → Regenerate codes to retry.',
+        ]);
+        return;
+    }
+    logIt('2FA enabled for ' . $username);
+    echo json_encode([
+        'result' => 'success',
+        'recovery_codes' => $codes,
+    ]);
+}
+
+// Phase 3.31: replace any unused recovery codes with a fresh batch.
+// Requires the current 2FA code so a stolen session can't quietly mint
+// new bypass tokens. Returns the plaintext set exactly once.
+function totpRegenerateRecoveryCodes($conn, $code) {
+    $username = $_SESSION['username'] ?? null;
+    if (!$username) { echo json_encode(['result' => 'failed', 'error' => 'No session']); return; }
+    $stmt = $conn->prepare("SELECT totp_secret, totp_enabled FROM tb_main WHERE username = ?");
+    if ($stmt === false) {
+        echo json_encode(['result' => 'failed', 'error' => 'Database error']);
+        return;
+    }
+    $stmt->bind_param('s', $username);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row || empty($row['totp_enabled']) || empty($row['totp_secret'])) {
+        echo json_encode(['result' => 'failed', 'error' => '2FA is not enabled on this account.']);
+        return;
+    }
+    if (!totp_verify_code($row['totp_secret'], (string) $code, time())) {
+        echo json_encode(['result' => 'failed', 'error' => 'Code did not match.']);
+        return;
+    }
+    $codes = totp_generate_recovery_codes(10);
+    if (!totp_store_recovery_codes($conn, $username, $codes)) {
+        echo json_encode(['result' => 'failed', 'error' => 'Database update failed']);
+        return;
+    }
+    logIt('2FA recovery codes regenerated for ' . $username);
+    echo json_encode([
+        'result' => 'success',
+        'recovery_codes' => $codes,
+    ]);
+}
+
+// Phase 3.31: surface remaining-unused count so the UI can nudge the
+// operator before they've burned all of them.
+function totpRecoveryStatus($conn) {
+    $username = $_SESSION['username'] ?? null;
+    if (!$username) { echo json_encode(['result' => 'failed', 'error' => 'No session']); return; }
+    $remaining = totp_remaining_recovery_codes($conn, $username);
+    echo json_encode([
+        'result'    => 'success',
+        'remaining' => $remaining,
+    ]);
 }
 
 function totpDisable($conn, $current_pwd, $code) {
@@ -569,6 +640,10 @@ function totpDisable($conn, $current_pwd, $code) {
     $stmt = $conn->prepare("UPDATE tb_main SET totp_secret = NULL, totp_enabled = 0 WHERE username = ?");
     $stmt->bind_param('s', $username);
     if ($stmt->execute()) {
+        // Phase 3.31: no point keeping recovery codes for a disabled
+        // second factor — clear them so they can't be used to bypass
+        // a re-enabled 2FA later with a fresh secret.
+        totp_invalidate_recovery_codes($conn, $username);
         logIt('2FA disabled for ' . $username);
         echo json_encode(['result' => 'success']);
     } else {

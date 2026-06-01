@@ -291,10 +291,31 @@ function totpRefreshStatus() {
             $('#totp_status_badge').removeClass().addClass('badge badge-success').text('Enabled');
             $('#btn_totp_enable').hide();
             $('#btn_totp_disable').show();
+            // Phase 3.31: surface the regen button and recovery code count
+            $('#btn_totp_regenerate').show();
+            totpRefreshRecoveryStatus();
         } else {
             $('#totp_status_badge').removeClass().addClass('badge badge-secondary').text('Disabled');
             $('#btn_totp_enable').show();
             $('#btn_totp_disable').hide();
+            $('#btn_totp_regenerate').hide();
+            $('#totp_recovery_summary').hide();
+        }
+    });
+}
+
+// Phase 3.31: light-weight count refresh — never sends or reveals codes.
+function totpRefreshRecoveryStatus() {
+    totpPost({ action_type: 'totp_recovery_status' }).done(function (data) {
+        if (!data || data.result !== 'success') return;
+        var n = data.remaining | 0;
+        var $s = $('#totp_recovery_summary');
+        if (n === 0) {
+            $s.html('<i class="fas fa-exclamation-triangle text-warning"></i> No recovery codes left — <a href="#" onclick="$(\'#modal_totp_regenerate\').modal(\'show\');return false;">regenerate</a> a fresh set.').show();
+        } else if (n <= 3) {
+            $s.html('<i class="fas fa-exclamation-circle text-warning"></i> Only ' + n + ' recovery code(s) left. Consider regenerating.').show();
+        } else {
+            $s.text(n + ' recovery codes remaining.').show();
         }
     });
 }
@@ -329,12 +350,89 @@ function totpConfirmEnrollment(btn) {
                 $('#modal_totp_enroll').modal('hide');
                 toastr.success('', '2FA is now enabled on your account.');
                 totpRefreshStatus();
+                // Phase 3.31: server returns the freshly-generated recovery
+                // codes on the same response. Show them once — the only
+                // chance the operator gets to copy them.
+                if (data.recovery_codes && data.recovery_codes.length) {
+                    totpShowRecoveryCodes(data.recovery_codes, data.recovery_warning);
+                } else if (data.recovery_warning) {
+                    toastr.warning('', data.recovery_warning);
+                }
             } else {
                 $('#totp_enroll_err').text((data && data.error) || 'Verification failed.');
             }
         })
         .fail(function (xhr) {
             $('#totp_enroll_err').text('Request failed (HTTP ' + xhr.status + ').');
+        })
+        .always(function () { enableDisableMe(btn); });
+}
+
+// Phase 3.31: shared display logic for the recovery-code list. Called
+// from both the enrollment-success path and the regenerate-success path.
+function totpShowRecoveryCodes(codes, warning) {
+    $('#totp_recovery_codes_list').text(codes.join('\n'));
+    if (warning) {
+        $('#totp_recovery_warning').text(warning).show();
+    } else {
+        $('#totp_recovery_warning').hide();
+    }
+    $('#totp_recovery_ack').prop('checked', false);
+    $('#totp_recovery_close').prop('disabled', true);
+    $('#modal_totp_recovery_codes').modal('show');
+}
+
+function totpCopyRecoveryCodes() {
+    var text = $('#totp_recovery_codes_list').text();
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+            function () { toastr.success('', 'Copied.'); },
+            function () { toastr.error('', 'Copy failed — select manually.'); }
+        );
+    } else {
+        toastr.warning('', 'Clipboard API unavailable — select the codes manually.');
+    }
+}
+
+function totpDownloadRecoveryCodes() {
+    var text = $('#totp_recovery_codes_list').text();
+    if (!text) return;
+    var blob = new Blob([
+        'TAPhish 2FA recovery codes\n',
+        'Each code works exactly once.\n\n',
+        text,
+        '\n'
+    ], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'taphish-2fa-recovery-codes.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 200);
+}
+
+function totpDoRegenerate(btn) {
+    var code = $('#totp_regenerate_code').val();
+    if (!code) { $('#totp_regenerate_err').text('Enter your current 2FA code.'); return; }
+    enableDisableMe(btn);
+    totpPost({ action_type: 'totp_regenerate_recovery_codes', code: code })
+        .done(function (data) {
+            if (data && data.result === 'success') {
+                $('#modal_totp_regenerate').modal('hide');
+                $('#totp_regenerate_code').val('');
+                $('#totp_regenerate_err').text('');
+                toastr.success('', 'Fresh recovery codes generated.');
+                totpRefreshRecoveryStatus();
+                totpShowRecoveryCodes(data.recovery_codes || [], null);
+            } else {
+                $('#totp_regenerate_err').text((data && data.error) || 'Regeneration failed.');
+            }
+        })
+        .fail(function (xhr) {
+            $('#totp_regenerate_err').text('Request failed (HTTP ' + xhr.status + ').');
         })
         .always(function () { enableDisableMe(btn); });
 }

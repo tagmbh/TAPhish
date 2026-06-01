@@ -26,6 +26,7 @@ date_default_timezone_set('UTC');
 if (isset($conn) && $conn instanceof mysqli) {
 	taphish_ensure_mail_presets($conn);
 	totp_ensure_schema($conn);	//Phase 3.25: add totp_secret + totp_enabled columns if missing
+	totp_ensure_recovery_schema($conn);	//Phase 3.31: create tb_totp_recovery_codes if missing
 }
 // Phase 3.9: detect operators still using the bootstrap "sniperphish"
 // password so the JS guard in z_menu.php can redirect them to
@@ -109,7 +110,16 @@ function completeTotpLogin($username, $code) {
 	if (!$row || empty($row['totp_enabled']) || empty($row['totp_secret'])) {
 		return false;
 	}
-	if (!totp_verify_code($row['totp_secret'], $code, time())) {
+	$accepted = totp_verify_code($row['totp_secret'], $code, time());
+	if (!$accepted) {
+		// Phase 3.31: fall back to a single-use recovery code so an
+		// operator who lost their authenticator can still finish login.
+		// totp_consume_recovery_code only returns true when it has
+		// already marked the matching row used_at = NOW(), so the same
+		// code can't be replayed in a follow-up attempt.
+		$accepted = totp_consume_recovery_code($conn, $username, (string) $code);
+	}
+	if (!$accepted) {
 		return false;
 	}
 	updateLoginLogout($conn, $username, $GLOBALS['entry_time'], true);
