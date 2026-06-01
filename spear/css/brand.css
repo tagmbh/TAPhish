@@ -10,10 +10,11 @@
 :root {
     /* Brand color system. Dominant primary, restrained accent palette,
        sharp danger/success/warning for status communication. */
-    --t-primary:        #0a3d62;
-    --t-primary-deep:   #062940;
-    --t-primary-edge:   #1a5a8a;
-    --t-accent:         #3c6382;
+    /* Sampled from the official t-alpha logo (Phase 3.33 rebrand). */
+    --t-primary:        #0071bb;
+    --t-primary-deep:   #00497a;
+    --t-primary-edge:   #2a8ed4;
+    --t-accent:         #005a96;
     --t-bg:             #0c1622;
     --t-bg-elevated:    #131e2c;
     --t-surface:        #182536;
@@ -146,36 +147,21 @@ a:focus {
     to   { opacity: 1; transform: none; }
 }
 
-/* The default theme puts the logos on a single line and shrinks them.
-   Stack them vertically with breathing room so the wordmark reads. */
+/* The login-box logo slot now holds the official t-alpha wordmark
+   only (Phase 3.33 rebrand). No icon stack, no mono caption — the
+   wordmark speaks for itself against the dim navy backdrop. */
 .auth-box .db {
     display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    color: var(--t-text-mute);
-    font-family: var(--t-mono);
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    justify-content: center;
 }
 
-.auth-box .db img[src*="logo-icon"] {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    box-shadow: var(--t-shadow-1);
-}
-
-.auth-box .db img[src*="logo.png"] {
-    height: 28px;
+.auth-box .db img {
+    height: 38px;
     width: auto;
-    filter: brightness(1.55);
+    /* Lift the brand-on-white wordmark slightly so the inner gray
+       frame doesn't read muddy against the dark surface. */
+    filter: drop-shadow(0 1px 0 rgba(255,255,255,0.04));
 }
-
-/* Subtitle next to version. Use ::after on the version span via
-   a small JS hook would be cleaner — for now the markup is unchanged
-   and the typography speaks for itself. */
 
 .auth-box p.text-white {
     color: var(--t-text-mute) !important;
