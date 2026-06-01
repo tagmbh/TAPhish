@@ -1,16 +1,17 @@
 # Brand assets
 
-Drop the t-alpha GmbH replacement PNG/SVG files here. Keep the filenames
-identical to what's listed below — the application references them by name
-through `spear/config/brand.php`:
+Active TAPhish / t-alpha GmbH brand PNGs.
 
-| File              | Used by                                | Suggested size |
-|-------------------|----------------------------------------|----------------|
-| `favicon.png`     | All page `<link rel="icon">` tags      | 32x32 / 64x64  |
-| `logo-icon.png`   | Sidebar collapsed-mode icon            | 64x64          |
-| `logo-icon2x.png` | Login + install screens (hi-DPI)       | 128x128        |
-| `logo-text.png`   | Sidebar wordmark next to the icon      | 240x40         |
-| `logo.png`        | Login + install screens wordmark       | 240x40         |
+The application references these by name through `spear/config/brand.php`:
 
-Until real assets are provided, this directory holds copies of the
-original SniperPhish logos so the UI keeps rendering without 404s.
+| File              | Used by                                | Size              |
+|-------------------|----------------------------------------|-------------------|
+| `favicon.png`     | All page `<link rel="icon">` tags      | 16x16             |
+| `logo-icon.png`   | Sidebar collapsed-mode icon            | 32x32             |
+| `logo-icon2x.png` | Login + install screens (hi-DPI)       | 48x48             |
+| `logo-text.png`   | Sidebar wordmark next to the icon      | 182x32            |
+| `logo.png`        | Login + install screens wordmark       | 284x50            |
+
+Replace these PNGs in-place with the official t-alpha GmbH assets
+when ready. Keep the filenames and dimensions identical so no
+template needs to change.
