@@ -220,8 +220,9 @@ the shell — exactly the scope the deploy pipe wants.
 
 ## Monitoring
 
-`/health` returns a minimal JSON body suitable for uptime monitors
-(Pingdom / UptimeRobot / a custom status page):
+`/health` (and its alias `/status`) returns a minimal JSON body
+suitable for uptime monitors (Pingdom / UptimeRobot / a custom
+status page):
 
 ```bash
 $ curl https://yourhost/health
@@ -236,5 +237,17 @@ $ curl https://yourhost/health
   reach the endpoint.
 
 No session, no CSRF, no auth. If the operator panel sits behind
-a reverse proxy auth layer, allow-list `/health` so the monitor
-can reach it.
+a reverse proxy auth layer, allow-list `/health` (or `/status`)
+so the monitor can reach it.
+
+### Hostpoint Shared and `/health`
+
+Hostpoint reserves `/health` at the web-server layer and serves a
+404 before the request reaches PHP. Use the **`/status`** alias on
+Hostpoint — same logic, same response shape, just a name the host
+doesn't intercept.
+
+```bash
+$ curl https://yourhost/status
+{"status":"ok","time":"2026-05-29T07:32:11+00:00"}
+```
