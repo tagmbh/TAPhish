@@ -71,7 +71,13 @@
       <meta name="author" content="">
       <!-- Favicon icon -->
       <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
-      <title>TAPhish - Web-Email Spear Phishing Toolkit</title>
+      <title>TAPhish — Operator Console</title>
+      <!-- Phase 3.32: distinctive type stack via Google Fonts. Operator
+           panel is private so external font load is acceptable; subset
+           kept tight. preconnect cuts ~150ms off first paint. -->
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
       <link rel="stylesheet" type="text/css" href="css/brand.css">
@@ -97,7 +103,11 @@
             <div class="auth-box bg-dark border-top border-secondary">
                <div id="loginform">
                   <div class="text-center p-t-20 p-b-20">
-                     <span class="db"><img src="images/brand/logo-icon2x.png" alt="logo" /><img src="images/brand/logo.png" alt="logo" /> v<?php getSniperPhishVersion(); ?></span>
+                     <span class="db">
+                        <img src="images/brand/logo-icon2x.png" alt="TAPhish" />
+                        <img src="images/brand/logo.png" alt="TAPhish" />
+                        Operator console &nbsp;·&nbsp; v<?php getSniperPhishVersion(); ?>
+                     </span>
                   </div>
                   <?php if ($totp_step): ?>
                   <!-- Phase 3.25: step 2 — TOTP code entry -->

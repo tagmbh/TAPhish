@@ -1,32 +1,325 @@
-/* Brand accent overrides for TAPhish (t-alpha GmbH). */
-/* Loaded after css/style.min.css so these rules win. */
+/*
+ * TAPhish operator console — Phase 3.32 visual polish.
+ *
+ * Loaded AFTER css/style.min.css so these rules override the base
+ * theme. The earlier brand.css only nudged a couple of colors; this
+ * pass establishes a coherent design system around the t-alpha
+ * primary blue.
+ */
+
+:root {
+    /* Brand color system. Dominant primary, restrained accent palette,
+       sharp danger/success/warning for status communication. */
+    --t-primary:        #0a3d62;
+    --t-primary-deep:   #062940;
+    --t-primary-edge:   #1a5a8a;
+    --t-accent:         #3c6382;
+    --t-bg:             #0c1622;
+    --t-bg-elevated:    #131e2c;
+    --t-surface:        #182536;
+    --t-border:         #243349;
+    --t-border-soft:    #1c2839;
+    --t-text:           #e6ecf2;
+    --t-text-mute:      #8a96a7;
+    --t-text-dim:       #5d6b7e;
+    --t-success:        #21bf73;
+    --t-warn:           #f0a431;
+    --t-danger:         #e64946;
+
+    /* Distinctive typography pair. Display: Bricolage Grotesque (the
+       slight optical wobble keeps it from feeling templatey).
+       Body: IBM Plex Sans (used by security tooling, characterful).
+       Mono: JetBrains Mono (tabular, terminal-adjacent). */
+    --t-display: "Bricolage Grotesque", ui-serif, "Iowan Old Style", Georgia, serif;
+    --t-body:    "IBM Plex Sans", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+    --t-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    /* Vertical rhythm. */
+    --t-radius:   6px;
+    --t-radius-lg: 10px;
+    --t-shadow-1: 0 1px 0 rgba(255,255,255,0.02), 0 4px 14px rgba(0,0,0,0.35);
+    --t-shadow-2: 0 1px 0 rgba(255,255,255,0.04), 0 18px 38px rgba(0,0,0,0.5);
+    --t-glow:     0 0 0 1px rgba(26,90,138,0.55), 0 0 0 4px rgba(26,90,138,0.12);
+}
+
+/* ---- Type ---------------------------------------------------------- */
+
+body {
+    font-family: var(--t-body);
+    font-feature-settings: "ss01" on, "cv11" on;
+    letter-spacing: 0.005em;
+}
+
+h1, h2, h3, h4, h5, .page-title, .card-title, .modal-title {
+    font-family: var(--t-display);
+    letter-spacing: -0.01em;
+    font-weight: 600;
+}
+
+code, pre, kbd, samp,
+.text-mono,
+input[name="totp_code"],
+#totp_recovery_codes_list {
+    font-family: var(--t-mono);
+    font-feature-settings: "calt" 0, "zero" on, "ss01" on;
+}
+
+/* ---- Brand-color overrides on the existing utility classes ---------- */
 
 .bg-info,
 .btn-info {
-    background-color: #0a3d62 !important;
-    border-color: #0a3d62 !important;
+    background-color: var(--t-primary) !important;
+    border-color: var(--t-primary) !important;
 }
 
 .btn-info:hover,
 .btn-info:focus,
 .btn-info:active {
-    background-color: #3c6382 !important;
-    border-color: #3c6382 !important;
+    background-color: var(--t-primary-edge) !important;
+    border-color: var(--t-primary-edge) !important;
+    box-shadow: var(--t-glow) !important;
 }
 
 .text-info {
-    color: #0a3d62 !important;
+    color: var(--t-accent) !important;
 }
 
 a {
-    color: #0a3d62;
+    color: var(--t-accent);
+    text-decoration-color: rgba(60, 99, 130, 0.4);
+    text-underline-offset: 2px;
+    transition: color 120ms ease;
 }
 
 a:hover,
 a:focus {
-    color: #3c6382;
+    color: var(--t-primary-edge);
+    text-decoration-color: var(--t-primary-edge);
 }
 
 .page-title {
-    color: #0a3d62;
+    color: var(--t-primary);
+}
+
+/* ---- Login screen --------------------------------------------------- */
+
+/* The auth-wrapper sits over a layered atmospheric backdrop: a
+   primary-deep radial wash on near-black, plus a tiled SVG noise
+   texture for grain. Both are inline data URIs so the page works
+   without extra HTTP requests. The grain is barely visible — just
+   enough to break the flat color and signal "considered surface". */
+.auth-wrapper {
+    min-height: 100vh;
+    background-color: var(--t-bg) !important;
+    background-image:
+        radial-gradient(60% 80% at 20% 0%, rgba(26, 90, 138, 0.18) 0%, transparent 60%),
+        radial-gradient(50% 60% at 100% 100%, rgba(10, 61, 98, 0.22) 0%, transparent 65%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 0.9  0 0 0 0 0.93  0 0 0 0 0.96  0 0 0 0.045 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+    background-blend-mode: normal, normal, soft-light;
+}
+
+.auth-wrapper::before {
+    /* Vertical fade so the top edge doesn't feel sealed. */
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,0.0) 60%, rgba(0,0,0,0.35) 100%);
+    z-index: 0;
+}
+
+.auth-box {
+    background-color: var(--t-bg-elevated) !important;
+    border: 1px solid var(--t-border) !important;
+    border-top: 1px solid var(--t-border) !important;
+    border-radius: var(--t-radius-lg);
+    padding: 28px 28px 24px;
+    width: min(420px, 92vw);
+    box-shadow: var(--t-shadow-2);
+    position: relative;
+    z-index: 1;
+    animation: t-auth-in 540ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+@keyframes t-auth-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.99); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* The default theme puts the logos on a single line and shrinks them.
+   Stack them vertically with breathing room so the wordmark reads. */
+.auth-box .db {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    color: var(--t-text-mute);
+    font-family: var(--t-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.auth-box .db img[src*="logo-icon"] {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    box-shadow: var(--t-shadow-1);
+}
+
+.auth-box .db img[src*="logo.png"] {
+    height: 28px;
+    width: auto;
+    filter: brightness(1.55);
+}
+
+/* Subtitle next to version. Use ::after on the version span via
+   a small JS hook would be cleaner — for now the markup is unchanged
+   and the typography speaks for itself. */
+
+.auth-box p.text-white {
+    color: var(--t-text-mute) !important;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+/* Form inputs in the login + 2FA flow. */
+.auth-box .input-group {
+    border-radius: var(--t-radius);
+    overflow: hidden;
+    border: 1px solid var(--t-border);
+    background: var(--t-bg);
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.auth-box .input-group:focus-within {
+    border-color: var(--t-primary-edge);
+    box-shadow: var(--t-glow);
+}
+
+.auth-box .input-group-text {
+    background: transparent !important;
+    border: none !important;
+    color: var(--t-text-mute) !important;
+    width: 44px;
+    justify-content: center;
+}
+
+.auth-box .form-control {
+    background: transparent !important;
+    border: none !important;
+    color: var(--t-text) !important;
+    box-shadow: none !important;
+    font-family: var(--t-body);
+    font-size: 15px;
+    padding: 12px 12px;
+}
+
+.auth-box .form-control::placeholder {
+    color: var(--t-text-dim);
+}
+
+/* Make the TOTP / recovery-code input read as monospace — both digits
+   and recovery-codes look right that way and the operator can tell
+   they typed the right number of characters. */
+.auth-box input[name="totp_code"] {
+    font-family: var(--t-mono);
+    letter-spacing: 0.16em;
+    font-size: 18px;
+}
+
+.auth-box .btn-info {
+    padding: 10px 20px;
+    border-radius: var(--t-radius);
+    font-family: var(--t-display);
+    letter-spacing: 0.02em;
+    font-weight: 600;
+}
+
+/* "Lost password?" link in the secondary row. */
+.auth-box .btn-success {
+    background: transparent !important;
+    border: 1px solid var(--t-border) !important;
+    color: var(--t-text-mute) !important;
+}
+
+.auth-box .btn-success:hover {
+    background: var(--t-surface) !important;
+    color: var(--t-text) !important;
+    border-color: var(--t-border-soft) !important;
+}
+
+/* Error / status row inside the auth box. */
+.auth-box .text-danger {
+    color: var(--t-danger) !important;
+    font-size: 13px;
+    margin-top: 8px;
+    display: block;
+}
+
+/* ---- Settings page accents ----------------------------------------- */
+
+/* The 2FA card on Settings → My Profile gets a subtle left border in
+   primary so it stands apart from the user-management card above. */
+.card .card-body .fa-shield-alt + h5.card-title,
+.card .card-body h5.card-title .fa-shield-alt {
+    color: var(--t-primary);
+}
+
+/* Recovery codes display: tabular, generous, copyable. */
+#totp_recovery_codes_list {
+    background: var(--t-bg) !important;
+    color: var(--t-text) !important;
+    border: 1px solid var(--t-border) !important;
+    font-size: 14px !important;
+    line-height: 1.9 !important;
+    letter-spacing: 0.18em !important;
+    padding: 14px !important;
+    border-radius: var(--t-radius) !important;
+    user-select: all;
+}
+
+/* Status badge on the 2FA card. */
+#totp_status_badge.badge-success {
+    background: rgba(33, 191, 115, 0.16);
+    color: var(--t-success);
+    border: 1px solid rgba(33, 191, 115, 0.4);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+#totp_status_badge.badge-secondary {
+    background: transparent;
+    color: var(--t-text-mute);
+    border: 1px solid var(--t-border);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+/* ---- Focus ring (a11y) --------------------------------------------- */
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--t-primary-edge);
+    outline-offset: 2px;
+}
+
+/* ---- Reduce-motion respect ----------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-box,
+    a,
+    .btn-info {
+        animation: none !important;
+        transition: none !important;
+    }
 }
