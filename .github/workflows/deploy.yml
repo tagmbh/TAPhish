@@ -1,28 +1,29 @@
-name: Deploy to operator host (SFTP)
+name: Deploy to operator host (FTPS)
 
-# Manual-trigger SFTP deploy. Mirrors the working tree (minus dev
-# artifacts and host-local config/state) to a configured SFTP host.
-# Designed for Hostpoint Shared Hosting and any other PHP host that
-# exposes SFTP without a real shell — on shared infrastructure, SSH
-# gives the deployer broader access than necessary, so SFTP-scoped
-# access is the right choice.
+# Manual-trigger FTPS deploy. Mirrors the working tree (minus dev
+# artifacts and host-local config/state) to a configured FTPS host.
+# Designed for Hostpoint Shared Hosting and any other PHP host whose
+# sub-FTP accounts speak FTP over TLS (Pure-FTPd, ProFTPD, vsftpd).
 #
-# Uses lftp's `mirror -R` for the differential upload — same idea as
-# rsync, no SSH shell required on the remote.
+# Why FTPS, not SFTP: on Hostpoint Shared, SFTP only works for the
+# main account (the one that owns /home/<account>/). Per-domain
+# sub-FTP accounts can only connect via FTP — but with explicit
+# TLS, control + data channels are both encrypted.
+#
+# Uses lftp's `mirror -R` for the differential upload.
 #
 # Required repo secrets:
-#   DEPLOY_HOST     SFTP host (e.g. sl1737.web.hostpoint.ch)
-#   DEPLOY_USER     SFTP username
-#   DEPLOY_PATH     remote target directory, absolute path
-#                   (e.g. /home/azitufem/www/ptbe.autodiscover.li)
-#
-# Auth — supply exactly ONE of these:
-#   DEPLOY_PASSWORD  SFTP password (Hostpoint Shared default)
-#   DEPLOY_SSH_KEY   PEM private key (for plans/hosts that allow
-#                    SFTP over key auth)
+#   DEPLOY_HOST     FTP host (e.g. sl1737.web.hostpoint.ch)
+#   DEPLOY_USER     FTP username (e.g. ftp@yourdomain.li)
+#   DEPLOY_PASSWORD FTP password
+#   DEPLOY_PATH     remote target directory. For sub-FTP accounts
+#                   that are chrooted to the domain root, this is
+#                   usually "/" or "./". For master accounts that
+#                   land at /home/<account>/, this is the absolute
+#                   docroot path.
 #
 # Optional:
-#   DEPLOY_PORT      defaults to 22
+#   DEPLOY_PORT     defaults to 21
 
 on:
   workflow_dispatch:
@@ -49,7 +50,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy via SFTP
+    name: Deploy via FTPS
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -61,46 +62,21 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           missing=()
           [ -z "$DEPLOY_HOST" ] && missing+=("DEPLOY_HOST")
           [ -z "$DEPLOY_USER" ] && missing+=("DEPLOY_USER")
           [ -z "$DEPLOY_PATH" ] && missing+=("DEPLOY_PATH")
+          [ -z "$DEPLOY_PASSWORD" ] && missing+=("DEPLOY_PASSWORD")
           if [ ${#missing[@]} -ne 0 ]; then
             echo "::error::Missing required repo secret(s): ${missing[*]}"
             exit 1
-          fi
-          if [ -z "$DEPLOY_PASSWORD" ] && [ -z "$DEPLOY_SSH_KEY" ]; then
-            echo "::error::Set EITHER DEPLOY_PASSWORD or DEPLOY_SSH_KEY"
-            echo "Hostpoint Shared Hosting uses the SFTP password from the control panel"
-            exit 1
-          fi
-          if [ -n "$DEPLOY_PASSWORD" ] && [ -n "$DEPLOY_SSH_KEY" ]; then
-            echo "::warning::Both DEPLOY_PASSWORD and DEPLOY_SSH_KEY set — preferring the key"
           fi
 
       - name: Install lftp
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq lftp
-
-      - name: Stage SSH key (if key auth)
-        # GitHub Actions doesn't allow secrets.* in step-level `if:`, so
-        # we gate inside bash: the step always runs, but the body is a
-        # no-op when DEPLOY_SSH_KEY is unset.
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-        run: |
-          if [ -z "$DEPLOY_SSH_KEY" ]; then
-            echo "DEPLOY_SSH_KEY not set — skipping key staging (will use password auth)"
-            exit 0
-          fi
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
-          chmod 600 ~/.ssh/id_deploy
-          echo "SSH key staged at ~/.ssh/id_deploy"
 
       - name: Compose lftp exclude args
         run: |
@@ -154,28 +130,19 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           # LFTP_PASSWORD is the env name lftp's --env-password mode reads.
           LFTP_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_DELETE_REMOTE: ${{ inputs.delete_remote }}
         run: |
           set -e
-          PORT="${DEPLOY_PORT:-22}"
+          PORT="${DEPLOY_PORT:-21}"
           EXCLUDE_ARGS="$(cat /tmp/lftp-exclude-args)"
 
-          # Pick auth mode.
-          if [ -n "$DEPLOY_SSH_KEY" ]; then
-            AUTH_SETUP="set sftp:connect-program 'ssh -a -x -i $HOME/.ssh/id_deploy -o StrictHostKeyChecking=accept-new';"
-            OPEN_CMD="open sftp://${DEPLOY_USER}@${DEPLOY_HOST}:${PORT}"
-            echo "Authenticating with SSH key"
-          else
-            AUTH_SETUP=""
-            # --env-password reads $LFTP_PASSWORD so the literal password
-            # never appears in the command line or process listing.
-            OPEN_CMD="open --env-password -u ${DEPLOY_USER} sftp://${DEPLOY_HOST}:${PORT}"
-            echo "Authenticating with password"
-          fi
+          # --env-password reads $LFTP_PASSWORD so the literal password
+          # never appears in the command line or process listing.
+          OPEN_CMD="open --env-password -u ${DEPLOY_USER} ftp://${DEPLOY_HOST}:${PORT}"
+          echo "Authenticating with password (FTPS explicit TLS)"
 
           DRY=""
           if [ "$INPUT_DRY_RUN" = "true" ]; then
@@ -189,11 +156,17 @@ jobs:
           fi
 
           # eval lets the quoted --exclude-glob args expand correctly.
+          # ftp:ssl-force        — refuse plaintext, require AUTH TLS
+          # ftp:ssl-protect-data — encrypt the data channel, not just control
+          # ftp:passive-mode     — required when client is behind NAT (GH runner is)
+          # ssl:verify-certificate — keep on; Hostpoint serves a valid cert
           eval lftp -c \"\
-            set sftp:auto-confirm yes\; \
             set net:max-retries 3\; \
             set net:timeout 30\; \
-            $AUTH_SETUP \
+            set ftp:ssl-force yes\; \
+            set ftp:ssl-protect-data yes\; \
+            set ftp:passive-mode yes\; \
+            set ssl:verify-certificate yes\; \
             $OPEN_CMD\; \
             mirror -R $DRY $DEL --verbose --no-perms --parallel=1 $EXCLUDE_ARGS ./ '${DEPLOY_PATH}/'\
           \"
