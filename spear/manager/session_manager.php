@@ -42,6 +42,8 @@ if (isset($conn) && $conn instanceof mysqli) {
 	if (is_file(dirname(__FILE__) . '/engagement.php')) {
 		require_once(dirname(__FILE__) . '/engagement.php');
 		taphish_engagement_ensure_schema($conn);
+		// Phase 3.45b: add engagement_id FK on tb_core_mailcamp_list.
+		taphish_engagement_ensure_campaign_fk_column($conn);
 	}
 	// Phase 3.45a: add is_scanner + scanner_reason columns on the live tables.
 	if (is_file(dirname(__FILE__) . '/scanner_detect.php')) {

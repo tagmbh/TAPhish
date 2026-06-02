@@ -118,6 +118,36 @@ if (isset($_POST)) {
 				'engagements' => taphish_engagement_list($conn),
 			]);
 		}
+		// Phase 3.45b: EngagementView data + status transitions.
+		if($POSTJ['action_type'] == "get_engagement_view") {
+			$id = (int)($POSTJ['engagement_id'] ?? 0);
+			if ($id <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id required']);
+			} else {
+				$eng = taphish_engagement_get_by_id($conn, $id);
+				if (!$eng) {
+					echo json_encode(['result' => 'failed', 'error' => 'Engagement not found']);
+				} else {
+					echo json_encode([
+						'result' => 'success',
+						'engagement' => $eng,
+						'campaigns' => taphish_engagement_campaigns($conn, $id),
+					]);
+				}
+			}
+		}
+		if($POSTJ['action_type'] == "engagement_transition_status") {
+			$id   = (int)($POSTJ['engagement_id'] ?? 0);
+			$from = (string)($POSTJ['from'] ?? '');
+			$to   = (string)($POSTJ['to']   ?? '');
+			$ok = $id > 0 && taphish_engagement_transition_status($conn, $id, $from, $to);
+			if ($ok) {
+				logIt('Engagement status: ' . $id . ' ' . $from . ' → ' . $to);
+				echo json_encode(['result' => 'success', 'status' => $to]);
+			} else {
+				echo json_encode(['result' => 'failed', 'error' => 'Transition rejected (concurrent change?)']);
+			}
+		}
 
 		// Phase 3.43b: OSINT pre-check fan-out. Each action runs one
 		// helper; the wizard JS issues them in parallel and renders into
