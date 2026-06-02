@@ -18,8 +18,9 @@ if (!defined('BRAND_PRODUCT_NAME')) {
     define('BRAND_PRODUCT_VERSION', '2.1');
     define('BRAND_COPYRIGHT_YEAR',  '2026');
 
-    define('BRAND_PRIMARY_COLOR',   '#0a3d62');
-    define('BRAND_ACCENT_COLOR',    '#3c6382');
+    // Sampled from the official t-alpha logo (Phase 3.33 rebrand).
+    define('BRAND_PRIMARY_COLOR',   '#0071bb');
+    define('BRAND_ACCENT_COLOR',    '#005a96');
 
     define('BRAND_IMG_DIR',         'images/brand');
     define('BRAND_LOGO_ICON',       'images/brand/logo-icon.png');
