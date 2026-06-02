@@ -91,7 +91,6 @@
                   <div class="t-metric">
                      <div class="t-metric-label">Active campaigns</div>
                      <div class="t-metric-num" id="m_active_campaigns">&mdash;</div>
-                     <div class="t-metric-trend" id="m_active_campaigns_trend">&nbsp;</div>
                   </div>
                   <div class="t-metric">
                      <div class="t-metric-label">Open rate</div>

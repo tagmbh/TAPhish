@@ -534,3 +534,14 @@ a:focus-visible {
     padding: 14px 0;
     text-align: center;
 }
+
+/* Phase 3.33 follow-up: the upstream Material-Admin theme paints the
+   inner sidebar <ul> with a hard-coded #1f262d via
+   "#main-wrapper .left-sidebar[data-sidebarbg=skin5] ul" (specificity
+   0,3,1) — beats our 0,2,0 container rules and shows a lighter band
+   behind the nav links. Match the tile color explicitly. */
+.dim-home #sidebarnav,
+.dim-home .sidebar-nav > ul,
+.dim-home .sidebar-nav ul.collapse {
+    background-color: var(--t-bg-elevated) !important;
+}
