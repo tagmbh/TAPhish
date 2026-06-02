@@ -152,12 +152,8 @@
       <!--Custom JavaScript -->
       <script src="js/libs/custom.min.js"></script>
       <!--This page JavaScript -->
-      <!-- Charts js Files -->
-      <script src="js/libs/apexcharts.js"></script>
-      <script src="js/libs/moment.min.js"></script>
-      <script src="js/libs/moment-timezone-with-data.min.js"></script>
       <script src="js/common_scripts.js"></script>
-      <script src="js/home_functions.js"></script>
+      <script src="js/dashboard.js"></script>
       <script defer src="js/libs/sidebarmenu.js"></script>
       <script defer src="js/libs/toastr.min.js"></script>
    </body>
