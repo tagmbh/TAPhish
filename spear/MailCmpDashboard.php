@@ -24,7 +24,7 @@
          .note-editable { background-color: white !important; } /*Disabled background colour*/
       </style> 
    </head>
-   <body>
+   <body class="dim-panel">
       <!-- ============================================================== -->
       <!-- Preloader - style you can find in spinners.css -->
       <!-- ============================================================== -->

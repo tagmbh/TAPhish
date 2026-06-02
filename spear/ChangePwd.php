@@ -29,7 +29,7 @@
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
       <link rel="stylesheet" type="text/css" href="css/brand.css">
    </head>
-   <body>
+   <body class="dim-panel">
       <div class="main-wrapper">
          <!-- ============================================================== -->
          <!-- Preloader - style you can find in spinners.css -->

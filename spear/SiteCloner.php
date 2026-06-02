@@ -16,7 +16,7 @@
       <link rel="stylesheet" type="text/css" href="css/dataTables.foundation.min.css">
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
    </head>
-   <body>
+   <body class="dim-panel">
       <div class="preloader">
          <div class="lds-ripple">
             <div class="lds-pos"></div>

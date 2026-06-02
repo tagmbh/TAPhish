@@ -694,3 +694,156 @@ a:focus-visible {
     border-color: rgba(230, 73, 70, 0.45);
     color: var(--t-danger);
 }
+
+/* ---- Phase 3.36: third-party widget theming for dim panels --------- */
+
+/* Bootstrap nav-tabs (used on Campaign editor, Tracker pages). */
+.dim-panel .nav-tabs {
+    border-bottom-color: var(--t-border);
+}
+
+.dim-panel .nav-tabs .nav-link {
+    color: var(--t-text-mute);
+    border-color: transparent;
+    background-color: transparent;
+}
+
+.dim-panel .nav-tabs .nav-link:hover {
+    color: var(--t-text);
+    border-color: var(--t-border) var(--t-border) transparent;
+}
+
+.dim-panel .nav-tabs .nav-link.active {
+    color: var(--t-text);
+    background-color: var(--t-bg-elevated);
+    border-color: var(--t-border) var(--t-border) var(--t-bg-elevated);
+}
+
+/* DataTables — filter, length, info, pagination. */
+.dim-panel .dataTables_filter input,
+.dim-panel .dataTables_length select {
+    background-color: var(--t-bg);
+    border: 1px solid var(--t-border);
+    color: var(--t-text);
+}
+
+.dim-panel .dataTables_info,
+.dim-panel .dataTables_length label,
+.dim-panel .dataTables_filter label {
+    color: var(--t-text-mute);
+}
+
+.dim-panel .dataTables_paginate .paginate_button {
+    color: var(--t-text-mute) !important;
+    background: transparent !important;
+    border: 1px solid var(--t-border) !important;
+}
+
+.dim-panel .dataTables_paginate .paginate_button:hover {
+    color: var(--t-text) !important;
+    background: var(--t-bg-elevated) !important;
+    border-color: var(--t-primary-edge) !important;
+}
+
+.dim-panel .dataTables_paginate .paginate_button.current,
+.dim-panel .dataTables_paginate .paginate_button.current:hover {
+    color: var(--t-text) !important;
+    background: rgba(0, 113, 187, 0.16) !important;
+    border-color: var(--t-primary-edge) !important;
+}
+
+.dim-panel .dataTables_paginate .paginate_button.disabled,
+.dim-panel .dataTables_paginate .paginate_button.disabled:hover {
+    color: var(--t-text-dim) !important;
+    border-color: var(--t-border) !important;
+}
+
+/* Select2 — selection box + dropdown. */
+.dim-panel .select2-container--default .select2-selection--single,
+.dim-panel .select2-container--default .select2-selection--multiple {
+    background-color: var(--t-bg);
+    border: 1px solid var(--t-border);
+    color: var(--t-text);
+}
+
+.dim-panel .select2-container--default .select2-selection--single .select2-selection__rendered,
+.dim-panel .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    color: var(--t-text);
+}
+
+.dim-panel .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: var(--t-text-dim);
+}
+
+.dim-panel .select2-dropdown {
+    background-color: var(--t-bg-elevated);
+    border: 1px solid var(--t-border);
+    color: var(--t-text);
+}
+
+.dim-panel .select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: rgba(0, 113, 187, 0.16);
+    color: var(--t-text);
+}
+
+.dim-panel .select2-container--default .select2-search--dropdown .select2-search__field {
+    background-color: var(--t-bg);
+    border: 1px solid var(--t-border);
+    color: var(--t-text);
+}
+
+/* Summernote rich-text editor (mail templates). */
+.dim-panel .note-editor.note-frame {
+    background-color: var(--t-bg-elevated);
+    border: 1px solid var(--t-border);
+}
+
+.dim-panel .note-editor .note-toolbar {
+    background-color: var(--t-bg);
+    border-bottom: 1px solid var(--t-border);
+}
+
+.dim-panel .note-editor .note-btn,
+.dim-panel .note-editor .note-btn-group .note-btn {
+    background-color: var(--t-bg-elevated);
+    border-color: var(--t-border);
+    color: var(--t-text-mute);
+}
+
+.dim-panel .note-editor .note-btn:hover {
+    background-color: var(--t-surface);
+    color: var(--t-text);
+}
+
+.dim-panel .note-editor .note-editable {
+    background-color: var(--t-bg);
+    color: var(--t-text);
+}
+
+.dim-panel .note-editor .note-statusbar {
+    background-color: var(--t-bg-elevated);
+    border-top: 1px solid var(--t-border);
+}
+
+/* List-group (sidebar settings panels, log lists). */
+.dim-panel .list-group-item {
+    background-color: var(--t-bg-elevated);
+    border-color: var(--t-border);
+    color: var(--t-text);
+}
+
+.dim-panel .list-group-item.active {
+    background-color: rgba(0, 113, 187, 0.16);
+    border-color: var(--t-primary-edge);
+}
+
+/* Custom checkbox / radio (used in modals + forms). */
+.dim-panel .custom-control-label::before {
+    background-color: var(--t-bg);
+    border-color: var(--t-border);
+}
+
+.dim-panel .custom-control-input:checked ~ .custom-control-label::before {
+    background-color: var(--t-primary);
+    border-color: var(--t-primary);
+}
