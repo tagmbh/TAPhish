@@ -77,7 +77,12 @@ function saveCampaignList($conn, &$POSTJ){
 	$scheduled_time = $POSTJ['scheduled_time'];
 	$camp_status = $POSTJ['camp_status'];
 
-	if(checkCampaignListIdExist($conn,$campaign_id)){
+	// Phase 3.35: capture the existence check before the write so we can
+	// log "created" vs "updated" accurately afterwards. The INSERT path
+	// flips the existence bit, so reusing the check below would always
+	// see the row as existing.
+	$is_update = checkCampaignListIdExist($conn,$campaign_id);
+	if($is_update){
 		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_list SET campaign_name=?, campaign_data=?, scheduled_time=?, stop_time=null, camp_status=?, camp_lock=0 WHERE campaign_id=?");
 		$stmt->bind_param('sssss', $campaign_name,$campaign_data,$scheduled_time,$camp_status,$campaign_id);
 	}
@@ -85,15 +90,16 @@ function saveCampaignList($conn, &$POSTJ){
 		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list(campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status,camp_lock) VALUES(?,?,?,?,?,?,0)");
 		$stmt->bind_param('ssssss', $campaign_id,$campaign_name,$campaign_data,$GLOBALS['entry_time'],$scheduled_time,$camp_status);
 	}
-	
+
 
 	if ($stmt->execute() === TRUE){
 		deleteLiveMailcampData($conn,$campaign_id); /// Clear live data before starting or when campaign deletes
 		kickStartCampaign($conn,$campaign_id);
-		echo json_encode(['result' => 'success']);	
+		logIt('Campaign ' . ($is_update ? 'updated' : 'created') . ': ' . $campaign_name);
+		echo json_encode(['result' => 'success']);
 	}
-	else 
-		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);	
+	else
+		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);
 }
 
 function getCampaignList($conn){
@@ -161,28 +167,41 @@ function getCampaignFromCampaignListId($conn, $campaign_id){
 	$stmt->close();
 }
 
-function deleteMailCampaignFromCampaignId($conn,$campaign_id){	
+function deleteMailCampaignFromCampaignId($conn,$campaign_id){
+	// Phase 3.35: read the name before delete so the audit-log entry
+	// can carry it. Cheap single-row lookup.
+	$name_stmt = $conn->prepare("SELECT campaign_name FROM tb_core_mailcamp_list WHERE campaign_id = ?");
+	$campaign_name = $campaign_id;
+	if ($name_stmt !== false) {
+		$name_stmt->bind_param("s", $campaign_id);
+		$name_stmt->execute();
+		$row = $name_stmt->get_result()->fetch_assoc();
+		if ($row && !empty($row['campaign_name'])) $campaign_name = $row['campaign_name'];
+		$name_stmt->close();
+	}
 	$stmt = $conn->prepare("DELETE FROM tb_core_mailcamp_list WHERE campaign_id = ?");
 	$stmt->bind_param("s", $campaign_id);
 	$stmt->execute();
 	if($stmt->affected_rows != 0){
-		echo json_encode(['result' => 'success']);	
+		echo json_encode(['result' => 'success']);
 		deleteLiveMailcampData($conn,$campaign_id); // Clear live data before starting or when campaign deletes
+		logIt('Campaign deleted: ' . $campaign_name);
 	}
 	else
-		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);	
+		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);
 	$stmt->close();
 }
 
 function makeCopyMailCampaignList($conn, $old_campaign_id, $new_campaign_id, $new_campaign_name){
 	$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list (campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status) SELECT ?, ?, campaign_data,?,scheduled_time,0 FROM tb_core_mailcamp_list WHERE campaign_id=?");
 	$stmt->bind_param("ssss", $new_campaign_id, $new_campaign_name, $GLOBALS['entry_time'], $old_campaign_id);
-	
+
 	if ($stmt->execute() === TRUE){
-		echo json_encode(['result' => 'success']);	
+		logIt('Campaign copied: ' . $new_campaign_name);
+		echo json_encode(['result' => 'success']);
 	}
-	else 
-		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);	
+	else
+		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);
 	$stmt->close();
 }
 

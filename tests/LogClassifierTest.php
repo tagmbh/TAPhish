@@ -83,4 +83,54 @@ final class LogClassifierTest extends TestCase
         $r = taphish_classify_log_entry('');
         self::assertSame(['kind' => 'SYS', 'severity' => 'ok'], $r);
     }
+
+    // Phase 3.35: new lifecycle verbs.
+
+    public function testCampaignUpdated(): void
+    {
+        $r = taphish_classify_log_entry('Campaign updated: Q3-it');
+        self::assertSame(['kind' => 'CAMP', 'severity' => 'ok'], $r);
+    }
+
+    public function testCampaignDeleted(): void
+    {
+        $r = taphish_classify_log_entry('Campaign deleted: Q3-it');
+        self::assertSame(['kind' => 'CAMP', 'severity' => 'warn'], $r);
+    }
+
+    public function testCampaignCopied(): void
+    {
+        $r = taphish_classify_log_entry('Campaign copied: Q3-it-clone');
+        self::assertSame(['kind' => 'CAMP', 'severity' => 'ok'], $r);
+    }
+
+    public function testRecipientListCreated(): void
+    {
+        $r = taphish_classify_log_entry('Recipient list created: finance-EU');
+        self::assertSame(['kind' => 'RECP', 'severity' => 'ok'], $r);
+    }
+
+    public function testRecipientListCopied(): void
+    {
+        $r = taphish_classify_log_entry('Recipient list copied: finance-EU-clone');
+        self::assertSame(['kind' => 'RECP', 'severity' => 'ok'], $r);
+    }
+
+    public function testTemplateUpdated(): void
+    {
+        $r = taphish_classify_log_entry('Template updated: Office365-reset');
+        self::assertSame(['kind' => 'TMPL', 'severity' => 'ok'], $r);
+    }
+
+    public function testTemplateDeleted(): void
+    {
+        $r = taphish_classify_log_entry('Template deleted: Office365-reset');
+        self::assertSame(['kind' => 'TMPL', 'severity' => 'warn'], $r);
+    }
+
+    public function testTemplateCopied(): void
+    {
+        $r = taphish_classify_log_entry('Template copied: Office365-reset-clone');
+        self::assertSame(['kind' => 'TMPL', 'severity' => 'ok'], $r);
+    }
 }
