@@ -40,10 +40,21 @@ final class BrandConfigTest extends TestCase
         self::assertSame(BRAND_PRODUCT_VERSION, brand_product_version());
     }
 
+    public function testCopyrightLinksToOfficialCompanyUrl(): void
+    {
+        $cr = brand_copyright();
+        self::assertStringContainsString(BRAND_COMPANY_URL, $cr);
+        self::assertStringContainsString('target="_blank"', $cr);
+        self::assertStringContainsString('rel="noopener noreferrer"', $cr);
+        self::assertStringContainsString(BRAND_PRODUCT_NAME, $cr);
+        self::assertStringContainsString(BRAND_PRODUCT_VERSION, $cr);
+    }
+
     public function testFreshInstallStillCarriesTAPhishDefaults(): void
     {
         // Catches accidental rebrand drift in committed defaults.
         self::assertSame('TAPhish', BRAND_PRODUCT_NAME);
-        self::assertSame('t-alpha GmbH', BRAND_COMPANY);
+        self::assertSame('T-Alpha GmbH', BRAND_COMPANY);
+        self::assertSame('https://www.t-alpha.ch', BRAND_COMPANY_URL);
     }
 }

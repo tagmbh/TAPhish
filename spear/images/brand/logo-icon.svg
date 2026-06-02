@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TAPhish">
+  <defs>
+    <linearGradient id="taBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a86d4"/>
+      <stop offset="1" stop-color="#0071bb"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#taBg)"/>
+  <text x="32" y="44" text-anchor="middle"
+        font-family="IBM Plex Sans, Inter, system-ui, sans-serif"
+        font-weight="700" font-size="30" fill="#ffffff" letter-spacing="-1">TA</text>
+</svg>
