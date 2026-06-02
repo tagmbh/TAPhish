@@ -177,4 +177,39 @@ final class EngagementTest extends TestCase
         self::assertContains('completed', $list);
         self::assertContains('cancelled', $list);
     }
+
+    // Phase 3.45b: pure-side validator + schema-migration presence.
+
+    public function testValidateTransitionAcceptsKnownStatuses(): void
+    {
+        foreach (taphish_engagement_status_list() as $s) {
+            self::assertTrue(taphish_engagement_validate_transition('draft', $s));
+        }
+    }
+
+    public function testValidateTransitionRejectsUnknownDestination(): void
+    {
+        self::assertFalse(taphish_engagement_validate_transition('draft', 'frobnicate'));
+        self::assertFalse(taphish_engagement_validate_transition('live', ''));
+    }
+
+    public function testEnsureCampaignFkColumnIsDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_engagement_ensure_campaign_fk_column'));
+    }
+
+    public function testTransitionStatusHelperIsDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_engagement_transition_status'));
+    }
+
+    public function testGetByIdHelperIsDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_engagement_get_by_id'));
+    }
+
+    public function testCampaignsHelperIsDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_engagement_campaigns'));
+    }
 }

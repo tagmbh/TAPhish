@@ -337,3 +337,115 @@ if (!function_exists('taphish_engagement_list')) {
         return $rows;
     }
 }
+
+if (!function_exists('taphish_engagement_ensure_campaign_fk_column')) {
+    /**
+     * Phase 3.45b: add a nullable `engagement_id` column to
+     * `tb_core_mailcamp_list` so a campaign can be scoped to an
+     * engagement. Nullable + indexed so existing campaigns stay
+     * untouched and EngagementView lookups are O(log n).
+     */
+    function taphish_engagement_ensure_campaign_fk_column(\mysqli $conn): void
+    {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'tb_core_mailcamp_list'
+               AND COLUMN_NAME = 'engagement_id'"
+        );
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->execute();
+        $present = (int) $stmt->get_result()->fetch_row()[0];
+        $stmt->close();
+        if ($present > 0) {
+            return;
+        }
+        @$conn->query("ALTER TABLE tb_core_mailcamp_list ADD COLUMN engagement_id INT UNSIGNED NULL DEFAULT NULL");
+        @$conn->query("CREATE INDEX idx_mailcamp_engagement ON tb_core_mailcamp_list(engagement_id)");
+    }
+}
+
+if (!function_exists('taphish_engagement_validate_transition')) {
+    /**
+     * Phase 3.45b: pure-side validator for engagement status changes.
+     * Allowed destination states come from
+     * `taphish_engagement_status_list()`; the actual CAS UPDATE lives
+     * in `taphish_engagement_transition_status()`.
+     */
+    function taphish_engagement_validate_transition(string $from, string $to): bool
+    {
+        $valid = taphish_engagement_status_list();
+        return in_array($to, $valid, true);
+    }
+}
+
+if (!function_exists('taphish_engagement_transition_status')) {
+    /**
+     * Phase 3.45b: compare-and-swap engagement status update. The
+     * WHERE-status clause means a double-click Launch can't double-
+     * launch — only the first UPDATE finds the matching row.
+     */
+    function taphish_engagement_transition_status(\mysqli $conn, int $id, string $from, string $to): bool
+    {
+        if (!taphish_engagement_validate_transition($from, $to)) {
+            return false;
+        }
+        $stmt = $conn->prepare("UPDATE tb_core_engagement SET status = ? WHERE id = ? AND status = ?");
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('sis', $to, $id, $from);
+        $ok = $stmt->execute();
+        $changed = $stmt->affected_rows > 0;
+        $stmt->close();
+        return $ok && $changed;
+    }
+}
+
+if (!function_exists('taphish_engagement_get_by_id')) {
+    function taphish_engagement_get_by_id(\mysqli $conn, int $id): ?array
+    {
+        $stmt = $conn->prepare(
+            "SELECT id, slug, name, target_org, start_at, end_at, scope_allowlist, notes, status, created_by, created_at
+             FROM tb_core_engagement WHERE id = ?"
+        );
+        if ($stmt === false) {
+            return null;
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row) {
+            return null;
+        }
+        $row['scope_allowlist'] = json_decode((string) $row['scope_allowlist'], true) ?: [];
+        return $row;
+    }
+}
+
+if (!function_exists('taphish_engagement_campaigns')) {
+    function taphish_engagement_campaigns(\mysqli $conn, int $id): array
+    {
+        $stmt = $conn->prepare(
+            "SELECT campaign_id, campaign_name, scheduled_time, camp_status, date
+             FROM tb_core_mailcamp_list
+             WHERE engagement_id = ?
+             ORDER BY date DESC"
+        );
+        if ($stmt === false) {
+            return [];
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $out = [];
+        while ($r = $res->fetch_assoc()) {
+            $out[] = $r;
+        }
+        $stmt->close();
+        return $out;
+    }
+}

@@ -76,6 +76,11 @@ function saveCampaignList($conn, &$POSTJ){
 	$campaign_data = json_encode($POSTJ['campaign_data']);
 	$scheduled_time = $POSTJ['scheduled_time'];
 	$camp_status = $POSTJ['camp_status'];
+	// Phase 3.45b: optional engagement linkage. NULL keeps legacy
+	// campaigns unaffected; only wizard-driven saves populate this.
+	$engagement_id = isset($POSTJ['engagement_id']) && (int) $POSTJ['engagement_id'] > 0
+		? (int) $POSTJ['engagement_id']
+		: null;
 
 	// Phase 3.35: capture the existence check before the write so we can
 	// log "created" vs "updated" accurately afterwards. The INSERT path
@@ -83,12 +88,22 @@ function saveCampaignList($conn, &$POSTJ){
 	// see the row as existing.
 	$is_update = checkCampaignListIdExist($conn,$campaign_id);
 	if($is_update){
-		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_list SET campaign_name=?, campaign_data=?, scheduled_time=?, stop_time=null, camp_status=?, camp_lock=0 WHERE campaign_id=?");
-		$stmt->bind_param('sssss', $campaign_name,$campaign_data,$scheduled_time,$camp_status,$campaign_id);
+		if ($engagement_id === null) {
+			$stmt = $conn->prepare("UPDATE tb_core_mailcamp_list SET campaign_name=?, campaign_data=?, scheduled_time=?, stop_time=null, camp_status=?, camp_lock=0 WHERE campaign_id=?");
+			$stmt->bind_param('sssss', $campaign_name,$campaign_data,$scheduled_time,$camp_status,$campaign_id);
+		} else {
+			$stmt = $conn->prepare("UPDATE tb_core_mailcamp_list SET campaign_name=?, campaign_data=?, scheduled_time=?, stop_time=null, camp_status=?, camp_lock=0, engagement_id=? WHERE campaign_id=?");
+			$stmt->bind_param('ssssis', $campaign_name,$campaign_data,$scheduled_time,$camp_status,$engagement_id,$campaign_id);
+		}
 	}
 	else{
-		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list(campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status,camp_lock) VALUES(?,?,?,?,?,?,0)");
-		$stmt->bind_param('ssssss', $campaign_id,$campaign_name,$campaign_data,$GLOBALS['entry_time'],$scheduled_time,$camp_status);
+		if ($engagement_id === null) {
+			$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list(campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status,camp_lock) VALUES(?,?,?,?,?,?,0)");
+			$stmt->bind_param('ssssss', $campaign_id,$campaign_name,$campaign_data,$GLOBALS['entry_time'],$scheduled_time,$camp_status);
+		} else {
+			$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list(campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status,camp_lock,engagement_id) VALUES(?,?,?,?,?,?,0,?)");
+			$stmt->bind_param('ssssssi', $campaign_id,$campaign_name,$campaign_data,$GLOBALS['entry_time'],$scheduled_time,$camp_status,$engagement_id);
+		}
 	}
 
 
