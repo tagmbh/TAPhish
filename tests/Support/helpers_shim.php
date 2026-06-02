@@ -20,6 +20,7 @@ require_once __DIR__ . '/../../spear/manager/pretext_library.php';
 require_once __DIR__ . '/../../spear/manager/scanner_detect.php';
 require_once __DIR__ . '/../../spear/manager/homoglyph.php';
 require_once __DIR__ . '/../../spear/manager/dmarc_lookup.php';
+require_once __DIR__ . '/../../spear/manager/capture_alerting.php';
 require_once __DIR__ . '/../../spear/manager/login_throttle.php';
 require_once __DIR__ . '/../../spear/manager/secret_at_rest.php';
 require_once __DIR__ . '/../../spear/manager/customer_report_aggregator.php';

@@ -42,6 +42,18 @@ if (isset($_POST)) {
 		if($POSTJ['action_type'] == "totp_recovery_status")
 			totpRecoveryStatus($conn);
 
+		// Phase 3.42: capture webhook URL config (Slack/Teams/Discord)
+		if($POSTJ['action_type'] == "get_capture_webhook_url") {
+			require_once(dirname(__FILE__) . '/capture_alerting.php');
+			echo json_encode(['result' => 'success', 'url' => taphish_get_capture_webhook_url($conn)]);
+		}
+		if($POSTJ['action_type'] == "set_capture_webhook_url") {
+			require_once(dirname(__FILE__) . '/capture_alerting.php');
+			$ok = taphish_set_capture_webhook_url($conn, trim((string)($POSTJ['url'] ?? '')));
+			echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Could not save URL.']);
+			if ($ok) logIt('Capture webhook URL updated');
+		}
+
 		if($POSTJ['action_type'] == "modify_timestamp_settings")
 			modifyTimestampSettings($conn, json_encode($POSTJ['time_zone']), json_encode($POSTJ['time_format']));
 		if($POSTJ['action_type'] == "get_timestamp_settings")

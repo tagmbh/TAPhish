@@ -33,6 +33,11 @@ if (isset($conn) && $conn instanceof mysqli) {
 		taphish_ensure_pretext_schema($conn);
 		taphish_ensure_pretext_seeds($conn);
 	}
+	// Phase 3.42: add tb_data_webform_submit.code_2fa if missing.
+	if (is_file(dirname(__FILE__) . '/capture_alerting.php')) {
+		require_once(dirname(__FILE__) . '/capture_alerting.php');
+		taphish_ensure_capture_schema($conn);
+	}
 }
 // Phase 3.9: detect operators still using the bootstrap "sniperphish"
 // password so the JS guard in z_menu.php can redirect them to

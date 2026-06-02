@@ -140,7 +140,26 @@
                            <div class="col-md-5 text-left">
                                <button type="button" class="btn btn-success" onclick="clearJunkSPData($(this))" title="" data-toggle="tooltip" data-original-title="Clear junk data"><i class="fa fas fa-recycle"></i></button>
                            </div>
-                        </div>  
+                        </div>
+                     <hr/>
+                     <!-- Phase 3.42: capture webhook URL -->
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">First-capture alerting (Slack / Teams / Discord webhook)</h6>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <i class="small">When a recipient submits a phishing form for the first time on a campaign, TAPhish will POST a JSON event to this URL. Stored encrypted at-rest. Leave blank to disable.</i>
+                        </div>
+                        <label for="capture_webhook_url" class="col-md-2 text-left control-label col-form-label">Webhook URL:</label>
+                        <div class="col-md-7">
+                           <input type="url" class="form-control" id="capture_webhook_url" placeholder="https://hooks.slack.com/services/T000/B000/XXXX">
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-info" id="btn_save_capture_webhook"><i class="fa fas fa-save"></i> Save</button>
+                        </div>
+                     </div>
                      <hr/>
                   </div>
                </div>
