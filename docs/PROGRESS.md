@@ -11,8 +11,8 @@ Living document. Updated when phases ship.
 ## Where we are
 
 - Production fork live at <https://ptbe.autodiscover.li/spear/> (operator panel).
-- **Test suite**: 365 tests / 1146 assertions, all green.
-- **Last verified end-to-end**: Phase 3.42 + 2 hotfixes (jQuery paths, CSRF rotation) — Playwright-walked every page, every AJAX endpoint hits 200, zero console errors across the panel.
+- **Test suite**: 389 tests / 1184 assertions, all green.
+- **Last verified end-to-end**: Phase 3.42 + 2 hotfixes (jQuery paths, CSRF rotation) — Playwright-walked every page, every AJAX endpoint hits 200, zero console errors across the panel. Phase 3.43a + alert-contrast + SiteCloner-UX deployed 2026-06-02; live verification pending FTPS deploy completion.
 - **CI/CD**: GitHub Actions → FTPS deploy to Hostpoint Shared.
 
 ## Phases completed
@@ -34,6 +34,9 @@ Living document. Updated when phases ship.
 | 3.42 | First-capture webhook alerting (Slack / Teams / Discord compatible JSON shape). `code_2fa` column on `tb_data_webform_submit`. Webhook URL stored encrypted at-rest in `tb_store`. New SettingsGeneral card to configure. |
 | 3.39+ hotfix | jQuery / waves.js / sidebarmenu.js path corrections in PretextLibrary + SenderToolkit |
 | 3.34+ hotfix | `createSession()` was rotating `_csrf` on every page refresh — every authenticated AJAX 403'd. Preserve token across refresh, mint only on actual login. (Bug existed since CSRF gate was introduced; surfaced during Phase 3.39 QA.) |
+| 3.34+ hotfix 2 | `.alert-success` / `.alert-info` / `.alert-primary` / `.alert-secondary` were light-text on Bootstrap-default pale-tinted bg on dim panels (most visible: SiteCloner result box). Added semantic-color tinted bg + matching fg, mirroring the alert-warning / alert-danger pattern. |
+| 3.43a | Quick-Start Wizard — Step 1: engagement metadata. New `tb_core_engagement` (slug + window + scope_allowlist + notes + status). `spear/QuickStart.php` page with form + recent-engagements list + "use in campaign" links. Boot-time idempotent schema + `save_engagement` / `list_engagements` dispatcher + log_classifier `ENGM` / `CLON` rules. 22 new engagement helper tests. |
+| SiteCloner UX | After-clone box now shows publicly-accessible landing-page URL (built from request scheme/host honoring `X-Forwarded-Proto`) with Copy + Open buttons, plus a three-step "use this clone in a campaign" hint deep-linking to MailCampaign / WebTracker. Existing-clones table grows per-row open / copy URL links. |
 
 ## What you can already do today
 
