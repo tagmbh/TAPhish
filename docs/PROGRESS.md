@@ -11,7 +11,7 @@ Living document. Updated when phases ship.
 ## Where we are
 
 - Production fork live at <https://ptbe.autodiscover.li/spear/> (operator panel).
-- **Test suite**: 415 tests / 1243 assertions, all green.
+- **Test suite**: 418 tests / 1249 assertions, all green.
 - **Last verified end-to-end**: Phase 3.42 + 2 hotfixes (jQuery paths, CSRF rotation) — Playwright-walked every page, every AJAX endpoint hits 200, zero console errors across the panel. Phase 3.43a + alert-contrast + SiteCloner-UX deployed 2026-06-02; live verification pending FTPS deploy completion.
 - **CI/CD**: GitHub Actions → FTPS deploy to Hostpoint Shared.
 
@@ -37,6 +37,7 @@ Living document. Updated when phases ship.
 | 3.34+ hotfix 2 | `.alert-success` / `.alert-info` / `.alert-primary` / `.alert-secondary` were light-text on Bootstrap-default pale-tinted bg on dim panels (most visible: SiteCloner result box). Added semantic-color tinted bg + matching fg, mirroring the alert-warning / alert-danger pattern. |
 | 3.43a | Quick-Start Wizard — Step 1: engagement metadata. New `tb_core_engagement` (slug + window + scope_allowlist + notes + status). `spear/QuickStart.php` page with form + recent-engagements list + "use in campaign" links. Boot-time idempotent schema + `save_engagement` / `list_engagements` dispatcher + log_classifier `ENGM` / `CLON` rules. 22 new engagement helper tests. |
 | 3.43b | Quick-Start Wizard — Step 2: OSINT pre-check fan-out. New `mx_classify.php` (24 known providers across cloud-mailbox / security-gateway / shared-host buckets + pretext-category recommendations). New `web_fingerprint.php` (title + generator + robots.txt + .well-known/security.txt). New dispatcher actions `mx_classify_domain` / `web_fingerprint`. QuickStart page grows a six-card OSINT panel that fans out SPF/DMARC + MX + homoglyph + crt.sh + Hunter + web-fingerprint in parallel. 26 new helper tests. |
+| 3.43c | Quick-Start Wizard — Step 3: pretext picker filtered by detected tech stack. New `taphish_pretext_rank_for_categories` + `taphish_pretext_list_flat` pure helpers. New dispatcher action `list_pretexts_ranked`. QuickStart auto-renders top-8 pretexts ranked by the MX-classifier's `pretext_categories` once the MX lane resolves; one-click clone deep-links to the editable copy. 3 new ranking tests. |
 | SiteCloner UX | After-clone box now shows publicly-accessible landing-page URL (built from request scheme/host honoring `X-Forwarded-Proto`) with Copy + Open buttons, plus a three-step "use this clone in a campaign" hint deep-linking to MailCampaign / WebTracker. Existing-clones table grows per-row open / copy URL links. |
 | Branding | Footer was `t-alpha GmbH` (lowercase) — official brand is `T-Alpha GmbH`. Fixed in `brand.php` + tests. New `brand_copyright()` shape links to `www.t-alpha.ch` + appends product name + version. New SVG logos (`logo.svg` / `logo-text.svg` / `logo-icon.svg`) replace the old PNGs — crisp at any zoom, lead with `TAPhish` wordmark + small "BY T-ALPHA GMBH" caption. Old PNGs removed. |
 

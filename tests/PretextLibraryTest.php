@@ -99,4 +99,39 @@ final class PretextLibraryTest extends TestCase
             );
         }
     }
+
+    // Phase 3.43c: ranking by preferred category.
+
+    public function testRankForCategoriesFloatsPreferred(): void
+    {
+        $list = [
+            ['id' => 1, 'category' => 'Shipping',       'name' => 'FedEx',  'subject' => '', 'body' => ''],
+            ['id' => 2, 'category' => 'Authentication', 'name' => 'M365',   'subject' => '', 'body' => ''],
+            ['id' => 3, 'category' => 'IT',             'name' => 'Reset',  'subject' => '', 'body' => ''],
+        ];
+        $ranked = taphish_pretext_rank_for_categories($list, ['Authentication', 'IT']);
+        self::assertSame(2, $ranked[0]['id']);
+        self::assertSame(3, $ranked[1]['id']);
+        self::assertSame(1, $ranked[2]['id']);
+    }
+
+    public function testRankForCategoriesIsStableAlphaWithinTier(): void
+    {
+        $list = [
+            ['id' => 1, 'category' => 'Authentication', 'name' => 'M365',   'subject' => '', 'body' => ''],
+            ['id' => 2, 'category' => 'Authentication', 'name' => 'Google', 'subject' => '', 'body' => ''],
+        ];
+        $ranked = taphish_pretext_rank_for_categories($list, ['Authentication']);
+        self::assertSame('Google', $ranked[0]['name']);
+        self::assertSame('M365',   $ranked[1]['name']);
+    }
+
+    public function testRankForCategoriesIgnoresUnknownPreferences(): void
+    {
+        $list = [
+            ['id' => 1, 'category' => 'Esoteric', 'name' => 'A', 'subject' => '', 'body' => ''],
+        ];
+        $ranked = taphish_pretext_rank_for_categories($list, ['Authentication']);
+        self::assertSame(1, $ranked[0]['id']);
+    }
 }

@@ -297,6 +297,62 @@ if (!function_exists('taphish_pretext_list')) {
     }
 }
 
+if (!function_exists('taphish_pretext_rank_for_categories')) {
+    /**
+     * Phase 3.43c: re-rank a flat pretext list according to a preferred
+     * category order. Pretexts whose category appears earlier in the
+     * preferred list float to the top, with ties broken by name. Used
+     * by the Quick-Start wizard to surface pretexts that match the
+     * detected mail-stack (e.g. M365 detected ⇒ Authentication first).
+     *
+     * Pure (no DB). Operates on the flat shape — each entry is
+     * `['id', 'category', 'name', 'subject', 'body', 'tags']`.
+     *
+     * @param array $pretexts Flat list of pretext rows.
+     * @param string[] $preferredCategories Earlier = higher priority.
+     * @return array Ranked pretext rows (input rows unchanged otherwise).
+     */
+    function taphish_pretext_rank_for_categories(array $pretexts, array $preferredCategories): array
+    {
+        $rank = [];
+        foreach ($preferredCategories as $i => $c) {
+            $rank[$c] = $i;
+        }
+        $tail = count($preferredCategories);
+        usort($pretexts, function ($a, $b) use ($rank, $tail) {
+            $ra = $rank[$a['category'] ?? ''] ?? $tail;
+            $rb = $rank[$b['category'] ?? ''] ?? $tail;
+            if ($ra !== $rb) return $ra - $rb;
+            return strcmp($a['name'] ?? '', $b['name'] ?? '');
+        });
+        return $pretexts;
+    }
+}
+
+if (!function_exists('taphish_pretext_list_flat')) {
+    /**
+     * Same as taphish_pretext_list but returns a flat list (no
+     * grouping) — suitable for ranking + truncation.
+     */
+    function taphish_pretext_list_flat(\mysqli $conn): array
+    {
+        $out = [];
+        $res = @$conn->query(
+            "SELECT id, category, name, subject, body, tags
+               FROM tb_core_pretext_library
+              ORDER BY category, name"
+        );
+        if (!$res) {
+            return $out;
+        }
+        while ($r = $res->fetch_assoc()) {
+            $out[] = $r;
+        }
+        $res->close();
+        return $out;
+    }
+}
+
 if (!function_exists('taphish_pretext_clone_to_my_templates')) {
     /**
      * Copy a pretext seed into the operator's mail-template table.
