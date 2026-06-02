@@ -12,7 +12,7 @@ Living document. Updated when phases ship.
 
 - Production fork live at <https://ptbe.autodiscover.li/spear/> (operator panel).
 - **Test suite**: 497 tests / 1379 assertions, all green.
-- **Last verified end-to-end**: Phase 3.42 + 2 hotfixes (jQuery paths, CSRF rotation) — Playwright-walked every page, every AJAX endpoint hits 200, zero console errors across the panel. Phase 3.43a + alert-contrast + SiteCloner-UX deployed 2026-06-02; live verification pending FTPS deploy completion.
+- **Last verified end-to-end**: Phase 3.45 (all 5 slices) — 2026-06-02. Playwright walked the QuickStart Wizard end-to-end (Steps 1–7 all render, stepper advances, DKIM gen produces real `v=DKIM1; k=rsa; p=…` records on Hostpoint, recipient preview surfaces partial-import errors, pre-flight evaluates 5 gates, CAS status transitions reject double-launch correctly, EngagementView reads + writes via the new dispatcher actions). One pre-existing `moment is not defined` warning in `common_scripts.js` — unrelated to 3.45.
 - **CI/CD**: GitHub Actions → FTPS deploy to Hostpoint Shared.
 
 ## Phases completed
@@ -67,95 +67,38 @@ Living document. Updated when phases ship.
 
 ## Roadmap — next phases
 
-### Phase 3.43 — Quick-Start Wizard *(highest impact, build next)*
+### Phase 3.46 — Landing-page clone library *(highest impact, build next)*
 
-A guided multi-step flow that takes an operator from "I have an engagement to set up" to "campaign ready to send" in ~5 minutes. Hooks together every pre-engagement helper TAPhish already has.
+Hand-curated, tested clones for the high-frequency targets — M365 login, Okta login, Google Workspace, Outlook Web Access, generic SAML SSO, VPN portal (Fortinet / Cisco). Each clone includes the form-submit endpoint wired to `track.php` and an optional 2FA second-step page that captures `code_2fa` (Phase 3.42 column). The Quick-Start Step 6 picker already shows library shortcut deep-links — this is the build-out behind them.
 
-**Step 1 — Engagement metadata**
-Name, target organisation, engagement window (start/end dates), authorised scope (allowlist of email domains the operator is permitted to phish). Saved to a new `tb_core_engagement` table so subsequent reports can scope by engagement.
+### Phase 3.47 — Engagement reports + PDF export
 
-**Step 2 — OSINT pre-check (one-click panel)**
-Operator types the target's primary domain. The wizard fans out:
-- DMARC/SPF/MX lookup → reuses Phase 3.41 `taphish_lookup_email_posture()`
-- Look-alike candidates → reuses Phase 3.41 `taphish_homoglyph_candidates()`
-- Subdomain enumeration → reuses existing `spear/manager/osint_crt_sh.php`
-- Email format guess → reuses existing `spear/manager/osint_hunter.php`
-- Tech-stack detection via MX records → new `spear/manager/mx_classify.php` (M365 / Google Workspace / Hostpoint / OnPrem / etc.)
-- Public web fingerprint → new lightweight helper that fetches `/robots.txt`, `/.well-known/*`, page `<title>`, `<meta name="generator">` for quick OSINT colour
-
-**Step 3 — Pretext selection**
-Filter the Phase 3.39 library by the detected tech stack — M365 detected ⇒ surface M365 pretexts first. One-click clone into the operator's templates with merge tokens already pre-filled from Step 1.
-
-**Step 4 — Sender setup**
-- Suggest a look-alike domain from Step 2's homoglyph results, ranked by confusability score
-- Generate DKIM key pair + recommended SPF / DMARC TXT records for the look-alike domain
-- Verify SMTP credentials against the configured Mail Sender (Phase 2.4 presets) with a live test send to a seed mailbox the operator owns
-- Verify IMAP login (already used by bounce-poll worker)
-
-**Step 5 — Recipient list**
-CSV upload → existing `uploadUserCVS` path → recipient PII encrypted at rest (Phase 3.38). Preview shows count + per-domain breakdown so the operator can sanity-check against the Step 1 allowlist before continuing.
-
-**Step 6 — Landing page**
-Three options:
-1. **Clone real page** via existing `spear/sniperhost` cloner
-2. **Generate via AI** via existing `spear/manager/ai_landing_page.php`
-3. **Library template** — new asset: hand-curated M365 / Okta / Google Workspace / Outlook Web Access / generic VPN clones with the form-submit endpoint pre-wired
-
-**Step 7 — Anti-scanner + alerting confirm**
-Webhook URL already-configured indicator (Phase 3.42); scanner detection on by default (Phase 3.40); confirm-or-edit panel.
-
-**Step 8 — Pre-flight check**
-Hard gates before "Launch":
-- Step 1 scope allowlist must cover every recipient domain (block otherwise)
-- DMARC posture from Step 2 vs. sender choice from Step 4 — if `p=reject` AND operator picked the real domain, refuse to send
-- Recipient count > 0
-- Mail Sender connectivity green
-- DKIM published on the look-alike (if applicable)
-- Webhook URL reachable (optional but recommended)
-
-**Step 9 — Send or schedule**
-Fire campaign or schedule for the engagement window. Returns a campaign-ID for the dashboard.
-
-**Toolset checker** *(usable standalone too, accessed from the same wizard at any step)*
-- SMTP / IMAP live probe
-- Outbound IP reputation (Spamhaus, SpamAssassin)
-- DKIM TXT presence + key sanity
-- SPF / DMARC TXT presence on the operator's sender domain
-- Webhook reachability ping
-- Cron worker liveness
-- /status endpoint check
-
-### Phase 3.44 — Landing-page clone library
-
-Hand-curated, tested clones for the high-frequency targets — M365 login, Okta login, Google Workspace, Outlook Web Access, generic SAML SSO, VPN portal (Fortinet / Cisco). Each clone includes the form-submit endpoint wired to `track.php` and an optional 2FA second-step page that captures `code_2fa` (Phase 3.42 column).
-
-### Phase 3.45 — Engagement reports + PDF export
-
-Per-engagement PDF report:
+Per-engagement PDF report aggregating across every linked campaign:
 - Campaign summary (send time, recipient count by domain — no individual PII)
-- Click/capture timeline (counts only)
+- Click/capture timeline (counts only, scanner-excluded by default)
 - Scanner-hit breakdown by vendor
-- Sender posture (DMARC verdict + actually used)
+- 2FA-capture counts (Phase 3.45e data)
+- Sender posture (DMARC verdict + actually used domain)
 - Operator notes
 
-Hooks into the `tb_core_engagement` table introduced in 3.43 and the existing audit log (Phase 3.35).
+Hooks into the `engagement_id` FK shipped in Phase 3.45b + the existing audit log (Phase 3.35).
 
-### Phase 3.46 — Multi-operator + RBAC
+### Phase 3.48 — Multi-operator + RBAC
 
 Right now there is one `admin` account. For a tooling shop running multiple concurrent engagements per operator, we want:
 - Role tiers: super-admin / operator / read-only
-- Engagement-scoped permissions (operator A can't see engagement B's recipient list)
+- Engagement-scoped permissions (operator A can't see engagement B's recipient list) — the FK from 3.45b is the scope unit
 - Per-operator API tokens for the dispatcher endpoints (so a script-driven send doesn't need a session)
 
-### Phase 3.47 — Recipient PII re-encrypt sweep
+### Phase 3.49 — Recipient PII re-encrypt sweep
 
 Migration command (CLI or `spear/manager/*.php` action) that walks every existing `tb_core_mailcamp_user_group` row, decrypts (passthrough handles plaintext today), re-encrypts via Phase 3.38 envelope. Forces the at-rest invariant rather than relying on the lazy "next-write-encrypts" pattern.
 
-### Phase 3.48 — Backup + snapshot mechanic
+### Phase 3.50 — Backup + snapshot mechanic
 
 DB dump + state-dir snapshot on a schedule. Encrypts the dump with the existing at-rest key. Stored in `spear/uploads/backups/` with rotation; optionally pushes to operator-configured S3 / WebDAV.
 
-### Phase 3.49 — Operator-side audit log viewer page
+### Phase 3.51 — Operator-side audit log viewer page
 
 Phase 3.35 captures everything; today only the last 10 entries surface on the Home dashboard. A dedicated `SettingsAuditLog.php` page with date/severity/kind filters, search, and CSV export.
 
@@ -167,5 +110,5 @@ Phase 3.35 captures everything; today only the last 10 entries surface on the Ho
 - Public docs site: <https://taphish.t-alpha.ch/> (GitHub Pages)
 - Repo: <https://github.com/tagmbh/TAPhish>
 - Deploy: Actions → `Deploy to operator host (FTPS)` → Run workflow (untick Dry-run for live push)
-- Tests: `vendor/bin/phpunit` (365/1146)
+- Tests: `vendor/bin/phpunit` (497/1379)
 - Lint: `php -l <file>`
