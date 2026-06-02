@@ -37,7 +37,7 @@
       <link rel="stylesheet" type="text/css" href="css/brand.css">
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
    </head>
-   <body class="dim-home">
+   <body class="dim-panel">
       <!-- ============================================================== -->
       <!-- Preloader - style you can find in spinners.css -->
       <!-- ============================================================== -->
