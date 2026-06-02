@@ -275,10 +275,15 @@ $(function () {
          download_images: $("#cb_download_images").is(":checked"),
          allow_private: $("#cb_allow_private").is(":checked"),
          force: $("#cb_force").is(":checked"),
+         beef_hook_enabled: $("#cb_beef_hook").is(":checked"),
       };
       postSiteCloner(payload)
          .done((res) => {
             renderCloneResult(res);
+            // Phase 3.52 task 5: surface the BeEF-not-configured warning.
+            if (res && res.beef_warning && window.toastr) {
+               toastr.warning(res.beef_warning, "BeEF hook not injected");
+            }
             refreshList();
          })
          .fail((xhr) => {
