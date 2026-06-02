@@ -161,6 +161,59 @@
                         </div>
                      </div>
                      <hr/>
+                     <!-- Phase 3.52: BeEF integration. Operator BYO BeEF;
+                          TAPhish stores creds encrypted at-rest and proxies
+                          the REST API for the per-clone hook toggle + the
+                          hooked-browsers dashboard. Module execution stays
+                          in BeEF's own UI. -->
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">BeEF integration <span class="badge badge-secondary ml-2">3.52</span></h6>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <div class="alert alert-warning small mb-2">
+                              <strong>Anti-malware note.</strong> The BeEF hook script is signature-detected
+                              by Microsoft Defender SmartScreen, Sophos, Symantec, and several EDR vendors.
+                              Enabling the hook on a landing page reduces its useful lifetime. Use only on
+                              engagements where the operator has agreed that hook-detection is acceptable.
+                              Per-clone opt-in lives in SiteCloner; this page only stores the credentials.
+                           </div>
+                           <i class="small">
+                              Point this at your BeEF server. Credentials are encrypted at-rest. The
+                              password is never returned to this page after save — leave it as the masked
+                              placeholder to keep the existing one when editing only URL / username. Leave
+                              the URL blank and save to forget the stored credentials entirely.
+                           </i>
+                        </div>
+                        <label for="beef_base_url" class="col-md-2 text-left control-label col-form-label">BeEF base URL:</label>
+                        <div class="col-md-7">
+                           <input type="url" class="form-control" id="beef_base_url" placeholder="http://beef.ops.example:3000">
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-info" id="btn_save_beef_settings"><i class="fa fas fa-save"></i> Save</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <label for="beef_username" class="col-md-2 text-left control-label col-form-label">Username:</label>
+                        <div class="col-md-3">
+                           <input type="text" class="form-control" id="beef_username" placeholder="beef" autocomplete="off">
+                        </div>
+                        <label for="beef_password" class="col-md-2 text-left control-label col-form-label">Password:</label>
+                        <div class="col-md-3">
+                           <input type="password" class="form-control" id="beef_password" placeholder="" autocomplete="new-password">
+                        </div>
+                        <div class="col-md-2 text-right">
+                           <button type="button" class="btn btn-outline-secondary" id="btn_test_beef_connection"><i class="fa fas fa-bolt"></i> Test</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <div id="beef_test_result" class="small mt-1"></div>
+                        </div>
+                     </div>
+                     <hr/>
                   </div>
                </div>
                <!-- ============================================================== -->

@@ -54,6 +54,61 @@ if (isset($_POST)) {
 			if ($ok) logIt('Capture webhook URL updated');
 		}
 
+		// ---- Phase 3.52: BeEF integration settings -----------------------
+		// Encrypted-at-rest credentials live in tb_store; the load action
+		// never returns the password (only a fixed-width mask). A "•••"
+		// sentinel in the password field on save means "keep existing".
+		if($POSTJ['action_type'] == "beef_settings_load") {
+			require_once(dirname(__FILE__) . '/beef_integration.php');
+			$s = beef_settings_load($conn);
+			if ($s === null) {
+				echo json_encode(['result' => 'success', 'configured' => false]);
+			} else {
+				echo json_encode([
+					'result'          => 'success',
+					'configured'      => true,
+					'base_url'        => $s['base_url'],
+					'username'        => $s['username'],
+					'password_masked' => beef_settings_mask_password($s['password']),
+				]);
+			}
+		}
+		if($POSTJ['action_type'] == "beef_settings_save") {
+			require_once(dirname(__FILE__) . '/beef_integration.php');
+			$base = trim((string)($POSTJ['base_url'] ?? ''));
+			$user = trim((string)($POSTJ['username'] ?? ''));
+			$pass = (string)($POSTJ['password'] ?? '');
+			if ($base === '') {
+				beef_settings_delete($conn);
+				echo json_encode(['result' => 'success', 'cleared' => true]);
+				logIt('BeEF integration credentials cleared');
+			} elseif (!preg_match('#^https?://#i', $base)) {
+				echo json_encode(['result' => 'failed', 'error' => 'Invalid base URL — must start with http:// or https://']);
+			} else {
+				if ($pass === '' || preg_match('/^•+$/u', $pass)) {
+					$existing = beef_settings_load($conn);
+					$pass = $existing ? $existing['password'] : '';
+				}
+				$ok = beef_settings_save($conn, $base, $user, $pass);
+				echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Could not save credentials']);
+				if ($ok) logIt('BeEF integration credentials updated');
+			}
+		}
+		if($POSTJ['action_type'] == "beef_test_connection") {
+			require_once(dirname(__FILE__) . '/beef_integration.php');
+			$s = beef_settings_load($conn);
+			if ($s === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'BeEF settings not configured']);
+			} else {
+				$r = beef_authenticate($s['base_url'], $s['username'], $s['password']);
+				if ($r['ok']) {
+					echo json_encode(['result' => 'success', 'ok' => true]);
+				} else {
+					echo json_encode(['result' => 'success', 'ok' => false, 'error' => $r['err']]);
+				}
+			}
+		}
+
 		if($POSTJ['action_type'] == "modify_timestamp_settings")
 			modifyTimestampSettings($conn, json_encode($POSTJ['time_zone']), json_encode($POSTJ['time_format']));
 		if($POSTJ['action_type'] == "get_timestamp_settings")

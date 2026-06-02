@@ -442,5 +442,77 @@ function clearJunkSPData(e){
                     toastr.error('', 'Request failed (HTTP ' + xhr.status + ').');
                 });
         });
+
+        // ---- Phase 3.52: BeEF integration settings -----------------------
+        // Load fills the form once on page load; the password field stays
+        // masked ("•••…") until the operator edits it, at which point the
+        // save action treats only an all-bullets value as "keep existing".
+        function loadBeefSettings() {
+            postSettings({ action_type: 'beef_settings_load' }).done(function (d) {
+                if (!d || d.result !== 'success') return;
+                if (!d.configured) {
+                    $('#beef_base_url').val('');
+                    $('#beef_username').val('');
+                    $('#beef_password').val('');
+                    return;
+                }
+                $('#beef_base_url').val(d.base_url || '');
+                $('#beef_username').val(d.username || '');
+                $('#beef_password').val(d.password_masked || '');
+            });
+        }
+        loadBeefSettings();
+
+        $('#btn_save_beef_settings').on('click', function () {
+            var payload = {
+                action_type: 'beef_settings_save',
+                base_url:    $('#beef_base_url').val().trim(),
+                username:    $('#beef_username').val().trim(),
+                password:    $('#beef_password').val()
+            };
+            postSettings(payload)
+                .done(function (d) {
+                    if (d && d.result === 'success') {
+                        if (d.cleared) {
+                            toastr.success('', 'BeEF credentials cleared.');
+                        } else {
+                            toastr.success('', 'BeEF credentials saved.');
+                        }
+                        loadBeefSettings();  // refresh mask
+                        $('#beef_test_result').empty();
+                    } else {
+                        toastr.error('', (d && d.error) || 'Save failed.');
+                    }
+                })
+                .fail(function (xhr) {
+                    toastr.error('', 'Request failed (HTTP ' + xhr.status + ').');
+                });
+        });
+
+        $('#btn_test_beef_connection').on('click', function () {
+            $('#beef_test_result').html('<span class="text-muted">testing…</span>');
+            postSettings({ action_type: 'beef_test_connection' })
+                .done(function (d) {
+                    if (d && d.result === 'success' && d.ok) {
+                        $('#beef_test_result').html(
+                            '<span class="text-success">' +
+                            '<i class="fa fa-check"></i> BeEF reachable, credentials accepted.' +
+                            '</span>'
+                        );
+                    } else {
+                        var err = (d && d.error) || 'Test failed.';
+                        $('#beef_test_result').html(
+                            '<span class="text-warning">' +
+                            '<i class="fa fa-exclamation-triangle"></i> ' + $('<div>').text(err).html() +
+                            '</span>'
+                        );
+                    }
+                })
+                .fail(function (xhr) {
+                    $('#beef_test_result').html(
+                        '<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'
+                    );
+                });
+        });
     });
 })();
