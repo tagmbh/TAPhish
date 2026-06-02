@@ -10,6 +10,8 @@ require_once(dirname(__FILE__) . '/dmarc_lookup.php');
 require_once(dirname(__FILE__) . '/engagement.php');
 require_once(dirname(__FILE__) . '/mx_classify.php');
 require_once(dirname(__FILE__) . '/web_fingerprint.php');
+require_once(dirname(__FILE__) . '/toolset_checks.php');
+require_once(dirname(__FILE__) . '/capture_alerting.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -132,6 +134,30 @@ if (isset($_POST)) {
 			echo json_encode([
 				'result' => 'success',
 				'web'    => taphish_web_fingerprint($domain),
+			]);
+		}
+		// Phase 3.43h: Toolset Checker.
+		if($POSTJ['action_type'] == "run_toolset_checks") {
+			$webhook = '';
+			if (function_exists('taphish_get_webhook_url')) {
+				$webhook = (string) taphish_get_webhook_url($conn);
+			}
+			$host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? '');
+			$status_url = $host ? ('https://' . $host . '/status') : '';
+			$writable = [
+				dirname(__FILE__, 2) . '/uploads',
+				dirname(__FILE__, 2) . '/sniperhost/cloned',
+			];
+			$senderDomain = trim((string)($POSTJ['sender_domain'] ?? ''));
+			$opts = [
+				'sender_domain' => $senderDomain,
+				'webhook_url'   => $webhook,
+				'status_url'    => $status_url,
+				'writable_dirs' => $writable,
+			];
+			echo json_encode([
+				'result' => 'success',
+				'report' => taphish_toolset_run($opts),
 			]);
 		}
 		// Phase 3.43c: pretext picker filtered by detected tech stack.
