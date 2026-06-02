@@ -721,6 +721,44 @@ a:focus-visible {
     color: var(--t-danger);
 }
 
+.dim-panel .alert-success {
+    background-color: rgba(33, 191, 115, 0.12);
+    border-color: rgba(33, 191, 115, 0.45);
+    color: var(--t-success);
+}
+
+.dim-panel .alert-success .alert-link,
+.dim-panel .alert-success a,
+.dim-panel .alert-success code,
+.dim-panel .alert-success strong {
+    color: var(--t-success);
+}
+
+.dim-panel .alert-info {
+    background-color: rgba(36, 152, 224, 0.12);
+    border-color: rgba(36, 152, 224, 0.45);
+    color: #7fc7f0;
+}
+
+.dim-panel .alert-info .alert-link,
+.dim-panel .alert-info a,
+.dim-panel .alert-info code,
+.dim-panel .alert-info strong {
+    color: #7fc7f0;
+}
+
+.dim-panel .alert-primary {
+    background-color: rgba(0, 113, 187, 0.14);
+    border-color: rgba(0, 113, 187, 0.45);
+    color: var(--t-accent);
+}
+
+.dim-panel .alert-secondary {
+    background-color: rgba(138, 150, 167, 0.10);
+    border-color: var(--t-border);
+    color: var(--t-text);
+}
+
 /* ---- Phase 3.36: third-party widget theming for dim panels --------- */
 
 /* Bootstrap nav-tabs (used on Campaign editor, Tracker pages). */
