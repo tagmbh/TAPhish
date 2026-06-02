@@ -29,6 +29,15 @@
                </div>
             </div>
             <div class="container-fluid">
+               <ol class="t-stepper" id="t_stepper" aria-label="Wizard progress">
+                  <li data-step="1" class="is-active">Engagement</li>
+                  <li data-step="2">OSINT</li>
+                  <li data-step="3">Pretext</li>
+                  <li data-step="4">Sender</li>
+                  <li data-step="5">Recipients</li>
+                  <li data-step="6">Landing</li>
+                  <li data-step="7">Launch</li>
+               </ol>
                <div class="row">
                   <div class="col-lg-7 mb-4">
                      <div class="card">

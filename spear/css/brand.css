@@ -464,10 +464,28 @@ a:focus-visible {
 }
 
 .dim-panel .t-metric {
-    background: var(--t-bg-elevated);
+    background: linear-gradient(180deg, rgba(19,30,44,0.85), rgba(15,24,36,0.85));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--t-border);
     border-radius: var(--t-radius-lg);
     padding: 18px 18px 14px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 180ms ease-out, box-shadow 180ms ease-out;
+}
+.dim-panel .t-metric:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--t-shadow-1);
+}
+.dim-panel .t-metric::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--t-primary-edge), transparent 70%);
+    opacity: 0.7;
 }
 
 .dim-panel .t-metric-label {
@@ -479,12 +497,14 @@ a:focus-visible {
 }
 
 .dim-panel .t-metric-num {
-    font-family: var(--t-display);
-    font-size: 32px;
-    font-weight: 600;
+    font-family: var(--t-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    font-weight: 700;
     line-height: 1;
     margin-top: 10px;
     color: var(--t-text);
+    letter-spacing: -0.02em;
 }
 
 .dim-panel .t-metric-num.is-success { color: var(--t-success); }
@@ -993,4 +1013,339 @@ a:focus-visible {
     margin-top: auto;
     padding-top: 10px;
     border-top: 1px solid var(--t-border);
+
+}
+
+/* =====================================================================
+   Phase 3.44 — Visual refresh
+   Layered, additive on top of the existing dim-panel theme. No changes
+   to layout — purely depth, motion, and refinement.
+   ===================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+    .dim-panel .page-wrapper {
+        animation: t-page-in 220ms ease-out both;
+    }
+    @keyframes t-page-in {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: none; }
+    }
+}
+
+/* Atmospheric backdrop — soft radial vignettes anchored to brand color. */
+.dim-panel #main-wrapper {
+    position: relative;
+}
+.dim-panel #main-wrapper::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(900px 600px at 12% -10%, rgba(0,113,187,0.12), transparent 60%),
+        radial-gradient(800px 700px at 110% 110%, rgba(33,191,115,0.06), transparent 65%);
+    z-index: 0;
+}
+.dim-panel .page-wrapper,
+.dim-panel .left-sidebar,
+.dim-panel .topbar {
+    position: relative;
+    z-index: 1;
+}
+
+/* Frosted glass on every surfaced card. */
+.dim-panel .card {
+    background-color: rgba(19, 30, 44, 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid var(--t-border);
+    border-radius: var(--t-radius-lg);
+    box-shadow: var(--t-shadow-1);
+    transition: transform 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out;
+}
+.dim-panel .card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--t-shadow-2);
+    border-color: rgba(42, 142, 212, 0.45);
+}
+
+/* Card title — distinctive accent rule that sweeps in. */
+.dim-panel .card-title {
+    position: relative;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+}
+.dim-panel .card-title::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: 0;
+    height: 2px;
+    width: 36px;
+    border-radius: 1px;
+    background: linear-gradient(90deg, var(--t-primary-edge), transparent);
+    transition: width 220ms ease-out;
+}
+.dim-panel .card:hover .card-title::after {
+    width: 64px;
+}
+
+/* Page title — display-font hairline divider with accent. */
+.dim-panel .page-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    position: relative;
+    padding-bottom: 8px;
+}
+.dim-panel .page-title::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: 0;
+    height: 3px;
+    width: 48px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--t-primary), var(--t-primary-edge) 70%, transparent);
+}
+
+/* Topbar — refined separator + subtle shine. */
+.dim-panel .topbar {
+    background: linear-gradient(180deg, rgba(19,30,44,0.85), rgba(12,22,34,0.85));
+    border-bottom: 1px solid var(--t-border);
+    backdrop-filter: blur(10px);
+}
+
+/* Buttons — restrained gradient + clearer press feedback. */
+.dim-panel .btn-info,
+.dim-panel .btn-primary {
+    background: linear-gradient(180deg, var(--t-primary-edge), var(--t-primary));
+    border-color: var(--t-primary);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 4px 12px rgba(0,113,187,0.30);
+    transition: transform 120ms ease-out, box-shadow 160ms ease-out, filter 160ms ease-out;
+}
+.dim-panel .btn-info:hover,
+.dim-panel .btn-primary:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 8px 20px rgba(0,113,187,0.42);
+}
+.dim-panel .btn-info:active,
+.dim-panel .btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 6px rgba(0,113,187,0.30);
+}
+
+.dim-panel .btn-success {
+    background: linear-gradient(180deg, #2dd084, var(--t-success));
+    border-color: var(--t-success);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 4px 12px rgba(33,191,115,0.28);
+}
+.dim-panel .btn-danger {
+    background: linear-gradient(180deg, #ed635f, var(--t-danger));
+    border-color: var(--t-danger);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 4px 12px rgba(230,73,70,0.28);
+}
+
+/* Form controls — clearer focus ring. */
+.dim-panel .form-control:focus {
+    border-color: var(--t-primary-edge);
+    box-shadow: 0 0 0 3px rgba(42, 142, 212, 0.22);
+}
+
+/* Badges — chip-style pill with subtle inner shadow. */
+.dim-panel .badge {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.18) inset;
+}
+.dim-panel .badge-info {
+    background: rgba(42,142,212,0.18);
+    color: #7fc7f0;
+}
+.dim-panel .badge-success {
+    background: rgba(33,191,115,0.18);
+    color: var(--t-success);
+}
+.dim-panel .badge-warning {
+    background: rgba(240,164,49,0.18);
+    color: var(--t-warn);
+}
+.dim-panel .badge-danger {
+    background: rgba(230,73,70,0.18);
+    color: var(--t-danger);
+}
+.dim-panel .badge-secondary {
+    background: rgba(138,150,167,0.15);
+    color: var(--t-text-mute);
+}
+
+/* Tables — restrained zebra + hover. */
+.dim-panel .table {
+    color: var(--t-text);
+}
+.dim-panel .table thead th {
+    border-bottom: 1px solid var(--t-border);
+    font-weight: 600;
+    color: var(--t-text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.75rem;
+}
+.dim-panel .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255,255,255,0.015);
+}
+.dim-panel .table tbody tr {
+    transition: background-color 140ms ease-out;
+}
+.dim-panel .table tbody tr:hover {
+    background-color: rgba(42,142,212,0.06);
+}
+
+/* Wizard stepper — Phase 3.43 onwards. */
+.t-stepper {
+    display: flex;
+    gap: 0;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px 0;
+    position: relative;
+}
+.t-stepper > li {
+    flex: 1;
+    position: relative;
+    text-align: center;
+    color: var(--t-text-dim);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding-top: 38px;
+}
+.t-stepper > li::before {
+    content: attr(data-step);
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--t-bg-elevated);
+    border: 1px solid var(--t-border);
+    color: var(--t-text-dim);
+    font-family: var(--t-mono);
+    font-weight: 700;
+    font-size: 0.85rem;
+    line-height: 26px;
+    text-align: center;
+    transition: background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out;
+}
+.t-stepper > li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 13px; left: calc(50% + 18px); right: calc(-50% + 18px);
+    height: 2px;
+    background: var(--t-border);
+}
+.t-stepper > li.is-active {
+    color: var(--t-text);
+    font-weight: 600;
+}
+.t-stepper > li.is-active::before {
+    background: linear-gradient(180deg, var(--t-primary-edge), var(--t-primary));
+    border-color: var(--t-primary-edge);
+    color: #fff;
+    box-shadow: 0 0 0 5px rgba(0,113,187,0.22);
+}
+.t-stepper > li.is-done {
+    color: var(--t-text-mute);
+}
+.t-stepper > li.is-done::before {
+    content: "✓";
+    background: rgba(33,191,115,0.18);
+    border-color: rgba(33,191,115,0.5);
+    color: var(--t-success);
+}
+.t-stepper > li.is-done:not(:last-child)::after {
+    background: linear-gradient(90deg, rgba(33,191,115,0.5), var(--t-border));
+}
+
+/* Loading skeletons — Phase 3.43 OSINT lanes etc. */
+.t-skel {
+    display: block;
+    background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    background-size: 200% 100%;
+    border-radius: 4px;
+    height: 12px;
+    margin: 8px 0;
+    animation: t-skel-pulse 1200ms ease-in-out infinite;
+}
+.t-skel.is-tall { height: 18px; }
+.t-skel.is-short { width: 40%; }
+@keyframes t-skel-pulse {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Activity feed — refined chips on the Home dashboard. */
+.t-activity .t-activity-row {
+    transition: background-color 140ms ease-out, transform 140ms ease-out;
+}
+.t-activity .t-activity-row:hover {
+    background-color: rgba(42,142,212,0.06);
+    transform: translateX(2px);
+}
+.t-activity .t-activity-kind {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(138,150,167,0.14);
+    color: var(--t-text);
+    font-family: var(--t-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.18) inset;
+}
+/* Per-kind tinting — drives off the same kinds the classifier emits. */
+.t-activity .t-activity-row[data-kind="AUTH"] .t-activity-kind { background: rgba(33,191,115,0.18); color: var(--t-success); }
+.t-activity .t-activity-row[data-kind="CAMP"] .t-activity-kind { background: rgba(42,142,212,0.18); color: #7fc7f0; }
+.t-activity .t-activity-row[data-kind="RECP"] .t-activity-kind { background: rgba(118,151,236,0.18); color: #aabffb; }
+.t-activity .t-activity-row[data-kind="TMPL"] .t-activity-kind { background: rgba(176,131,222,0.18); color: #cba8e6; }
+.t-activity .t-activity-row[data-kind="SEND"] .t-activity-kind { background: rgba(255,184,72,0.18); color: var(--t-warn); }
+.t-activity .t-activity-row[data-kind="SCAN"] .t-activity-kind { background: rgba(240,164,49,0.18); color: var(--t-warn); }
+.t-activity .t-activity-row[data-kind="CAPT"] .t-activity-kind { background: rgba(33,191,115,0.22); color: var(--t-success); }
+.t-activity .t-activity-row[data-kind="ENGM"] .t-activity-kind { background: rgba(0,113,187,0.20); color: var(--t-primary-edge); }
+.t-activity .t-activity-row[data-kind="CLON"] .t-activity-kind { background: rgba(176,131,222,0.18); color: #cba8e6; }
+.t-activity .t-activity-row[data-kind="SYS"]  .t-activity-kind { background: rgba(138,150,167,0.15); color: var(--t-text-mute); }
+
+/* Sidebar — subtle gradient + active-state polish. */
+.dim-panel .left-sidebar {
+    background: linear-gradient(180deg, #0f1a28 0%, #0a1320 100%);
+    border-right: 1px solid var(--t-border);
+}
+.dim-panel .left-sidebar .sidebar-link {
+    transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+.dim-panel .left-sidebar .sidebar-link:hover {
+    color: var(--t-text);
+}
+
+/* Modal — frosted panel. */
+.dim-panel .modal-content {
+    background-color: rgba(19, 30, 44, 0.85);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid var(--t-border);
+    box-shadow: var(--t-shadow-2);
+}
+
+/* Alerts — flatter, more legible. */
+.dim-panel .alert {
+    border-radius: var(--t-radius);
+    border-width: 1px;
+}
+
+/* Inputs — softer surface. */
+.dim-panel .input-group-text {
+    background: var(--t-bg-elevated);
+    border-color: var(--t-border);
+    color: var(--t-text-mute);
 }

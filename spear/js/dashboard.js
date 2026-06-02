@@ -78,9 +78,10 @@
         }
         data.entries.forEach(function (e) {
             var sev = e.severity || 'ok';
-            var $row = $('<div/>', { class: 't-activity-row' });
+            var kind = e.kind || 'SYS';
+            var $row = $('<div/>', { class: 't-activity-row', 'data-kind': kind });
             $row.append($('<span/>', { class: 't-activity-time', text: e.time || '' }));
-            $row.append($('<span/>', { class: 't-activity-kind', text: e.kind || 'SYS' }));
+            $row.append($('<span/>', { class: 't-activity-kind', text: kind }));
             $row.append($('<span/>', { class: 't-activity-msg',  text: e.message || '' }));
             $row.append($('<span/>', { class: 't-activity-sev is-' + sev, text: sev }));
             $body.append($row);
