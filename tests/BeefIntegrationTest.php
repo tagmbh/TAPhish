@@ -338,4 +338,35 @@ final class BeefIntegrationTest extends TestCase
         // 3-char input pads to the minimum 4 dots so length doesn't leak.
         self::assertSame('••••', beef_settings_mask_password('abc'));
     }
+
+    // ---- Phase 3.52 task 8: scope-tag helper ------------------------------
+
+    public function testTagHooksAppendsInScopeFlag(): void
+    {
+        $hooks = [
+            ['id' => '1', 'ip' => '1.1.1.1', 'domain' => 'login.acme.com',  'os' => '', 'browser' => 'Chrome'],
+            ['id' => '2', 'ip' => '2.2.2.2', 'domain' => 'login.other.com', 'os' => '', 'browser' => 'Firefox'],
+        ];
+        $out = beef_tag_hooks_with_scope($hooks, ['acme.com']);
+        self::assertTrue($out[0]['in_scope']);
+        self::assertSame('', $out[0]['scope_reason']);
+        self::assertFalse($out[1]['in_scope']);
+        self::assertSame('domain not in scope', $out[1]['scope_reason']);
+    }
+
+    public function testTagHooksPreservesAllOriginalFields(): void
+    {
+        $hooks = [['id' => 'x', 'ip' => '1.1.1.1', 'domain' => 'a.b', 'os' => 'Win', 'browser' => 'C']];
+        $out = beef_tag_hooks_with_scope($hooks, []);
+        self::assertSame('x',     $out[0]['id']);
+        self::assertSame('Win',   $out[0]['os']);
+        self::assertSame('C',     $out[0]['browser']);
+        // empty scope_allowlist means everything is out-of-scope.
+        self::assertFalse($out[0]['in_scope']);
+    }
+
+    public function testTagHooksReturnsEmptyForEmptyInput(): void
+    {
+        self::assertSame([], beef_tag_hooks_with_scope([], ['x.com']));
+    }
 }

@@ -1315,6 +1315,9 @@ a:focus-visible {
 .t-activity .t-activity-row[data-kind="ENGM"] .t-activity-kind { background: rgba(0,113,187,0.20); color: var(--t-primary-edge); }
 .t-activity .t-activity-row[data-kind="CLON"] .t-activity-kind { background: rgba(176,131,222,0.18); color: #cba8e6; }
 .t-activity .t-activity-row[data-kind="SYS"]  .t-activity-kind { background: rgba(138,150,167,0.15); color: var(--t-text-mute); }
+/* Phase 3.52: BeEF hooks. Kind column carries badges (in-scope /
+   out-of-scope) so we don't tint the cell itself. */
+.t-activity .t-activity-row[data-kind="BEEF"] .t-activity-kind { background: transparent; padding: 0; }
 
 /* Sidebar — subtle gradient + active-state polish. */
 .dim-panel .left-sidebar {
