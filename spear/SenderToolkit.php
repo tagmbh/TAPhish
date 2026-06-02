@@ -65,14 +65,15 @@
             <?php include_once 'z_footer.php' ?>
          </div>
       </div>
-      <script src="js/libs/jquery-3.3.1.min.js"></script>
+      <script src="js/libs/jquery/jquery-3.6.0.min.js"></script>
       <?php require_once(dirname(__FILE__) . '/manager/csrf.php'); csrf_emit_script_tag(); ?>
+      <script src="js/libs/js.cookie.min.js"></script>
       <script src="js/libs/popper.min.js"></script>
       <script src="js/libs/bootstrap.min.js"></script>
       <script src="js/libs/perfect-scrollbar.jquery.min.js"></script>
-      <script src="js/libs/waves.js"></script>
-      <script src="js/sidebarmenu.js"></script>
+      <script src="js/libs/custom.min.js"></script>
       <script src="js/libs/toastr.min.js"></script>
+      <script src="js/common_scripts.js"></script>
       <script src="js/sender_toolkit.js"></script>
    </body>
 </html>
