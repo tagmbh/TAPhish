@@ -223,13 +223,22 @@ $('input[type=file]').change(function() {
                     user_group_name: $('#user_group_name').val().trim()
                 })
             }).done(function (response) {
-                if(response.result == "success"){
-                    toastr.success('', 'User list added successfully!');
+                // Phase 3.45c: uploadUserCVS now returns
+                // {result: 'partial', imported, skipped[]} on partial
+                // success instead of die()-ing on a bad row.
+                if(response.result == "success" || response.result == "partial"){
+                    var msg = 'Imported ' + (response.imported || 0) + ' recipients';
+                    if (response.result == 'partial' && response.skipped && response.skipped.length) {
+                        msg += ' · ' + response.skipped.length + ' skipped (see Logs)';
+                        toastr.warning('', msg);
+                    } else {
+                        toastr.success('', msg);
+                    }
                     getUserGroupFromGroupId(nextRandomId);
                 }
                 else
                     toastr.error('', response.error);
-            }); 
+            });
         }
         reader.onerror = function(evt) {
             toastr.error('', 'Error reading file!');

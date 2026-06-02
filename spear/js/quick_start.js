@@ -352,6 +352,95 @@
         });
     }
 
+    // ----- Step 4: Sender setup (DKIM) -----------------------------------
+
+    function renderDkim(res) {
+        if (!res || res.result !== 'success') {
+            return '<div class="alert alert-danger">' + esc((res && res.error) || 'DKIM gen failed') + '</div>';
+        }
+        var selector = res.selector || 's1';
+        var dkimHost = '<code>' + esc(selector) + '._domainkey.&lt;your-look-alike-domain&gt;</code>';
+        return ''
+            + '<div class="alert alert-info mt-3">'
+            +   '<strong>Generated.</strong> Publish three TXT records at the look-alike domain. '
+            +   'Keep the private key safe — it never leaves this page after you copy it.'
+            + '</div>'
+            + '<h6 class="mt-3">DKIM TXT @ ' + dkimHost + '</h6>'
+            + '<pre class="mb-2 p-2 bg-dark text-light small" style="white-space:pre-wrap;">' + esc(res.txt_record) + '</pre>'
+            + '<h6 class="mt-3">SPF TXT @ <code>&lt;your-look-alike-domain&gt;</code></h6>'
+            + '<pre class="mb-2 p-2 bg-dark text-light small">' + esc(res.spf_record) + '</pre>'
+            + '<h6 class="mt-3">DMARC TXT @ <code>_dmarc.&lt;your-look-alike-domain&gt;</code></h6>'
+            + '<pre class="mb-2 p-2 bg-dark text-light small">' + esc(res.dmarc_record) + '</pre>'
+            + '<h6 class="mt-3">Private key (paste into your sender config — do not commit)</h6>'
+            + '<pre class="mb-2 p-2 bg-dark text-light small" style="white-space:pre-wrap;">' + esc(res.private_key_pem) + '</pre>';
+    }
+
+    function runDkimGen() {
+        setStepperState(4);
+        $('#dkim_result').html(skeleton(3));
+        post({
+            action_type: 'wizard_generate_dkim',
+            selector: ($('#dkim_selector').val() || 's1').trim(),
+            dmarc_rua: ($('#dkim_rua').val() || '').trim()
+        })
+            .done(function (res) { $('#dkim_result').html(renderDkim(res)); })
+            .fail(function ()    { $('#dkim_result').html('<div class="alert alert-danger">Request failed</div>'); });
+    }
+
+    // ----- Step 5: Recipient preview -------------------------------------
+
+    function renderRecipientPreview(res) {
+        if (!res || res.result !== 'success') {
+            return '<div class="alert alert-danger">' + esc((res && res.error) || 'Preview failed') + '</div>';
+        }
+        var goodCount = res.row_count || 0;
+        var parseErrCount = (res.parse_errors || []).length;
+        var scopeErrCount = (res.scope_violations || []).length;
+        var html = '<div class="alert alert-success mb-2"><strong>' + goodCount + '</strong> parseable row(s).</div>';
+        var breakdown = res.domain_breakdown || {};
+        var domains = Object.keys(breakdown);
+        if (domains.length) {
+            html += '<div class="mt-2"><strong>Per-domain breakdown:</strong></div><ul class="mb-2 small">';
+            domains.slice(0, 12).forEach(function (d) {
+                html += '<li><code>' + esc(d) + '</code> — ' + breakdown[d] + '</li>';
+            });
+            html += '</ul>';
+        }
+        if (parseErrCount) {
+            html += '<div class="alert alert-warning mt-2"><strong>' + parseErrCount + '</strong> parse error(s) — these rows will be skipped:';
+            html += '<ul class="mb-0 small mt-1">';
+            (res.parse_errors || []).slice(0, 12).forEach(function (e) {
+                html += '<li>Line ' + esc(e.line) + ': ' + esc(e.email || '(blank)') + ' — ' + esc(e.reason) + '</li>';
+            });
+            html += '</ul></div>';
+        }
+        if (scopeErrCount) {
+            html += '<div class="alert alert-danger mt-2"><strong>' + scopeErrCount + '</strong> recipient(s) are <em>out of engagement scope</em> and will be skipped:';
+            html += '<ul class="mb-0 small mt-1">';
+            (res.scope_violations || []).slice(0, 12).forEach(function (v) {
+                html += '<li><code>' + esc(v.email) + '</code> (domain ' + esc(v.domain) + ' not in allowlist)</li>';
+            });
+            html += '</ul></div>';
+        }
+        if (!parseErrCount && !scopeErrCount) {
+            html += '<div class="alert alert-info mt-2">All rows look good. Open <a href="MailUserGroup">Mail User Group</a> to actually persist them; the wizard auto-applies engagement scope on upload (Phase 3.45c).</div>';
+        }
+        return html;
+    }
+
+    function runRecipientPreview() {
+        setStepperState(5);
+        var csv = $('#rcpt_csv').val() || '';
+        if (csv.trim() === '') {
+            if (window.toastr) toastr.warning('Paste a CSV first');
+            return;
+        }
+        $('#rcpt_preview_result').html(skeleton(3));
+        post({ action_type: 'wizard_recipient_preview', user_data: csv })
+            .done(function (res) { $('#rcpt_preview_result').html(renderRecipientPreview(res)); })
+            .fail(function ()    { $('#rcpt_preview_result').html('<div class="alert alert-danger">Request failed</div>'); });
+    }
+
     $(function () {
         $('#frm_engagement').on('submit', onSubmit);
         $('#btn_refresh_eng').on('click', refreshList);
@@ -367,6 +456,10 @@
         $('#osint_domain').on('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); runOsint($(this).val()); }
         });
+        // Phase 3.45c: Step 4 + Step 5 wiring.
+        $('#step4_wrap, #step5_wrap').show();
+        $('#btn_gen_dkim').on('click', runDkimGen);
+        $('#btn_rcpt_preview').on('click', runRecipientPreview);
         refreshList();
     });
 })();

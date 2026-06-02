@@ -219,6 +219,64 @@
                      </div>
                   </div>
                </div>
+
+               <!-- ============ Step 4 — Sender setup (DKIM + DNS) ============ -->
+               <div class="row" id="step4_wrap" style="display:none;">
+                  <div class="col-12 mb-3">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 4 — Sender setup</h5>
+                           <p class="text-muted small">
+                              Generate a fresh DKIM key pair for the look-alike domain. The wizard
+                              renders the three TXT records (DKIM, SPF, DMARC) you publish at the
+                              registrar so the look-alike actually delivers.
+                           </p>
+                           <div class="form-row align-items-end">
+                              <div class="form-group col-md-3 mb-2">
+                                 <label>DKIM selector</label>
+                                 <input type="text" id="dkim_selector" class="form-control" value="s1" autocomplete="off">
+                              </div>
+                              <div class="form-group col-md-5 mb-2">
+                                 <label>DMARC <code>rua</code> contact (optional)</label>
+                                 <input type="email" id="dkim_rua" class="form-control" placeholder="soc@your-domain.example" autocomplete="off">
+                              </div>
+                              <div class="form-group col-md-4 mb-2">
+                                 <button class="btn btn-info" type="button" id="btn_gen_dkim">
+                                    <i class="fa fa-key"></i> Generate DKIM key pair
+                                 </button>
+                              </div>
+                           </div>
+                           <div id="dkim_result"></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- ============ Step 5 — Recipient preview ============ -->
+               <div class="row" id="step5_wrap" style="display:none;">
+                  <div class="col-12 mb-3">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 5 — Recipient preview</h5>
+                           <p class="text-muted small">
+                              Paste your CSV (<code>First,Last,Email</code> or
+                              <code>First,Email,Notes</code>). The wizard runs the same parser the
+                              upload page uses and cross-checks every domain against the
+                              engagement's authorised scope. Bad rows are surfaced; in-scope rows
+                              get a per-domain breakdown.
+                           </p>
+                           <div class="form-group">
+                              <textarea class="form-control" id="rcpt_csv" rows="6" placeholder="First,Last,Email&#10;Alice,Smith,alice@target.example"></textarea>
+                           </div>
+                           <button class="btn btn-info" type="button" id="btn_rcpt_preview">
+                              <i class="fa fa-eye"></i> Preview
+                           </button>
+                           <a class="btn btn-link" href="MailUserGroup">Open Mail User Group →</a>
+                           <div id="rcpt_preview_result" class="mt-3"></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
             </div>
             <?php include_once 'z_footer.php' ?>
          </div>
