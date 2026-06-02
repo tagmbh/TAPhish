@@ -234,3 +234,32 @@ if (!function_exists('clone_rewrite_html')) {
         ];
     }
 }
+
+if (!function_exists('site_cloner_inject_hook')) {
+    /**
+     * Phase 3.52 task 5: inject the BeEF hook <script> tag (or any other
+     * snippet the caller passes) into the cloned HTML, just before
+     * </body>. Falls back to </html> if there's no </body>, and finally
+     * to appending if neither closing tag is present.
+     *
+     * Empty snippet = no-op (returns $html unchanged) so the cloner can
+     * always call this safely; the toggle lives at the call site.
+     *
+     * Match is case-insensitive on the closing tag, replaces the first
+     * occurrence only.
+     */
+    function site_cloner_inject_hook(string $html, string $snippet): string
+    {
+        $snippet = trim($snippet);
+        if ($snippet === '') return $html;
+        if (preg_match('#</body\s*>#i', $html, $m, PREG_OFFSET_CAPTURE)) {
+            $offset = $m[0][1];
+            return substr($html, 0, $offset) . $snippet . substr($html, $offset);
+        }
+        if (preg_match('#</html\s*>#i', $html, $m, PREG_OFFSET_CAPTURE)) {
+            $offset = $m[0][1];
+            return substr($html, 0, $offset) . $snippet . substr($html, $offset);
+        }
+        return $html . $snippet;
+    }
+}

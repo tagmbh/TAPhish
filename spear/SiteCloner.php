@@ -85,6 +85,24 @@
                                     </div>
                                  </div>
                               </div>
+                              <!-- Phase 3.52 task 5: BeEF hook opt-in. -->
+                              <div class="form-row">
+                                 <div class="form-group col-12">
+                                    <div class="custom-control custom-checkbox">
+                                       <input type="checkbox" class="custom-control-input" id="cb_beef_hook">
+                                       <label class="custom-control-label" for="cb_beef_hook">
+                                          Inject BeEF hook before <code>&lt;/body&gt;</code>
+                                          <span class="badge badge-warning ml-1">advanced</span>
+                                       </label>
+                                       <small class="form-text text-muted">
+                                          Requires BeEF integration configured under Settings &rarr; General.
+                                          Hook script is signature-detected by SmartScreen / Sophos / Symantec /
+                                          EDR — landing pages burn faster with the hook on. Use only when the
+                                          engagement scope explicitly permits browser-side hooking.
+                                       </small>
+                                    </div>
+                                 </div>
+                              </div>
                               <button type="submit" class="btn btn-info" id="btn_clone">
                                  <i class="fa fas fa-cloud-download-alt"></i> Clone
                               </button>
