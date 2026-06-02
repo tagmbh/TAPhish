@@ -1354,3 +1354,126 @@ a:focus-visible {
 .t-hide-scanner tr[data-scanner="1"] {
     display: none;
 }
+
+/* ---- Phase 3.46-pre: Home quick-action launchpad ----------------------
+   The Home page used to end with the activity feed; below it was a tall
+   strip of empty dark background. The launchpad fills that space with
+   one-click entry points to the wizard / engagement view / toolset
+   checker — the operations operators do most often after login. */
+.dim-panel .t-quickact {
+    margin-top: 18px;
+    background: var(--t-bg-elevated);
+    border: 1px solid var(--t-border);
+    border-radius: var(--t-radius-lg);
+    padding: 18px;
+}
+
+.dim-panel .t-quickact-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+}
+
+.dim-panel .t-quickact-title {
+    font-family: var(--t-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--t-text);
+}
+
+.dim-panel .t-quickact-meta {
+    font-family: var(--t-mono);
+    font-size: 10px;
+    color: var(--t-text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.dim-panel .t-quickact-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 1199px) {
+    .dim-panel .t-quickact-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 767px) {
+    .dim-panel .t-quickact-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 479px) {
+    .dim-panel .t-quickact-grid { grid-template-columns: 1fr; }
+}
+
+.dim-panel .t-quickact-tile {
+    display: block;
+    background: linear-gradient(180deg, rgba(19,30,44,0.85), rgba(15,24,36,0.85));
+    border: 1px solid var(--t-border);
+    border-radius: var(--t-radius);
+    padding: 14px 14px 12px;
+    color: var(--t-text);
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+    transition: transform 160ms ease-out, box-shadow 160ms ease-out,
+                border-color 160ms ease-out;
+}
+
+.dim-panel .t-quickact-tile:hover,
+.dim-panel .t-quickact-tile:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--t-shadow-1);
+    border-color: rgba(0, 113, 187, 0.55);
+    color: var(--t-text);
+    text-decoration: none;
+}
+
+.dim-panel .t-quickact-tile::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--t-primary-edge), transparent 80%);
+    opacity: 0.55;
+    transition: opacity 160ms ease-out;
+}
+
+.dim-panel .t-quickact-tile:hover::after { opacity: 1; }
+
+.dim-panel .t-quickact-icon {
+    font-size: 22px;
+    line-height: 1;
+    margin-bottom: 8px;
+    color: var(--t-primary-edge);
+}
+
+.dim-panel .t-quickact-name {
+    font-family: var(--t-display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--t-text);
+    margin-bottom: 4px;
+    letter-spacing: -0.005em;
+}
+
+.dim-panel .t-quickact-sub {
+    font-family: var(--t-mono);
+    font-size: 10.5px;
+    color: var(--t-text-dim);
+    line-height: 1.45;
+}
+
+.dim-panel .t-quickact-sub code {
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    padding: 0 4px;
+    color: var(--t-text);
+    font-size: 10px;
+}
+
+/* Cards on near-empty pages still have a sensible minimum height so an
+   "no rows yet" state doesn't collapse to a 30px sliver. */
+.dim-panel .t-activity-body {
+    min-height: 120px;
+}
