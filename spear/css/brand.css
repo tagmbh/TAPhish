@@ -323,3 +323,88 @@ a:focus-visible {
         transition: none !important;
     }
 }
+
+/* ---- Phase 3.33: topbar + sidebar (dim mode) ---------------------- */
+
+.dim-home .topbar,
+.dim-home .top-navbar,
+.dim-home .navbar-header {
+    background-color: var(--t-bg-elevated) !important;
+    border-bottom: 1px solid var(--t-border);
+}
+
+.dim-home .topbar .navbar-brand img {
+    filter: none;
+}
+
+.dim-home .topbar .nav-link {
+    color: var(--t-text-mute) !important;
+}
+
+.dim-home .topbar .nav-link:hover {
+    color: var(--t-text) !important;
+}
+
+.dim-home .left-sidebar,
+.dim-home .sidebar-nav,
+.dim-home .scroll-sidebar {
+    background-color: var(--t-bg-elevated) !important;
+    border-right: 1px solid var(--t-border);
+}
+
+.dim-home .sidebar-section {
+    list-style: none;
+    padding: 16px 18px 6px;
+    font-family: var(--t-mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--t-text-dim);
+}
+
+.dim-home .sidebar-nav .sidebar-link {
+    color: var(--t-text-mute) !important;
+    border-left: 2px solid transparent;
+    margin: 2px 0;
+    padding: 8px 14px !important;
+    transition: color 120ms ease, background-color 120ms ease,
+                border-color 120ms ease;
+}
+
+.dim-home .sidebar-nav .sidebar-link:hover {
+    color: var(--t-text) !important;
+    background: transparent !important;
+}
+
+.dim-home .sidebar-nav .sidebar-link.active,
+.dim-home .sidebar-nav .sidebar-item.active > .sidebar-link {
+    background-color: rgba(0, 113, 187, 0.16) !important;
+    color: var(--t-text) !important;
+    border-left-color: var(--t-primary-edge);
+}
+
+.dim-home .sidebar-nav .sidebar-link i {
+    color: inherit !important;
+}
+
+.dim-home .sidebar-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-top: 1px solid var(--t-border);
+    font-family: var(--t-mono);
+    font-size: 10px;
+    color: var(--t-text-dim);
+}
+
+.dim-home .sidebar-footer-status.is-ready {
+    color: var(--t-success);
+}
+
+.dim-home .sidebar-footer-status.is-warn {
+    color: var(--t-warn);
+}
+
+.dim-home .sidebar-footer-status.is-down {
+    color: var(--t-danger);
+}
