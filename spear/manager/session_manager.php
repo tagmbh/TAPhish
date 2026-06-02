@@ -340,6 +340,15 @@ function doReLogin($username, $pwd){
 
 function createSession($f_regenerate,$username){
 	global $conn;
+	// Preserve the existing CSRF token across REFRESH-style calls
+	// (isSessionValid() calls this on every page load to bump the
+	// cookie expiry; rotating _csrf there would invalidate the token
+	// the just-rendered page embedded in window.TAPHISH_CSRF, and
+	// every subsequent AJAX from that page would 403).
+	$preserved_csrf = (!$f_regenerate && !empty($_SESSION['_csrf']))
+		? $_SESSION['_csrf']
+		: null;
+
 	session_destroy();
 	$is_https = (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
 		|| (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
@@ -359,7 +368,7 @@ function createSession($f_regenerate,$username){
 	}
 
 	$_SESSION['username'] = $username;
-	$_SESSION['_csrf'] = _csrf_make_token();	//fresh CSRF token per session
+	$_SESSION['_csrf'] = $preserved_csrf ?? _csrf_make_token();	//fresh on login, preserved on refresh
 	setInfoCookie($conn,$username);
 }
 
