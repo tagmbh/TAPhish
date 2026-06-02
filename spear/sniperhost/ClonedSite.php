@@ -148,11 +148,33 @@ final class ClonedSite
             'ok'          => true,
             'slug'        => $slug,
             'path'        => 'spear/sniperhost/cloned/' . $slug . '/',
+            'public_url'  => self::buildPublicUrl($slug),
             'url'         => $this->url,
             'bytes'       => strlen($html),
             'asset_count' => count($assetMap),
             'warnings'    => $warnings,
         ];
+    }
+
+    /**
+     * Build the absolute URL operators paste into a campaign so the
+     * landing page is reachable from the public internet. Honors the
+     * X-Forwarded-Proto / Host headers a reverse proxy sets (Hostpoint
+     * fronts PHP behind one) so the link matches what the recipient
+     * will actually click.
+     */
+    public static function buildPublicUrl(string $slug): string
+    {
+        $proto = 'https';
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $proto = strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']);
+        } elseif (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') {
+            $proto = 'https';
+        } elseif (!empty($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] !== 443) {
+            $proto = 'http';
+        }
+        $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost');
+        return $proto . '://' . $host . '/spear/sniperhost/cloned/' . $slug . '/';
     }
 
     /**
@@ -254,7 +276,11 @@ final class ClonedSite
             if (is_file($metaPath)) {
                 $meta = json_decode((string) file_get_contents($metaPath), true);
             }
-            $out[] = ['slug' => $entry, 'meta' => is_array($meta) ? $meta : null];
+            $out[] = [
+                'slug'       => $entry,
+                'meta'       => is_array($meta) ? $meta : null,
+                'public_url' => self::buildPublicUrl($entry),
+            ];
         }
         return $out;
     }

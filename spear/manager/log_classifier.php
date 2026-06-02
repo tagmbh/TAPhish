@@ -47,6 +47,11 @@ if (!function_exists('taphish_classify_log_entry')) {
             ['template deleted',       'TMPL', 'warn'],
             ['template created',       'TMPL', 'ok'],
             ['template',               'TMPL', 'ok'],
+            // Phase 3.43a: engagement metadata creation.
+            ['engagement created',     'ENGM', 'ok'],
+            ['engagement',             'ENGM', 'ok'],
+            // SiteCloner workflow: capture cloned-site events.
+            ['site cloned',            'CLON', 'ok'],
         ];
 
         foreach ($rules as [$needle, $kind, $sev]) {
