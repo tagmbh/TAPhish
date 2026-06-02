@@ -12,6 +12,8 @@ require_once(dirname(__FILE__) . '/mx_classify.php');
 require_once(dirname(__FILE__) . '/web_fingerprint.php');
 require_once(dirname(__FILE__) . '/toolset_checks.php');
 require_once(dirname(__FILE__) . '/capture_alerting.php');
+require_once(dirname(__FILE__) . '/dkim_helper.php');
+require_once(dirname(__FILE__) . '/recipient_import.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -135,6 +137,40 @@ if (isset($_POST)) {
 					]);
 				}
 			}
+		}
+		// Phase 3.45c Step 4 + Step 5 dispatchers.
+		if($POSTJ['action_type'] == "wizard_generate_dkim") {
+			$selector = (string)($POSTJ['selector'] ?? 's1');
+			$rua      = (string)($POSTJ['dmarc_rua'] ?? '');
+			if (!taphish_dkim_validate_selector($selector)) {
+				echo json_encode(['result' => 'failed', 'error' => 'Invalid DKIM selector']);
+			} else {
+				$kp = taphish_dkim_generate_keypair();
+				if (!$kp['ok']) {
+					echo json_encode(['result' => 'failed', 'error' => $kp['error']]);
+				} else {
+					echo json_encode([
+						'result'          => 'success',
+						'selector'        => $selector,
+						'private_key_pem' => $kp['private_key_pem'],
+						'public_key_b64'  => $kp['public_key_b64'],
+						'txt_record'      => $kp['txt_record'],
+						'spf_record'      => taphish_dkim_suggested_spf_record(),
+						'dmarc_record'    => taphish_dkim_suggested_dmarc_record($rua),
+					]);
+				}
+			}
+		}
+		if($POSTJ['action_type'] == "wizard_recipient_preview") {
+			$csv = (string)($POSTJ['user_data'] ?? '');
+			$allowlist = [];
+			if (!empty($POSTJ['engagement_id'])) {
+				$eng = taphish_engagement_get_by_id($conn, (int) $POSTJ['engagement_id']);
+				if ($eng) {
+					$allowlist = $eng['scope_allowlist'] ?? [];
+				}
+			}
+			echo json_encode(['result' => 'success'] + taphish_recipient_preview($csv, $allowlist));
 		}
 		if($POSTJ['action_type'] == "engagement_transition_status") {
 			$id   = (int)($POSTJ['engagement_id'] ?? 0);
@@ -423,24 +459,47 @@ function getUserGroupList($conn){
 }
 
 function uploadUserCVS($conn, &$POSTJ){
-	$user_group_id = $POSTJ['user_group_id'];	
+	$user_group_id = $POSTJ['user_group_id'];
 	$user_group_name = $POSTJ['user_group_name'];
-	$user_data = explode("\n", $POSTJ['user_data']);
-	array_shift($user_data);	//removes column heading 
-	$user_data = array_map('trim', $user_data);	//trim array strings
-	$user_data = array_filter(($user_data));	//removes empty array
-	$arr_users=[];
 
-	foreach ($user_data as $user) {
-		$user = explode(",", $user);
-		$uid = getRandomStr(10);
-
-		if(isValidEmail($user[1]))
-	    	array_push($arr_users,['uid'=>$uid, 'fname'=>$user[0], 'lname'=>null, 'email'=>$user[1], 'notes'=>$user[2]]);
-    	elseif(isValidEmail($user[2]))
-	    	array_push($arr_users,['uid'=>$uid, 'fname'=>$user[0], 'lname'=>$user[1], 'email'=>$user[2], 'notes'=>$user[3]]);
-    	else
-    		die(json_encode(['result' => 'failed', 'error' => 'Import failed. Invalid email at '. $user[2]]));
+	// Phase 3.45c: parse + scope-check via pure helpers; partial-import
+	// rather than die()-ing on the first bad row. If the operator passed
+	// an engagement_id, use its scope_allowlist to drop out-of-scope
+	// rows instead of silently importing them.
+	$allowlist = [];
+	if (!empty($POSTJ['engagement_id'])) {
+		$eng = taphish_engagement_get_by_id($conn, (int) $POSTJ['engagement_id']);
+		if ($eng) {
+			$allowlist = $eng['scope_allowlist'] ?? [];
+		}
+	}
+	$preview = taphish_recipient_preview((string) ($POSTJ['user_data'] ?? ''), $allowlist);
+	$skipped = [];
+	foreach ($preview['parse_errors'] as $e) {
+		$skipped[] = ['kind' => 'parse', 'line' => $e['line'], 'email' => $e['email'], 'reason' => $e['reason']];
+	}
+	$importedRows = $preview['rows'];
+	if (!empty($preview['scope_violations'])) {
+		$violationIdx = array_flip(array_column($preview['scope_violations'], 'line_index'));
+		$kept = [];
+		foreach ($importedRows as $i => $r) {
+			if (isset($violationIdx[$i])) {
+				$skipped[] = ['kind' => 'scope', 'email' => $r['email'], 'reason' => 'out of engagement scope'];
+			} else {
+				$kept[] = $r;
+			}
+		}
+		$importedRows = $kept;
+	}
+	$arr_users = [];
+	foreach ($importedRows as $r) {
+		$arr_users[] = [
+			'uid'   => getRandomStr(10),
+			'fname' => $r['fname'],
+			'lname' => $r['lname'] !== '' ? $r['lname'] : null,
+			'email' => $r['email'],
+			'notes' => '',
+		];
 	}
 
 	$row = getUserGroupFromGroupId($conn, $user_group_id);
@@ -463,8 +522,16 @@ function uploadUserCVS($conn, &$POSTJ){
 	}
 
 	if($stmt->execute() === TRUE){
-		logIt('Recipient list imported: ' . $user_group_name . ' (' . count($arr_users) . ' rows)');
-		echo(json_encode(['result' => 'success']));
+		$importedCount = count($arr_users);
+		$skippedCount = count($skipped);
+		logIt(
+			'Recipient list imported: ' . $user_group_name
+			. ' (' . $importedCount . ' rows'
+			. ($skippedCount > 0 ? ', ' . $skippedCount . ' skipped' : '')
+			. ')'
+		);
+		$payload = ['result' => $skippedCount > 0 ? 'partial' : 'success', 'imported' => $importedCount, 'skipped' => $skipped];
+		echo json_encode($payload);
 	}
 	else
 		echo(json_encode(['result' => 'failed', 'error' => 'Error importing user data!']));

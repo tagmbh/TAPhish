@@ -30,3 +30,5 @@ require_once __DIR__ . '/../../spear/manager/engagement.php';
 require_once __DIR__ . '/../../spear/manager/mx_classify.php';
 require_once __DIR__ . '/../../spear/manager/web_fingerprint.php';
 require_once __DIR__ . '/../../spear/manager/toolset_checks.php';
+require_once __DIR__ . '/../../spear/manager/dkim_helper.php';
+require_once __DIR__ . '/../../spear/manager/recipient_import.php';
