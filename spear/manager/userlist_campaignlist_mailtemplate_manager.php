@@ -134,7 +134,10 @@ function addUserToTable($conn, &$POSTJ){
 }
 
 function saveUserGroup($conn, $user_group_id, $user_group_name){
-	if(checkAnIDExist($conn,$user_group_id,'user_group_id','tb_core_mailcamp_user_group')){
+	// Phase 3.35: capture existence before write so create/update verb
+	// is accurate in the audit-log entry.
+	$is_update = checkAnIDExist($conn,$user_group_id,'user_group_id','tb_core_mailcamp_user_group');
+	if($is_update){
 		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=? WHERE user_group_id=?");
 		$stmt->bind_param('ss', $user_group_name,$user_group_id);
 	}
@@ -142,11 +145,13 @@ function saveUserGroup($conn, $user_group_id, $user_group_name){
 		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,date) VALUES(?,?,?)");
 		$stmt->bind_param('sss', $user_group_id,$user_group_name,$GLOBALS['entry_time']);
 	}
-	
-	if ($stmt->execute() === TRUE)
-		echo(json_encode(['result' => 'success']));	
-	else 
-		echo(json_encode(['result' => 'failed', 'error' => 'Error saving data!']));	
+
+	if ($stmt->execute() === TRUE) {
+		logIt('Recipient list ' . ($is_update ? 'updated' : 'created') . ': ' . $user_group_name);
+		echo(json_encode(['result' => 'success']));
+	}
+	else
+		echo(json_encode(['result' => 'failed', 'error' => 'Error saving data!']));
 }
 
 function updateUser($conn, &$POSTJ){
@@ -284,9 +289,10 @@ function uploadUserCVS($conn, &$POSTJ){
 	}
 
 	if($stmt->execute() === TRUE){
-		echo(json_encode(['result' => 'success']));	
+		logIt('Recipient list imported: ' . $user_group_name . ' (' . count($arr_users) . ' rows)');
+		echo(json_encode(['result' => 'success']));
 	}
-	else 
+	else
 		echo(json_encode(['result' => 'failed', 'error' => 'Error importing user data!']));
 }
 
@@ -332,26 +338,32 @@ function getUserGroupFromGroupIdTable($conn,&$POSTJ){
 		echo json_encode(['error' => 'No data']);	
 }
 
-function deleteUserGroupFromGroupId($conn,$user_group_id){	
+function deleteUserGroupFromGroupId($conn,$user_group_id){
+	// Phase 3.35: capture name before delete for the audit-log entry.
+	$row = getUserGroupFromGroupId($conn, $user_group_id);
+	$user_group_name = $row['user_group_name'] ?? $user_group_id;
 	$stmt = $conn->prepare("DELETE FROM tb_core_mailcamp_user_group WHERE user_group_id = ?");
 	$stmt->bind_param("s", $user_group_id);
 	$stmt->execute();
-	if($stmt->affected_rows != 0)
-		echo json_encode(['result' => 'success']);	
+	if($stmt->affected_rows != 0){
+		logIt('Recipient list deleted: ' . $user_group_name);
+		echo json_encode(['result' => 'success']);
+	}
 	else
-		echo json_encode(['result' => 'failed', 'error' => 'User group does not exist']);	
+		echo json_encode(['result' => 'failed', 'error' => 'User group does not exist']);
 	$stmt->close();
 }
 
 function makeCopyUserGroup($conn, $old_user_group_id, $new_user_group_id, $new_user_group_name){
 	$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group (user_group_id,user_group_name,user_data,date) SELECT ?, ?,user_data,? FROM tb_core_mailcamp_user_group WHERE user_group_id=?");
 	$stmt->bind_param("ssss", $new_user_group_id, $new_user_group_name, $GLOBALS['entry_time'], $old_user_group_id);
-	
+
 	if($stmt->execute() === TRUE){
-		echo(json_encode(['result' => 'success']));	
+		logIt('Recipient list copied: ' . $new_user_group_name);
+		echo(json_encode(['result' => 'success']));
 	}
-	else 
-		echo(json_encode(['result' => 'failed', 'error' => 'Error making copy!']));	
+	else
+		echo(json_encode(['result' => 'failed', 'error' => 'Error making copy!']));
 	$stmt->close();
 }
 
@@ -378,7 +390,8 @@ function saveMailTemplate($conn,&$POSTJ){
 	$attachments = json_encode($POSTJ['attachments']);
 	$mail_content_type = $POSTJ['mail_content_type'];
 
-	if(checkAnIDExist($conn,$mail_template_id,'mail_template_id','tb_core_mailcamp_template_list')){
+	$is_update = checkAnIDExist($conn,$mail_template_id,'mail_template_id','tb_core_mailcamp_template_list');
+	if($is_update){
 		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_template_list SET mail_template_name=?, mail_template_subject=?, mail_template_content=?, timage_type=?, mail_content_type=?, attachment=? WHERE mail_template_id=?");
 		$stmt->bind_param('sssssss', $mail_template_name,$mail_template_subject, $mail_template_content,$timage_type,$mail_content_type,$attachments,$mail_template_id);
 	}
@@ -386,12 +399,13 @@ function saveMailTemplate($conn,&$POSTJ){
 		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_template_list(mail_template_id, mail_template_name, mail_template_subject, mail_template_content, timage_type, mail_content_type, attachment, date) VALUES(?,?,?,?,?,?,?,?)");
 		$stmt->bind_param('ssssssss', $mail_template_id,$mail_template_name,$mail_template_subject,$mail_template_content,$timage_type,$mail_content_type,$attachments,$GLOBALS['entry_time']);
 	}
-	
+
 	if ($stmt->execute() === TRUE){
-		echo(json_encode(['result' => 'success']));	
+		logIt('Template ' . ($is_update ? 'updated' : 'created') . ': ' . $mail_template_name);
+		echo(json_encode(['result' => 'success']));
 	}
-	else 
-		echo(json_encode(['result' => 'failed', 'error' => $stmt->error]));	
+	else
+		echo(json_encode(['result' => 'failed', 'error' => $stmt->error]));
 }
 
 function getMailTemplateList($conn){
@@ -427,25 +441,39 @@ function getMailTemplateFromTemplateId($conn, $mail_template_id){
 	$stmt->close();
 }
 
-function deleteMailTemplateFromTemplateId($conn,$mail_template_id){	
+function deleteMailTemplateFromTemplateId($conn,$mail_template_id){
+	// Phase 3.35: name lookup before delete for audit-log clarity.
+	$name_stmt = $conn->prepare("SELECT mail_template_name FROM tb_core_mailcamp_template_list WHERE mail_template_id = ?");
+	$template_name = $mail_template_id;
+	if ($name_stmt !== false) {
+		$name_stmt->bind_param("s", $mail_template_id);
+		$name_stmt->execute();
+		$row = $name_stmt->get_result()->fetch_assoc();
+		if ($row && !empty($row['mail_template_name'])) $template_name = $row['mail_template_name'];
+		$name_stmt->close();
+	}
 	$stmt = $conn->prepare("DELETE FROM tb_core_mailcamp_template_list WHERE mail_template_id = ?");
 	$stmt->bind_param("s", $mail_template_id);
 	$stmt->execute();
-	if($stmt->affected_rows != 0)
-		echo json_encode(['result' => 'success']);	
+	if($stmt->affected_rows != 0){
+		logIt('Template deleted: ' . $template_name);
+		echo json_encode(['result' => 'success']);
+	}
 	else
-		echo json_encode(['result' => 'failed', 'error' => 'Mail template does not exist']);	
+		echo json_encode(['result' => 'failed', 'error' => 'Mail template does not exist']);
 	$stmt->close();
 }
 
 function makeCopyMailTemplate($conn, $old_mail_template_id, $new_mail_template_id, $new_mail_template_name){
 	$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_template_list (mail_template_id,mail_template_name,mail_template_subject,mail_template_content,timage_type,mail_content_type,attachment,date) SELECT ?, ?, mail_template_subject,mail_template_content,timage_type,mail_content_type,attachment,? FROM tb_core_mailcamp_template_list WHERE mail_template_id=?");
 	$stmt->bind_param("ssss", $new_mail_template_id, $new_mail_template_name, $GLOBALS['entry_time'], $old_mail_template_id);
-	
-	if ($stmt->execute() === TRUE)
-		echo json_encode(['result' => 'success']);	
+
+	if ($stmt->execute() === TRUE){
+		logIt('Template copied: ' . $new_mail_template_name);
+		echo json_encode(['result' => 'success']);
+	}
 	else
-		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);	
+		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);
 	$stmt->close();
 }
 
