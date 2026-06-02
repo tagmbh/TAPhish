@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/common_functions.php');
 require_once(dirname(__FILE__) . '/osint_hunter.php');
 require_once(dirname(__FILE__) . '/osint_crt_sh.php');
+require_once(dirname(__FILE__) . '/osint_shodan.php');
 require_once(dirname(__FILE__) . '/secret_at_rest.php');
 require_once(dirname(__FILE__) . '/pretext_library.php');
 require_once(dirname(__FILE__) . '/homoglyph.php');
@@ -323,6 +324,18 @@ if (isset($_POST)) {
 			echo json_encode([
 				'result' => 'success',
 				'web'    => taphish_web_fingerprint($domain),
+			]);
+		}
+		// Phase 3.46-pre: Shodan host lookup. Operator's API key is
+		// sent inline so it never persists server-side. Returns open
+		// ports + banners + last-update so the wizard can show exposed
+		// surface alongside the MX / web-fingerprint lanes.
+		if($POSTJ['action_type'] == "osint_shodan_host") {
+			$target = (string)($POSTJ['domain'] ?? '');
+			$key    = (string)($POSTJ['api_key'] ?? '');
+			echo json_encode([
+				'result' => 'success',
+				'shodan' => osint_shodan_host_lookup($target, $key),
 			]);
 		}
 		// Phase 3.43h: Toolset Checker.

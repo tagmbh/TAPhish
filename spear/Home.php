@@ -119,6 +119,59 @@
                      <div class="t-activity-empty">Loading&hellip;</div>
                   </div>
                </div>
+
+               <!-- Phase 3.46-pre: Quick-action launchpad. Operators hit Home
+                    most often as the engagement entry point — these tiles
+                    deep-link to the wizard / common tasks so a fresh login
+                    is one click away from progressing work. -->
+               <div class="t-quickact">
+                  <div class="t-quickact-head">
+                     <div class="t-quickact-title">Jump back in</div>
+                     <div class="t-quickact-meta">one-click entry points</div>
+                  </div>
+                  <div class="t-quickact-grid">
+                     <a class="t-quickact-tile" href="/spear/QuickStart">
+                        <div class="t-quickact-icon">&#9889;</div>
+                        <div class="t-quickact-name">Quick-Start Wizard</div>
+                        <div class="t-quickact-sub">7-step guided engagement: scope &rarr; OSINT &rarr; pretext &rarr; DKIM &rarr; recipients &rarr; landing &rarr; launch</div>
+                     </a>
+                     <a class="t-quickact-tile" href="/spear/EngagementView">
+                        <div class="t-quickact-icon">&#9873;</div>
+                        <div class="t-quickact-name">Engagements</div>
+                        <div class="t-quickact-sub">Open the engagement workspace &middot; review linked campaigns &middot; transition status</div>
+                     </a>
+                     <a class="t-quickact-tile" href="/spear/SenderToolkit">
+                        <div class="t-quickact-icon">&#9881;</div>
+                        <div class="t-quickact-name">Sender Toolkit</div>
+                        <div class="t-quickact-sub">Homoglyph candidates &middot; SPF/DMARC posture analyzer</div>
+                     </a>
+                     <a class="t-quickact-tile" href="/spear/ToolsetChecker">
+                        <div class="t-quickact-icon">&#10003;</div>
+                        <div class="t-quickact-name">Toolset Checker</div>
+                        <div class="t-quickact-sub">Pre-engagement readiness: PHP &middot; DNS &middot; webhook &middot; writable dirs</div>
+                     </a>
+                     <a class="t-quickact-tile" href="/spear/PretextLibrary">
+                        <div class="t-quickact-icon">&#9998;</div>
+                        <div class="t-quickact-name">Pretext Library</div>
+                        <div class="t-quickact-sub">12 curated starters &middot; clone-to-my-templates</div>
+                     </a>
+                     <a class="t-quickact-tile" href="/spear/SiteCloner">
+                        <div class="t-quickact-icon">&#9783;</div>
+                        <div class="t-quickact-name">Site Cloner</div>
+                        <div class="t-quickact-sub">Clone a login page &middot; auto-wire to <code>track.php</code></div>
+                     </a>
+                     <a class="t-quickact-tile" href="/spear/MailCampaignList">
+                        <div class="t-quickact-icon">&#9993;</div>
+                        <div class="t-quickact-name">Campaigns</div>
+                        <div class="t-quickact-sub">All campaigns &middot; dashboards &middot; capture summaries</div>
+                     </a>
+                     <a class="t-quickact-tile" href="/spear/SettingsGeneral">
+                        <div class="t-quickact-icon">&#9881;</div>
+                        <div class="t-quickact-name">Settings</div>
+                        <div class="t-quickact-sub">Webhook URL &middot; SMTP &middot; brand &middot; security headers</div>
+                     </a>
+                  </div>
+               </div>
             </div>
             <!-- Modal -->
             <!-- ============================================================== -->

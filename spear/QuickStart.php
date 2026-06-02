@@ -196,6 +196,20 @@
                                     </div>
                                  </div>
                               </div>
+                              <!-- Phase 3.46-pre: Shodan host lookup. Operator
+                                   API key is read from localStorage and sent
+                                   inline so it never persists server-side. -->
+                              <div class="col-md-6 col-lg-4 mb-3">
+                                 <div class="card h-100">
+                                    <div class="card-body">
+                                       <h6 class="card-title">
+                                          Exposed surface (Shodan)
+                                          <a href="#" id="btn_shodan_key" class="small ml-2 text-muted" title="Paste / clear Shodan API key">key</a>
+                                       </h6>
+                                       <div id="osint_shodan" class="small">—</div>
+                                    </div>
+                                 </div>
+                              </div>
                            </div>
                         </div>
                      </div>

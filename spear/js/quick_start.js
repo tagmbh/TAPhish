@@ -79,6 +79,12 @@
         $('#eng_result').empty();
         $('#btn_save_eng').prop('disabled', true);
 
+        // Phase 3.46-pre: capture scope BEFORE reset so we can cascade
+        // the first domain into the Step 2 OSINT lane and derive the
+        // DKIM selector from the engagement slug.
+        var savedScope = ($('#eng_scope').val() || '').split(/[\s,;]+/)
+            .map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
+
         post({ action_type: 'save_engagement', payload: readForm() })
             .done(function (res) {
                 if (res && res.result === 'success') {
@@ -86,20 +92,31 @@
                     $('#eng_result').html(
                         '<div class="alert alert-success">' +
                         '<strong>Saved.</strong> Slug: <code>' + esc(res.slug) + '</code>. ' +
-                        'Next slice of the wizard (OSINT pre-check) will pick up automatically once Phase 3.43b ships. ' +
-                        'For now, open the relevant tools manually:' +
-                        '<ul class="mt-2 mb-0">' +
-                        '<li><a href="SenderToolkit">Sender Toolkit</a> — SPF/DMARC posture + look-alike domain</li>' +
-                        '<li><a href="PretextLibrary">Pretext Library</a> — pick + clone a starter</li>' +
-                        '<li><a href="MailUserGroup">Mail User Group</a> — upload your recipient CSV</li>' +
-                        '<li><a href="SiteCloner">Site Cloner</a> — clone a landing page</li>' +
-                        '<li><a href="MailCampaignList?action=add&campaign=new">Email Campaign</a> — wire it all together + send</li>' +
-                        '</ul>' +
+                        'The wizard auto-filled the OSINT target + DKIM selector below; just hit the buttons.' +
                         '</div>'
                     );
                     $('#frm_engagement')[0].reset();
                     refreshList();
                     if (window.toastr) toastr.success('Engagement saved');
+
+                    // Cascade defaults so the operator can click through
+                    // each step without retyping the same data.
+                    if (savedScope.length && !$('#osint_domain').val()) {
+                        $('#osint_domain').val(savedScope[0]);
+                    }
+                    // Only overwrite the selector if it's still the default
+                    // (s1/s2/...). Slug is DNS-safe; trim to ≤16 chars so
+                    // the selector + ._domainkey label stays well under
+                    // the 63-byte DNS label limit.
+                    if (res.slug && /^s\d+$/.test($('#dkim_selector').val() || 's1')) {
+                        var sel = String(res.slug).replace(/[^a-z0-9-]/g, '').slice(0, 16) || 's1';
+                        $('#dkim_selector').val(sel);
+                    }
+                    // Auto-run OSINT pre-check so the operator sees the
+                    // lanes populate without an extra click.
+                    if (savedScope.length) {
+                        setTimeout(function () { runOsint(savedScope[0]); }, 200);
+                    }
                 } else if (res && res.errors) {
                     Object.keys(res.errors).forEach(function (field) {
                         var id = ({
@@ -307,6 +324,38 @@
             }).join('') + '</ul>';
     }
 
+    // Phase 3.46-pre: Shodan host lane. Key lives in localStorage —
+    // the operator pastes it once and we send it inline per call. The
+    // lane silently degrades to "key not configured" when missing so a
+    // fresh install isn't flooded with red.
+    function renderShodan(res) {
+        if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
+        var s = res.shodan || {};
+        if (!s.ok) {
+            var err = s.err || 'lookup failed';
+            if (/Invalid Shodan API key/.test(err) || /no API key/.test(err)) {
+                return '<span class="text-muted">key not configured — click <code>key</code> above to paste yours</span>';
+            }
+            return '<span class="text-warning">' + esc(err) + '</span>';
+        }
+        var head = '<code>' + esc(s.ip || '—') + '</code>';
+        if (s.org) head += ' &middot; ' + esc(s.org);
+        if (s.country) head += ' (' + esc(s.country) + ')';
+        var ports = (s.open_ports || []).slice(0, 12);
+        var portsHtml = ports.length
+            ? '<div class="mt-1">' + ports.map(function (p) {
+                return '<span class="badge badge-secondary mr-1">' + esc(String(p)) + '</span>';
+              }).join('') + '</div>'
+            : '<div class="text-muted mt-1">no open ports reported</div>';
+        var vulnsHtml = (s.vulns || []).length
+            ? '<div class="mt-1"><span class="text-danger">vulns: </span>'
+                + s.vulns.map(function (v) { return '<code>' + esc(v) + '</code>'; }).join(', ')
+                + '</div>'
+            : '';
+        var when = s.last_update ? '<div class="text-muted small mt-1">last seen: ' + esc(s.last_update.substring(0, 10)) + '</div>' : '';
+        return head + portsHtml + vulnsHtml + when;
+    }
+
     function renderWeb(res) {
         if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
         var w = res.web || {};
@@ -330,26 +379,50 @@
         }
         setStepperState(2);
         $('#osint_panel').show();
-        Object.entries({
+        var shodanKey = '';
+        try { shodanKey = (localStorage.getItem('taphish_shodan_key') || '').trim(); } catch (_) {}
+        var lanes = {
             osint_dmarc:      { action_type: 'email_posture_lookup', domain: domain },
             osint_mx:         { action_type: 'mx_classify_domain',   domain: domain },
             osint_homoglyph:  { action_type: 'homoglyph_candidates', domain: domain, limit: 30 },
             osint_subdomains: { action_type: 'osint_crt_sh_subdomains', domain: domain },
-            osint_hunter:    { action_type: 'osint_hunter_search',     domain: domain, limit: 15 },
-            osint_web:        { action_type: 'web_fingerprint',      domain: domain }
-        }).forEach(function (kv) {
+            osint_hunter:     { action_type: 'osint_hunter_search',  domain: domain, limit: 15 },
+            osint_web:        { action_type: 'web_fingerprint',      domain: domain },
+            osint_shodan:     { action_type: 'osint_shodan_host',    domain: domain, api_key: shodanKey }
+        };
+        Object.entries(lanes).forEach(function (kv) {
             lane(kv[0], kv[1]).then(function (out) {
                 var renderer = ({
                     osint_dmarc:      renderDmarc,
                     osint_mx:         renderMx,
                     osint_homoglyph:  renderHomoglyph,
                     osint_subdomains: renderSubdomains,
-                    osint_hunter:    renderHunter,
-                    osint_web:        renderWeb
+                    osint_hunter:     renderHunter,
+                    osint_web:        renderWeb,
+                    osint_shodan:     renderShodan
                 })[out.id];
                 $('#' + out.id).html(renderer ? renderer(out.res) : '—');
             });
         });
+    }
+
+    // Phase 3.46-pre: Shodan API key prompt. localStorage only — never
+    // leaves the browser except inline in the lane request. Empty input
+    // clears the saved key.
+    function manageShodanKey() {
+        var current = '';
+        try { current = localStorage.getItem('taphish_shodan_key') || ''; } catch (_) {}
+        var masked = current ? current.substring(0, 4) + '…' + current.substring(current.length - 4) : '(none)';
+        var v = window.prompt('Shodan API key (32 alphanumeric). Current: ' + masked + '\nLeave empty to clear.', '');
+        if (v === null) return;
+        v = v.trim();
+        try {
+            if (v === '') localStorage.removeItem('taphish_shodan_key');
+            else localStorage.setItem('taphish_shodan_key', v);
+        } catch (_) {}
+        if (window.toastr) {
+            toastr.success(v === '' ? 'Shodan key cleared' : 'Shodan key saved');
+        }
     }
 
     // ----- Step 4: Sender setup (DKIM) -----------------------------------
@@ -572,6 +645,7 @@
         $('#osint_domain').on('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); runOsint($(this).val()); }
         });
+        $('#btn_shodan_key').on('click', function (e) { e.preventDefault(); manageShodanKey(); });
         // Phase 3.45c: Step 4 + Step 5 wiring.
         $('#step4_wrap, #step5_wrap').show();
         $('#btn_gen_dkim').on('click', runDkimGen);
