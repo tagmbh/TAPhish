@@ -26,39 +26,38 @@ $public_ip = getPublicIP();
 //Verify campaign is active
 if(verifyQuickTracker($conn, $tracker_id) == true){
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    // Phase 3.40: classify this hit. Scanner verdicts skip the
-    // tracker INSERT — the image still serves so the scanner sees a
-    // benign 200 OK, and we get an audit-log entry instead.
+    // Phase 3.40 + 3.45a: classify the hit and INSERT regardless,
+    // tagging scanner verdicts with is_scanner=1 so the dashboard
+    // "hide scanner hits" toggle and KPI aggregator can filter them
+    // without losing the data (operators can still audit per vendor).
     $verdict = taphish_classify_visitor(
         $user_agent,
         taphish_resolve_visitor_ptr($public_ip),
         -1
     );
-    if ($verdict['kind'] === 'scanner') {
-        if (function_exists('logIt')) {
-            logIt('Scanner hit on quick tracker ' . $tracker_id . ' (' . $verdict['reason'] . ')', 'system');
-        }
-    } else {
-        $date_time = round(microtime(true) * 1000);
-        $user_os = $ua_info->getPlatformVersion();
-        if(empty($POSTJ['ip_info']))
-            $ip_info = getIPInfo($conn, $public_ip);
-        else
-            $ip_info = json_encode(craftIPInfoArr($POSTJ['ip_info']));
-        $allHeaders ='';
-
-        $mail_client = getMailClient($user_agent);
-        if($mail_client == "unknown")
-            $mail_client = $ua_info->getName().' '.($ua_info->getVersion() == "unknown"?"":$ua_info->getVersion());
-
-        foreach (apache_request_headers() as $headers => $value) {
-            $allHeaders .= htmlspecialchars("$headers: $value\r\n");
-        }
-
-        $stmt = $conn->prepare("INSERT INTO tb_data_quick_tracker_live(tracker_id,rid,public_ip,ip_info,user_agent,mail_client,platform,all_headers,time) VALUES(?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sssssssss', $tracker_id,$user_id,$public_ip,$ip_info,$user_agent,$mail_client,$user_os,$allHeaders,$date_time);
-        $stmt->execute();
+    $is_scanner = ($verdict['kind'] === 'scanner') ? 1 : 0;
+    if ($is_scanner && function_exists('logIt')) {
+        logIt('Scanner hit on quick tracker ' . $tracker_id . ' (' . $verdict['reason'] . ')', 'system');
     }
+    $date_time = round(microtime(true) * 1000);
+    $user_os = $ua_info->getPlatformVersion();
+    if(empty($POSTJ['ip_info']))
+        $ip_info = getIPInfo($conn, $public_ip);
+    else
+        $ip_info = json_encode(craftIPInfoArr($POSTJ['ip_info']));
+    $allHeaders ='';
+
+    $mail_client = getMailClient($user_agent);
+    if($mail_client == "unknown")
+        $mail_client = $ua_info->getName().' '.($ua_info->getVersion() == "unknown"?"":$ua_info->getVersion());
+
+    foreach (apache_request_headers() as $headers => $value) {
+        $allHeaders .= htmlspecialchars("$headers: $value\r\n");
+    }
+
+    $stmt = $conn->prepare("INSERT INTO tb_data_quick_tracker_live(tracker_id,rid,public_ip,ip_info,user_agent,mail_client,platform,all_headers,time,is_scanner) VALUES(?,?,?,?,?,?,?,?,?,?)");
+    $stmt->bind_param('sssssssssi', $tracker_id,$user_id,$public_ip,$ip_info,$user_agent,$mail_client,$user_os,$allHeaders,$date_time,$is_scanner);
+    $stmt->execute();
 }
 
 function displayImage(){

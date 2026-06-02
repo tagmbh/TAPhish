@@ -787,11 +787,25 @@ function loadTableCampaignResult() {
         'pageLength': 20,
         'lengthMenu': [[20, 50, 100, 500, 1000, -1], [20, 50, 100, 500, 1000, "All"]],
         'aoColumnDefs': [{'bSortable': false, 'aTargets': [0]}],
+        // Phase 3.45a: tag each row with data-scanner so the operator's
+        // hide-scanner toggle can filter via CSS.
+        createdRow: function (row, data) {
+            if (data && data.is_scanner) {
+                $(row).attr('data-scanner', '1');
+            }
+        },
         drawCallback:function(){
             $('[data-toggle="tooltip"]').tooltip({ trigger: "hover" });
             $("label>select").select2({minimumResultsForSearch: -1, });
         }
     });
+
+    // Wire the hide-scanner checkbox once the table exists.
+    $('#cb_hide_scanner').off('change.scanner').on('change.scanner', function () {
+        $('#table_mail_campaign_result').toggleClass('t-hide-scanner', this.checked);
+    });
+    // Default: scanners hidden.
+    $('#table_mail_campaign_result').toggleClass('t-hide-scanner', $('#cb_hide_scanner').is(':checked'));
 }
 
 function exportReportAction(e) {

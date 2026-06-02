@@ -160,4 +160,41 @@ final class CustomerReportAggregatorTest extends TestCase
     {
         self::assertSame('—', customer_report_format_timestamp(null));
     }
+
+    // Phase 3.45a: scanner-aware KPI computation.
+
+    public function testKpisExcludeScannerOpensFromOpenedCount(): void
+    {
+        $rows = [
+            ['sending_status' => 2, 'mail_open_times' => '[1700000000000]', 'is_scanner' => 0],
+            ['sending_status' => 2, 'mail_open_times' => '[1700000000000]', 'is_scanner' => 1],
+            ['sending_status' => 2, 'mail_open_times' => null,              'is_scanner' => 0],
+        ];
+        $kpis = customer_report_compute_kpis($rows);
+        self::assertSame(1, $kpis['opened']);
+        self::assertSame(3, $kpis['recipients']);
+        self::assertSame(1, $kpis['scanner_hit_count']);
+    }
+
+    public function testKpisCountScannerHitsEvenWithoutOpens(): void
+    {
+        $rows = [
+            ['sending_status' => 2, 'mail_open_times' => null, 'is_scanner' => 1],
+            ['sending_status' => 2, 'mail_open_times' => null, 'is_scanner' => 1],
+        ];
+        $kpis = customer_report_compute_kpis($rows);
+        self::assertSame(0, $kpis['opened']);
+        self::assertSame(2, $kpis['scanner_hit_count']);
+    }
+
+    public function testKpisBackwardCompatibleWhenIsScannerKeyMissing(): void
+    {
+        $rows = [
+            ['sending_status' => 2, 'mail_open_times' => '[1700000000000]'],
+            ['sending_status' => 2, 'mail_open_times' => null],
+        ];
+        $kpis = customer_report_compute_kpis($rows);
+        self::assertSame(1, $kpis['opened']);
+        self::assertSame(0, $kpis['scanner_hit_count']);
+    }
 }

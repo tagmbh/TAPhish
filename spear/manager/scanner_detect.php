@@ -184,3 +184,50 @@ if (!function_exists('taphish_resolve_visitor_ptr')) {
         return $resolved;
     }
 }
+
+if (!function_exists('taphish_scanner_ensure_schema')) {
+    /**
+     * Phase 3.45a: idempotently add `is_scanner` + `scanner_reason`
+     * columns to the three live-data tables that record tracker hits.
+     * Called at boot from session_manager.php; existing rows stay 0.
+     */
+    function taphish_scanner_ensure_schema(\mysqli $conn): void
+    {
+        $columns = [
+            ['tb_data_mailcamp_live',      'is_scanner',     'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['tb_data_mailcamp_live',      'scanner_reason', 'VARCHAR(160) NULL'],
+            ['tb_data_quick_tracker_live', 'is_scanner',     'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['tb_data_webform_submit',     'is_scanner',     'TINYINT(1) NOT NULL DEFAULT 0'],
+        ];
+        foreach ($columns as [$table, $col, $type]) {
+            $stmt = $conn->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+            );
+            if ($stmt === false) {
+                continue;
+            }
+            $stmt->bind_param('ss', $table, $col);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_row();
+            $stmt->close();
+            if ($row && (int) $row[0] > 0) {
+                continue;
+            }
+            @$conn->query("ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$type}");
+        }
+    }
+}
+
+if (!function_exists('taphish_should_filter_scanner_in_kpis')) {
+    /**
+     * Phase 3.45a: shared decision used by every KPI aggregator + every
+     * dashboard recipient query — should scanner-flagged rows be hidden
+     * from the metrics? Default is yes; operator can pass
+     * `include_scanner_hits=1` on a specific query to see them.
+     */
+    function taphish_should_filter_scanner_in_kpis(array $opts): bool
+    {
+        return empty($opts['include_scanner_hits']);
+    }
+}

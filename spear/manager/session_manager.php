@@ -43,6 +43,11 @@ if (isset($conn) && $conn instanceof mysqli) {
 		require_once(dirname(__FILE__) . '/engagement.php');
 		taphish_engagement_ensure_schema($conn);
 	}
+	// Phase 3.45a: add is_scanner + scanner_reason columns on the live tables.
+	if (is_file(dirname(__FILE__) . '/scanner_detect.php')) {
+		require_once(dirname(__FILE__) . '/scanner_detect.php');
+		taphish_scanner_ensure_schema($conn);
+	}
 }
 // Phase 3.9: detect operators still using the bootstrap "sniperphish"
 // password so the JS guard in z_menu.php can redirect them to
