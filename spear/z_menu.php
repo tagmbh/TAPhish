@@ -143,6 +143,7 @@
                   <li class="sidebar-item"><a href="/spear/MailCampaignList" class="sidebar-link"><i class="mdi mdi-playlist-plus"></i><span class="hide-menu"> Campaign List </span></a></li>
                   <li class="sidebar-item"><a href="/spear/MailUserGroup" class="sidebar-link"><i class="fas fa-users"></i><span class="hide-menu"> User Group </span></a></li>
                   <li class="sidebar-item"><a href="/spear/MailTemplate" class="sidebar-link"><i class="mdi mdi-credit-card"></i><span class="hide-menu"> Email Template </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/PretextLibrary" class="sidebar-link"><i class="fas fa-book-open"></i><span class="hide-menu"> Pretext Library </span></a></li>
                   <li class="sidebar-item"><a href="/spear/MailSender" class="sidebar-link"><i class="fas fa-user-secret"></i><span class="hide-menu"> Sender List </span></a></li>
                   <li class="sidebar-item"><a href="/spear/MailConfig" class="sidebar-link"><i class="fas fa-cogs"></i><span class="hide-menu"> Configuration</span></a></li>
                </ul>

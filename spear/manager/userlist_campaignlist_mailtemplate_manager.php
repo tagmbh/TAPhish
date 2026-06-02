@@ -4,6 +4,7 @@ require_once(dirname(__FILE__) . '/common_functions.php');
 require_once(dirname(__FILE__) . '/osint_hunter.php');
 require_once(dirname(__FILE__) . '/osint_crt_sh.php');
 require_once(dirname(__FILE__) . '/secret_at_rest.php');
+require_once(dirname(__FILE__) . '/pretext_library.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -53,6 +54,19 @@ if (isset($_POST)) {
 			deleteMailTemplateFromTemplateId($conn,$POSTJ['mail_template_id']);
 		if($POSTJ['action_type'] == "make_copy_mail_template")
 			makeCopyMailTemplate($conn, $POSTJ['mail_template_id'], $POSTJ['new_mail_template_id'], $POSTJ['new_mail_template_name']);
+
+		// Phase 3.39: pretext library
+		if($POSTJ['action_type'] == "list_pretexts") {
+			echo json_encode(['result' => 'success', 'pretexts' => taphish_pretext_list($conn)]);
+		}
+		if($POSTJ['action_type'] == "clone_pretext_to_my_templates") {
+			$new_id = taphish_pretext_clone_to_my_templates($conn, (int)($POSTJ['pretext_id'] ?? 0));
+			echo json_encode(
+				$new_id === null
+					? ['result' => 'failed', 'error' => 'Could not clone pretext.']
+					: ['result' => 'success', 'mail_template_id' => $new_id]
+			);
+		}
 		if($POSTJ['action_type'] == "upload_tracker_image")
 			uploadTrackerImage($conn,$POSTJ);
 		if($POSTJ['action_type'] == "upload_attachments")

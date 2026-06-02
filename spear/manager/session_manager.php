@@ -27,6 +27,12 @@ if (isset($conn) && $conn instanceof mysqli) {
 	taphish_ensure_mail_presets($conn);
 	totp_ensure_schema($conn);	//Phase 3.25: add totp_secret + totp_enabled columns if missing
 	totp_ensure_recovery_schema($conn);	//Phase 3.31: create tb_totp_recovery_codes if missing
+	// Phase 3.39: create + seed the pretext library on first boot.
+	if (is_file(dirname(__FILE__) . '/pretext_library.php')) {
+		require_once(dirname(__FILE__) . '/pretext_library.php');
+		taphish_ensure_pretext_schema($conn);
+		taphish_ensure_pretext_seeds($conn);
+	}
 }
 // Phase 3.9: detect operators still using the bootstrap "sniperphish"
 // password so the JS guard in z_menu.php can redirect them to

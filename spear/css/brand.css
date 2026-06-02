@@ -873,3 +873,86 @@ a:focus-visible {
     background-color: var(--t-primary);
     border-color: var(--t-primary);
 }
+
+/* ---- Phase 3.39: pretext library gallery -------------------------- */
+
+.t-pretext-gallery .t-pretext-cat + .t-pretext-cat {
+    margin-top: 28px;
+}
+
+.t-pretext-cat-label {
+    font-family: var(--t-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--t-text-dim);
+    margin-bottom: 10px;
+}
+
+.t-pretext-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+}
+
+.t-pretext-card {
+    background-color: var(--t-bg-elevated);
+    border: 1px solid var(--t-border);
+    border-radius: var(--t-radius-lg);
+    padding: 16px 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.t-pretext-card:hover {
+    border-color: var(--t-primary-edge);
+    transform: translateY(-1px);
+}
+
+.t-pretext-name {
+    color: var(--t-text);
+    font-family: var(--t-display);
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.t-pretext-subject {
+    color: var(--t-text-mute);
+    font-family: var(--t-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.t-pretext-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.t-pretext-tag {
+    font-family: var(--t-mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    text-transform: lowercase;
+    color: var(--t-text-mute);
+    background-color: var(--t-bg);
+    border: 1px solid var(--t-border);
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+
+.t-pretext-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--t-border);
+}
