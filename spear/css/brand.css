@@ -545,3 +545,152 @@ a:focus-visible {
 .dim-panel .sidebar-nav ul.collapse {
     background-color: var(--t-bg-elevated) !important;
 }
+
+/* ---- Phase 3.34: Bootstrap surface re-skin for dim panels --------- */
+
+.dim-panel .card {
+    background-color: var(--t-bg-elevated) !important;
+    border: 1px solid var(--t-border) !important;
+    box-shadow: none !important;
+    color: var(--t-text);
+}
+
+.dim-panel .card-body {
+    color: var(--t-text);
+}
+
+.dim-panel .card hr,
+.dim-panel hr {
+    border-color: var(--t-border);
+    opacity: 1;
+}
+
+.dim-panel .card-title {
+    color: var(--t-text);
+}
+
+/* Form inputs (.form-control / textarea / select) inside dim panels. */
+.dim-panel .form-control,
+.dim-panel .form-control:focus {
+    background-color: var(--t-bg) !important;
+    border-color: var(--t-border) !important;
+    color: var(--t-text) !important;
+    box-shadow: none !important;
+}
+
+.dim-panel .form-control::placeholder {
+    color: var(--t-text-dim);
+}
+
+.dim-panel .form-control:focus {
+    border-color: var(--t-primary-edge) !important;
+    box-shadow: var(--t-glow) !important;
+}
+
+/* Input groups (Bootstrap addon prefix/suffix). */
+.dim-panel .input-group-text {
+    background-color: var(--t-surface) !important;
+    border-color: var(--t-border) !important;
+    color: var(--t-text-mute) !important;
+}
+
+/* Labels in dim panels. */
+.dim-panel label,
+.dim-panel .col-form-label {
+    color: var(--t-text-mute);
+}
+
+/* Modals (2FA enrollment, recovery codes, disable, generic confirm). */
+.dim-panel .modal-content {
+    background-color: var(--t-bg-elevated);
+    border: 1px solid var(--t-border);
+    color: var(--t-text);
+}
+
+.dim-panel .modal-header {
+    border-bottom: 1px solid var(--t-border);
+}
+
+.dim-panel .modal-footer {
+    border-top: 1px solid var(--t-border);
+}
+
+.dim-panel .modal-title {
+    color: var(--t-text);
+}
+
+.dim-panel .modal .close {
+    color: var(--t-text-mute);
+    text-shadow: none;
+    opacity: 1;
+}
+
+.dim-panel .modal .close:hover {
+    color: var(--t-text);
+}
+
+/* Tables (admin-accounts grid + future tabular surfaces). */
+.dim-panel .table {
+    color: var(--t-text);
+    background-color: transparent;
+}
+
+.dim-panel .table th,
+.dim-panel .table td {
+    border-color: var(--t-border) !important;
+}
+
+.dim-panel .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(255, 255, 255, 0.02);
+    color: var(--t-text);
+}
+
+.dim-panel .table-bordered,
+.dim-panel .table-bordered th,
+.dim-panel .table-bordered td {
+    border-color: var(--t-border) !important;
+}
+
+/* Dropdown menus (user dropdown, action menus). */
+.dim-panel .dropdown-menu {
+    background-color: var(--t-bg-elevated);
+    border: 1px solid var(--t-border);
+}
+
+.dim-panel .dropdown-item {
+    color: var(--t-text) !important;
+}
+
+.dim-panel .dropdown-item:hover,
+.dim-panel .dropdown-item:focus {
+    background-color: rgba(0, 113, 187, 0.12);
+    color: var(--t-text) !important;
+}
+
+.dim-panel .dropdown-divider {
+    border-top-color: var(--t-border);
+}
+
+/* Alerts (default-creds warning, generic notices). */
+.dim-panel .alert {
+    color: var(--t-text);
+    border-color: var(--t-border);
+}
+
+.dim-panel .alert-warning {
+    background-color: rgba(240, 164, 49, 0.12);
+    border-color: rgba(240, 164, 49, 0.45);
+    color: var(--t-warn);
+}
+
+.dim-panel .alert-warning .alert-link,
+.dim-panel .alert-warning a {
+    color: var(--t-warn);
+    text-decoration-color: var(--t-warn);
+}
+
+.dim-panel .alert-danger {
+    background-color: rgba(230, 73, 70, 0.12);
+    border-color: rgba(230, 73, 70, 0.45);
+    color: var(--t-danger);
+}
