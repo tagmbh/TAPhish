@@ -134,6 +134,24 @@ if (isset($_POST)) {
 				'web'    => taphish_web_fingerprint($domain),
 			]);
 		}
+		// Phase 3.43c: pretext picker filtered by detected tech stack.
+		if($POSTJ['action_type'] == "list_pretexts_ranked") {
+			$cats = $POSTJ['categories'] ?? [];
+			if (!is_array($cats)) $cats = [];
+			$cats = array_values(array_filter(array_map('strval', $cats)));
+			$flat = taphish_pretext_list_flat($conn);
+			$limit = max(3, min(20, (int)($POSTJ['limit'] ?? 8)));
+			$ranked = array_slice(
+				taphish_pretext_rank_for_categories($flat, $cats),
+				0,
+				$limit
+			);
+			echo json_encode([
+				'result' => 'success',
+				'preferred_categories' => $cats,
+				'pretexts' => $ranked,
+			]);
+		}
 		if($POSTJ['action_type'] == "upload_tracker_image")
 			uploadTrackerImage($conn,$POSTJ);
 		if($POSTJ['action_type'] == "upload_attachments")

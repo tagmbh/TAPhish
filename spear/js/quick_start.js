@@ -168,10 +168,73 @@
         var prim = mx.primary || {};
         var label = prim.label || '—';
         var cat = prim.category || 'unknown';
-        var cats = (mx.pretext_categories || []).slice(0, 3).join(' &middot; ');
+        var preferred = mx.pretext_categories || [];
+        var cats = preferred.slice(0, 3).join(' &middot; ');
+        // Phase 3.43c: kick off Step 3 once we know which categories to prioritise.
+        runPretextPicker(preferred);
         return '<strong>' + esc(label) + '</strong>'
             + '<div class="text-muted">' + esc(cat) + ' &middot; ' + (mx.count || 0) + ' MX</div>'
             + '<div class="mt-2"><span class="text-muted">Suggested pretexts:</span> ' + cats + '</div>';
+    }
+
+    function runPretextPicker(categories) {
+        $('#step3_wrap').show();
+        $('#step3_categories').text('Preferred categories: ' + (categories.length ? categories.join(' › ') : '(no preference)'));
+        $('#step3_pretexts').html('<div class="col-12 text-muted">…loading…</div>');
+        post({ action_type: 'list_pretexts_ranked', categories: categories, limit: 8 })
+            .done(function (res) {
+                if (!res || res.result !== 'success') {
+                    $('#step3_pretexts').html('<div class="col-12 text-danger">Could not load pretext library.</div>');
+                    return;
+                }
+                renderPretextPicks(res.pretexts || []);
+            })
+            .fail(function () {
+                $('#step3_pretexts').html('<div class="col-12 text-danger">Could not load pretext library.</div>');
+            });
+    }
+
+    function renderPretextPicks(pretexts) {
+        var $g = $('#step3_pretexts').empty();
+        if (!pretexts.length) {
+            $g.html('<div class="col-12 text-muted">No pretexts in the library yet.</div>');
+            return;
+        }
+        pretexts.forEach(function (p) {
+            var $col = $('<div class="col-md-6 col-lg-4 mb-3">');
+            var $card = $('<div class="card h-100"><div class="card-body"></div></div>').appendTo($col);
+            var $body = $card.find('.card-body');
+            $body.append(
+                $('<span class="badge badge-info mr-2"></span>').text(p.category || ''),
+                $('<strong></strong>').text(p.name || ''),
+                $('<div class="small text-muted mt-1"></div>').text(p.subject || ''),
+                $('<button class="btn btn-sm btn-info mt-3"><i class="fa fa-clone"></i> Clone to my templates</button>')
+                    .on('click', function () { clonePretext(p.id, $(this)); })
+            );
+            $g.append($col);
+        });
+    }
+
+    function clonePretext(pretextId, $btn) {
+        $btn.prop('disabled', true);
+        post({ action_type: 'clone_pretext_to_my_templates', pretext_id: pretextId })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    if (window.toastr) toastr.success('Cloned. Open Email Template to edit.');
+                    $btn.replaceWith(
+                        $('<a class="btn btn-sm btn-success mt-3"></a>')
+                            .attr('href', 'MailTemplate?action=edit&mail_template_id=' + res.mail_template_id)
+                            .html('<i class="fa fa-check"></i> Open my copy')
+                    );
+                } else {
+                    if (window.toastr) toastr.error((res && res.error) || 'Clone failed');
+                    $btn.prop('disabled', false);
+                }
+            })
+            .fail(function () {
+                if (window.toastr) toastr.error('Clone failed');
+                $btn.prop('disabled', false);
+            });
     }
 
     function renderHomoglyph(res) {

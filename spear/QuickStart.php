@@ -192,6 +192,24 @@
                      </div>
                   </div>
                </div>
+
+               <!-- ============ Step 3 — Pretext picker ============ -->
+               <div class="row" id="step3_wrap" style="display:none;">
+                  <div class="col-12">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 3 — Pretext picker</h5>
+                           <p class="text-muted small">
+                              Top picks based on the detected tech stack. Click <em>Clone to my templates</em>
+                              to copy a starter into your editable template list — Phase 3.39 library entry
+                              becomes a fresh row you can customise without touching the seed.
+                           </p>
+                           <div class="mb-2 small text-muted" id="step3_categories">—</div>
+                           <div id="step3_pretexts" class="row">—</div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
             </div>
             <?php include_once 'z_footer.php' ?>
          </div>
