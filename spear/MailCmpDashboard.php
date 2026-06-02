@@ -202,6 +202,9 @@
                                           <input type="checkbox" id="cb_hide_scanner" checked> Hide scanner hits
                                        </label>
                                     </div>
+                                    <div class="col-md-3">
+                                       <span class="small text-muted" id="capture_summary_badge" title="Phase 3.45e: total form-submit captures + 2FA codes harvested for this campaign.">Captures: <strong id="capture_summary_count">—</strong> · 2FA: <strong id="capture_summary_2fa">—</strong></span>
+                                    </div>
                                     <div class="align-items-right ml-auto">
                                        <div class="row">
                                           <button type="button" class="btn btn-warning item_private mr-2" id="btn_poll_bounces" onclick="pollBounces($(this))" title="Open the sender mailbox over IMAP and mark recipients whose mail bounced" data-toggle="tooltip" data-placement="bottom"><i class="m-r-10 fas fa-exclamation-triangle"></i> Refresh bounces</button>

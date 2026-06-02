@@ -283,6 +283,18 @@ if (isset($_POST)) {
 			}
 			echo json_encode(['result' => 'success'] + taphish_recipient_preview($csv, $allowlist));
 		}
+		// Phase 3.45e: per-recipient capture + 2FA summary for the dashboard.
+		if($POSTJ['action_type'] == "get_capture_summary_for_campaign") {
+			$cid = (string)($POSTJ['campaign_id'] ?? '');
+			if ($cid === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'campaign_id required']);
+			} else {
+				echo json_encode([
+					'result'   => 'success',
+					'captures' => taphish_capture_summary_for_campaign($conn, $cid),
+				]);
+			}
+		}
 		if($POSTJ['action_type'] == "engagement_transition_status") {
 			$id   = (int)($POSTJ['engagement_id'] ?? 0);
 			$from = (string)($POSTJ['from'] ?? '');

