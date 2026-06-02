@@ -82,6 +82,7 @@
         post({ action_type: 'save_engagement', payload: readForm() })
             .done(function (res) {
                 if (res && res.result === 'success') {
+                    setStepperState(2);
                     $('#eng_result').html(
                         '<div class="alert alert-success">' +
                         '<strong>Saved.</strong> Slug: <code>' + esc(res.slug) + '</code>. ' +
@@ -134,12 +135,32 @@
 
     // ----- Step 2: OSINT pre-check fan-out --------------------------------
 
+    function skeleton(lines) {
+        var n = lines || 3;
+        var out = '';
+        for (var i = 0; i < n; i++) {
+            out += '<div class="t-skel' + (i === 0 ? ' is-tall' : (i === n - 1 ? ' is-short' : '')) + '"></div>';
+        }
+        return out;
+    }
+
     function lane(id, payload) {
         var $el = $('#' + id);
-        $el.html('<span class="text-muted">…loading…</span>');
+        $el.html(skeleton(3));
         return post(payload)
             .then(function (res) { return { id: id, res: res }; })
             .catch(function ()    { return { id: id, res: { result: 'failed' } }; });
+    }
+
+    function setStepperState(maxDone) {
+        // 1 = engagement saved, 2 = OSINT triggered, 3 = pretexts shown, etc.
+        var $items = $('#t_stepper > li');
+        $items.removeClass('is-active is-done');
+        $items.each(function (idx) {
+            var step = idx + 1;
+            if (step < maxDone) $(this).addClass('is-done');
+            else if (step === maxDone) $(this).addClass('is-active');
+        });
     }
 
     function renderDmarc(res) {
@@ -178,9 +199,14 @@
     }
 
     function runPretextPicker(categories) {
+        setStepperState(3);
         $('#step3_wrap').show();
         $('#step3_categories').text('Preferred categories: ' + (categories.length ? categories.join(' › ') : '(no preference)'));
-        $('#step3_pretexts').html('<div class="col-12 text-muted">…loading…</div>');
+        $('#step3_pretexts').html(
+            '<div class="col-md-6 col-lg-4 mb-3"><div class="card h-100"><div class="card-body">' + skeleton(4) + '</div></div></div>' +
+            '<div class="col-md-6 col-lg-4 mb-3"><div class="card h-100"><div class="card-body">' + skeleton(4) + '</div></div></div>' +
+            '<div class="col-md-6 col-lg-4 mb-3"><div class="card h-100"><div class="card-body">' + skeleton(4) + '</div></div></div>'
+        );
         post({ action_type: 'list_pretexts_ranked', categories: categories, limit: 8 })
             .done(function (res) {
                 if (!res || res.result !== 'success') {
@@ -302,6 +328,7 @@
             if (window.toastr) toastr.warning('Enter a target domain first');
             return;
         }
+        setStepperState(2);
         $('#osint_panel').show();
         Object.entries({
             osint_dmarc:      { action_type: 'email_posture_lookup', domain: domain },
