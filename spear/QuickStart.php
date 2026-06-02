@@ -277,6 +277,77 @@
                      </div>
                   </div>
                </div>
+
+               <!-- ============ Step 6 — Landing page picker ============ -->
+               <div class="row" id="step6_wrap" style="display:none;">
+                  <div class="col-12 mb-3">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 6 — Landing page</h5>
+                           <p class="text-muted small">
+                              Pick the page your recipients land on after clicking. Existing
+                              clones come from the Site Cloner; the library entries are
+                              hand-curated common targets you can spin up via Phase 3.44
+                              (planned). The wizard does not commit a choice — it just shows
+                              you the deep-links so you know where to go.
+                           </p>
+                           <div id="landing_options" class="row">—</div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- ============ Step 7 — Pre-flight + Launch ============ -->
+               <div class="row" id="step7_wrap" style="display:none;">
+                  <div class="col-12 mb-3">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 7 — Pre-flight + Launch</h5>
+                           <p class="text-muted small">
+                              The Launch button stays disabled until every gate is green.
+                              Status transition uses compare-and-swap, so a double-click
+                              can't double-launch.
+                           </p>
+                           <div class="form-row align-items-end">
+                              <div class="form-group col-md-6 mb-2">
+                                 <label>Recipient emails (one per line — typically from Step 5)</label>
+                                 <textarea class="form-control" id="pf_emails" rows="3" placeholder="alice@target.example&#10;bob@hr.target.example"></textarea>
+                              </div>
+                              <div class="form-group col-md-3 mb-2">
+                                 <label>Sender domain</label>
+                                 <input type="text" id="pf_sender_domain" class="form-control" placeholder="target-corp.example">
+                              </div>
+                              <div class="form-group col-md-3 mb-2">
+                                 <label>Target real domain</label>
+                                 <input type="text" id="pf_target_domain" class="form-control" placeholder="target.example">
+                              </div>
+                              <div class="form-group col-md-3 mb-2">
+                                 <label>Target DMARC policy (from Step 2)</label>
+                                 <select id="pf_dmarc" class="form-control">
+                                    <option value="none">none</option>
+                                    <option value="quarantine">quarantine</option>
+                                    <option value="reject">reject</option>
+                                 </select>
+                              </div>
+                              <div class="form-group col-md-3 mb-2">
+                                 <label>Webhook URL (optional)</label>
+                                 <input type="text" id="pf_webhook" class="form-control" placeholder="(blank = none)">
+                              </div>
+                              <div class="form-group col-md-6 mb-2">
+                                 <button class="btn btn-info" type="button" id="btn_run_preflight">
+                                    <i class="fa fa-stethoscope"></i> Run pre-flight
+                                 </button>
+                                 <button class="btn btn-success" type="button" id="btn_launch" disabled>
+                                    <i class="fa fa-rocket"></i> Launch
+                                 </button>
+                              </div>
+                           </div>
+                           <div id="preflight_result"></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
             </div>
             <?php include_once 'z_footer.php' ?>
          </div>

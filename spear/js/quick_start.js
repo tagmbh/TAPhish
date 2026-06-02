@@ -441,6 +441,122 @@
             .fail(function ()    { $('#rcpt_preview_result').html('<div class="alert alert-danger">Request failed</div>'); });
     }
 
+    // ----- Step 6: Landing page picker -----------------------------------
+
+    function loadLandingOptions() {
+        setStepperState(6);
+        $('#landing_options').html(skeleton(3));
+        post({ action_type: 'wizard_list_landing_options' })
+            .done(function (res) {
+                if (!res || res.result !== 'success') {
+                    $('#landing_options').html('<div class="alert alert-danger">Could not load landing options.</div>');
+                    return;
+                }
+                var html = '';
+                html += '<div class="col-md-4 mb-3"><div class="card h-100"><div class="card-body">'
+                     +    '<h6>Clone via Site Cloner</h6>'
+                     +    '<p class="small text-muted">Fetch a target URL and rewrite assets.</p>'
+                     +    '<a class="btn btn-sm btn-info" href="SiteCloner">Open Site Cloner</a>'
+                     +    (res.clones && res.clones.length ? '<div class="mt-2 small text-muted">Existing slugs: ' + res.clones.map(esc).slice(0, 6).join(', ') + (res.clones.length > 6 ? ', …' : '') + '</div>' : '')
+                     +  '</div></div></div>';
+                html += '<div class="col-md-4 mb-3"><div class="card h-100"><div class="card-body">'
+                     +    '<h6>AI-generate</h6>'
+                     +    '<p class="small text-muted">Describe the page; Claude builds it.</p>'
+                     +    '<a class="btn btn-sm btn-info" href="sniperhost/LandingPage?action=ai">Open Landing Page editor</a>'
+                     +  '</div></div></div>';
+                html += '<div class="col-md-4 mb-3"><div class="card h-100"><div class="card-body">'
+                     +    '<h6>Library shortcuts</h6>'
+                     +    '<ul class="small mb-0 pl-3">'
+                     +    (res.library || []).map(function (l) { return '<li>' + esc(l.label) + ' <span class="text-muted">— planned</span></li>'; }).join('')
+                     +    '</ul>'
+                     +  '</div></div></div>';
+                $('#landing_options').html(html);
+            })
+            .fail(function () { $('#landing_options').html('<div class="alert alert-danger">Request failed</div>'); });
+    }
+
+    // ----- Step 7: Pre-flight + Launch -----------------------------------
+
+    function gatherPreflightContext() {
+        var emails = ($('#pf_emails').val() || '').split(/[\s,;]+/).map(function (e) { return e.trim().toLowerCase(); }).filter(Boolean);
+        var scope = ($('#eng_scope').val() || '').split(/[\s,;]+/).map(function (e) { return e.trim().toLowerCase(); }).filter(Boolean);
+        return {
+            recipient_emails:    emails,
+            scope_allowlist:     scope,
+            sender_domain:       ($('#pf_sender_domain').val() || '').trim().toLowerCase(),
+            target_domain:       ($('#pf_target_domain').val() || '').trim().toLowerCase(),
+            target_dmarc_policy: $('#pf_dmarc').val(),
+            webhook_url:         ($('#pf_webhook').val() || '').trim(),
+        };
+    }
+
+    function renderPreflight(report) {
+        var html = '<table class="table table-sm mt-3"><thead><tr><th>Gate</th><th>Verdict</th><th>Reason</th></tr></thead><tbody>';
+        var gates = report.gates || {};
+        Object.keys(gates).forEach(function (key) {
+            var g = gates[key];
+            var badge = g.ok ? 'badge-success' : 'badge-danger';
+            var verdict = g.ok ? 'pass' : 'fail';
+            html += '<tr>'
+                 + '<td>' + esc(key) + '</td>'
+                 + '<td><span class="badge ' + badge + '">' + verdict + '</span></td>'
+                 + '<td class="small text-muted">' + esc(g.reason || '') + '</td>'
+                 + '</tr>';
+        });
+        html += '</tbody></table>';
+        if (report.ok) {
+            html += '<div class="alert alert-success">All gates green. Launch button enabled.</div>';
+        } else {
+            html += '<div class="alert alert-warning">One or more gates failed — fix above before launch.</div>';
+        }
+        return html;
+    }
+
+    function runPreflight() {
+        setStepperState(7);
+        var ctx = gatherPreflightContext();
+        $('#preflight_result').html(skeleton(4));
+        $('#btn_launch').prop('disabled', true);
+        post({ action_type: 'wizard_preflight', context: ctx })
+            .done(function (res) {
+                if (!res || res.result !== 'success') {
+                    $('#preflight_result').html('<div class="alert alert-danger">Pre-flight failed</div>');
+                    return;
+                }
+                $('#preflight_result').html(renderPreflight(res));
+                $('#btn_launch').prop('disabled', !res.ok);
+            })
+            .fail(function () { $('#preflight_result').html('<div class="alert alert-danger">Request failed</div>'); });
+    }
+
+    function runLaunch() {
+        var engId = parseInt($('#eng_view_id_persist').val(), 10) || 0;
+        // Best-effort: pick the most recent engagement from the recent list
+        // if no explicit id was carried.
+        if (!engId) {
+            var firstRow = $('#tb_engagements tbody tr:first');
+            if (firstRow.length) {
+                // Re-fetch via list_engagements would be cleaner; fall back to a prompt.
+                var slug = firstRow.find('code').text();
+                if (slug && window.toastr) toastr.info('Launching for engagement ' + slug + ' (id resolved server-side)');
+            }
+        }
+        var ctx = gatherPreflightContext();
+        ctx.campaign_name = 'Wizard-launched ' + new Date().toISOString().slice(0, 16);
+        ctx.scheduled_time = '';
+        ctx.camp_status = 0;
+        post({ action_type: 'wizard_launch_campaign', engagement_id: engId, context: ctx })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    if (window.toastr) toastr.success('Launched. Campaign ' + res.campaign_id);
+                    window.location.href = 'EngagementView?engagement_id=' + res.engagement_id;
+                } else {
+                    if (window.toastr) toastr.error((res && res.error) || 'Launch rejected');
+                }
+            })
+            .fail(function () { if (window.toastr) toastr.error('Request failed'); });
+    }
+
     $(function () {
         $('#frm_engagement').on('submit', onSubmit);
         $('#btn_refresh_eng').on('click', refreshList);
@@ -460,6 +576,11 @@
         $('#step4_wrap, #step5_wrap').show();
         $('#btn_gen_dkim').on('click', runDkimGen);
         $('#btn_rcpt_preview').on('click', runRecipientPreview);
+        // Phase 3.45d: Step 6 + Step 7 wiring.
+        $('#step6_wrap, #step7_wrap').show();
+        loadLandingOptions();
+        $('#btn_run_preflight').on('click', runPreflight);
+        $('#btn_launch').on('click', runLaunch);
         refreshList();
     });
 })();

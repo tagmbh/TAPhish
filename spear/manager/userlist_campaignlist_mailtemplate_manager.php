@@ -14,6 +14,7 @@ require_once(dirname(__FILE__) . '/toolset_checks.php');
 require_once(dirname(__FILE__) . '/capture_alerting.php');
 require_once(dirname(__FILE__) . '/dkim_helper.php');
 require_once(dirname(__FILE__) . '/recipient_import.php');
+require_once(dirname(__FILE__) . '/preflight_checks.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -158,6 +159,116 @@ if (isset($_POST)) {
 						'spf_record'      => taphish_dkim_suggested_spf_record(),
 						'dmarc_record'    => taphish_dkim_suggested_dmarc_record($rua),
 					]);
+				}
+			}
+		}
+		// Phase 3.45d: pre-flight gates evaluation. Stateless — the JS
+		// passes the full context bundle. SMTP + webhook probes happen
+		// only if the operator explicitly asked for them in the wizard.
+		if($POSTJ['action_type'] == "wizard_preflight") {
+			$ctx = is_array($POSTJ['context'] ?? null) ? $POSTJ['context'] : [];
+			$emails = is_array($ctx['recipient_emails'] ?? null) ? $ctx['recipient_emails'] : [];
+			$allow  = is_array($ctx['scope_allowlist']  ?? null) ? $ctx['scope_allowlist']  : [];
+			$senderProbe = null;
+			if (!empty($ctx['sender_list_id']) && !empty($ctx['probe_sender'])) {
+				$senderProbe = function() use ($conn, $ctx) {
+					$res = ['ok' => false, 'error' => 'sender probe not yet wired'];
+					return $res;
+				};
+			}
+			$report = taphish_preflight_run_all([
+				'recipient_emails'    => $emails,
+				'scope_allowlist'     => $allow,
+				'target_dmarc_policy' => (string)($ctx['target_dmarc_policy'] ?? ''),
+				'sender_domain'       => (string)($ctx['sender_domain']       ?? ''),
+				'target_domain'       => (string)($ctx['target_domain']       ?? ''),
+				'sender_probe'        => $senderProbe,
+				'webhook_url'         => (string)($ctx['webhook_url']         ?? ''),
+			]);
+			echo json_encode(['result' => 'success'] + $report);
+		}
+		// Phase 3.45d: list usable landing-page sources for Step 6.
+		if($POSTJ['action_type'] == "wizard_list_landing_options") {
+			$clones = [];
+			$base = dirname(__FILE__, 2) . '/sniperhost/cloned';
+			if (is_dir($base)) {
+				foreach (scandir($base) ?: [] as $entry) {
+					if ($entry === '.' || $entry === '..' || !is_dir($base . '/' . $entry)) continue;
+					$clones[] = $entry;
+				}
+				sort($clones);
+			}
+			// Hand-curated library shortcut list.
+			$library = [
+				['key' => 'm365-login',     'label' => 'Microsoft 365 sign-in'],
+				['key' => 'google-login',   'label' => 'Google Workspace sign-in'],
+				['key' => 'okta-login',     'label' => 'Okta universal login'],
+				['key' => 'owa-login',      'label' => 'Outlook on the web'],
+				['key' => 'vpn-portal',     'label' => 'Generic VPN portal'],
+			];
+			echo json_encode([
+				'result'  => 'success',
+				'clones'  => $clones,
+				'library' => $library,
+			]);
+		}
+		// Phase 3.45d: Launch orchestrator. CAS-protected status
+		// transition; on insert failure we revert the engagement back
+		// to draft so a retry can proceed.
+		if($POSTJ['action_type'] == "wizard_launch_campaign") {
+			$engagement_id = (int)($POSTJ['engagement_id'] ?? 0);
+			$ctx = is_array($POSTJ['context'] ?? null) ? $POSTJ['context'] : [];
+
+			if ($engagement_id <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id is required']);
+			} else {
+				// 1. Re-run preflight so the operator can't bypass the JS.
+				$emails = is_array($ctx['recipient_emails'] ?? null) ? $ctx['recipient_emails'] : [];
+				$allow  = is_array($ctx['scope_allowlist']  ?? null) ? $ctx['scope_allowlist']  : [];
+				$pre = taphish_preflight_run_all([
+					'recipient_emails'    => $emails,
+					'scope_allowlist'     => $allow,
+					'target_dmarc_policy' => (string)($ctx['target_dmarc_policy'] ?? ''),
+					'sender_domain'       => (string)($ctx['sender_domain']       ?? ''),
+					'target_domain'       => (string)($ctx['target_domain']       ?? ''),
+					'sender_probe'        => null,
+					'webhook_url'         => (string)($ctx['webhook_url']         ?? ''),
+				]);
+				if (!$pre['ok']) {
+					echo json_encode(['result' => 'failed', 'error' => 'Pre-flight gates not green', 'gates' => $pre['gates']]);
+				}
+				// 2. CAS: draft → live.
+				elseif (!taphish_engagement_transition_status($conn, $engagement_id, 'draft', 'live')) {
+					echo json_encode(['result' => 'failed', 'error' => 'Engagement already launched or cancelled (CAS rejected)']);
+				} else {
+					// 3. INSERT campaign row stamped with engagement_id.
+					$campaign_id    = (string)($ctx['campaign_id']    ?? ('camp-' . substr(bin2hex(random_bytes(6)), 0, 12)));
+					$campaign_name  = (string)($ctx['campaign_name']  ?? ('Engagement ' . $engagement_id . ' launch'));
+					$campaign_data  = json_encode($ctx['campaign_data'] ?? []);
+					$scheduled_time = (string)($ctx['scheduled_time'] ?? '');
+					$camp_status    = (int)($ctx['camp_status']      ?? 0);
+
+					$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list(campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status,camp_lock,engagement_id) VALUES(?,?,?,?,?,?,0,?)");
+					if ($stmt) {
+						$entry_time = $GLOBALS['entry_time'] ?? (new DateTime())->format('d-m-Y h:i A');
+						$stmt->bind_param('ssssssi', $campaign_id, $campaign_name, $campaign_data, $entry_time, $scheduled_time, $camp_status, $engagement_id);
+						$ok = $stmt->execute();
+						$stmt->close();
+					} else {
+						$ok = false;
+					}
+					if (!$ok) {
+						// Rollback status.
+						taphish_engagement_transition_status($conn, $engagement_id, 'live', 'draft');
+						echo json_encode(['result' => 'failed', 'error' => 'Campaign insert failed; engagement reverted to draft']);
+					} else {
+						logIt('Engagement launched: id=' . $engagement_id . ' campaign=' . $campaign_id);
+						echo json_encode([
+							'result'        => 'success',
+							'engagement_id' => $engagement_id,
+							'campaign_id'   => $campaign_id,
+						]);
+					}
 				}
 			}
 		}
