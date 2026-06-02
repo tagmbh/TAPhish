@@ -37,7 +37,7 @@
       <link rel="stylesheet" type="text/css" href="css/brand.css">
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
    </head>
-   <body>
+   <body class="dim-home">
       <!-- ============================================================== -->
       <!-- Preloader - style you can find in spinners.css -->
       <!-- ============================================================== -->
@@ -78,7 +78,7 @@
             <!-- ============================================================== -->
             <!-- Container fluid  -->
             <!-- ============================================================== -->
-            <div class="container-fluid">
+            <div class="container-fluid t-dashboard">
                <?php if ($show_default_creds_warning): ?>
                <div class="alert alert-warning alert-dismissible fade show" role="alert">
                   <strong>Security warning:</strong> the <code>admin</code> account is still using the default password (<code>sniperphish</code>). Change it immediately under
@@ -86,69 +86,38 @@
                   <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                </div>
                <?php endif; ?>
-               <!-- ============================================================== -->
-               <!-- Sales Cards  -->
-               <!-- ============================================================== -->
-               <div class="row">
-                  <div class="col-sm-12 col-md-4 col-lg-4">
-                     <div class="bg-dark card card-hover">
-                        <div class="card-body">
-                           <div class="d-flex">
-                              <div class="mr-3 align-self-center text-white"><i class="mdi mdi-email mdi-36px"></i></div>
-                              <div class="align-self-center">
-                                 <h7 class="text-white mt-2 mb-0">Mail Campaign</h7>
-                                 <h5 class="mt-0 text-white" id="lb_mailcamp">Total: 0, Active: 0</h5>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
+               <!-- Phase 3.33: operator metric strip. Numbers filled by JS in Task 7. -->
+               <div class="t-metric-strip">
+                  <div class="t-metric">
+                     <div class="t-metric-label">Active campaigns</div>
+                     <div class="t-metric-num" id="m_active_campaigns">&mdash;</div>
+                     <div class="t-metric-trend" id="m_active_campaigns_trend">&nbsp;</div>
                   </div>
-                  <div class="col-sm-12 col-md-4 col-lg-4">
-                     <div class="bg-dark card card-hover">
-                        <div class="card-body">
-                           <div class="d-flex">
-                              <div class="mr-3 align-self-center text-white"><i class="mdi mdi-web mdi-36px"></i></div>
-                              <div class="align-self-center">
-                                 <h7 class="text-white mt-2 mb-0">Web Trackers</h7>
-                                 <h5 class="mt-0 text-white" id="lb_webtracker">Total: 0, Active: 0</h5>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
+                  <div class="t-metric">
+                     <div class="t-metric-label">Open rate</div>
+                     <div class="t-metric-num" id="m_open_rate">&mdash;</div>
+                     <div class="t-metric-trend" id="m_open_rate_trend">&nbsp;</div>
                   </div>
-                  <div class="col-sm-12 col-md-4 col-lg-4">
-                     <div class="bg-dark card card-hover">
-                        <div class="card-body">
-                           <div class="d-flex">
-                              <div class="mr-3 align-self-center text-white"><i class="mdi mdi-watch-vibrate mdi-36px"></i></div>
-                              <div class="align-self-center">
-                                 <h7 class="text-white mt-2 mb-0">Quick Trackers</h7>
-                                 <h5 class="mt-0 text-white" id="lb_quicktracker">Total: 0, Active: 0</h5>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
+                  <div class="t-metric">
+                     <div class="t-metric-label">Click rate</div>
+                     <div class="t-metric-num" id="m_click_rate">&mdash;</div>
+                     <div class="t-metric-trend" id="m_click_rate_trend">&nbsp;</div>
+                  </div>
+                  <div class="t-metric">
+                     <div class="t-metric-label">Cron worker</div>
+                     <div class="t-metric-num" id="m_cron_dot">&middot;</div>
+                     <div class="t-metric-trend" id="m_cron_status">checking&hellip;</div>
                   </div>
                </div>
-               <div class="row">
-                  <div class="col-md-12">
-                     <div class="card">
-                        <div class="card-body">
-                           <h5 class="card-title">Campaigns</h5>
-                           <div id="graph_overview" style="height: 140px;">                                  
-                           </div>
-                        </div>
-                     </div>
+
+               <!-- Activity feed. Rows are appended by JS in Task 7. -->
+               <div class="t-activity">
+                  <div class="t-activity-head">
+                     <div class="t-activity-title">Recent activity</div>
+                     <div class="t-activity-meta">UTC &middot; last 24h</div>
                   </div>
-               </div>
-               <div class="row">
-                  <div class="col-md-12">
-                     <div class="card">
-                        <div class="card-body">
-                           <h5 class="card-title">Campaigns Timeline</h5>
-                           <div id="graph_timeline_all" style="height: 140px;"></div>
-                        </div>
-                     </div>
+                  <div class="t-activity-body" id="t_activity_body">
+                     <div class="t-activity-empty">Loading&hellip;</div>
                   </div>
                </div>
             </div>
