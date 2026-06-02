@@ -5,6 +5,8 @@ require_once(dirname(__FILE__) . '/osint_hunter.php');
 require_once(dirname(__FILE__) . '/osint_crt_sh.php');
 require_once(dirname(__FILE__) . '/secret_at_rest.php');
 require_once(dirname(__FILE__) . '/pretext_library.php');
+require_once(dirname(__FILE__) . '/homoglyph.php');
+require_once(dirname(__FILE__) . '/dmarc_lookup.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -66,6 +68,22 @@ if (isset($_POST)) {
 					? ['result' => 'failed', 'error' => 'Could not clone pretext.']
 					: ['result' => 'success', 'mail_template_id' => $new_id]
 			);
+		}
+
+		// Phase 3.41: pre-engagement sender toolkit (homoglyph + DMARC).
+		if($POSTJ['action_type'] == "homoglyph_candidates") {
+			$domain = (string)($POSTJ['domain'] ?? '');
+			$limit  = max(10, min(120, (int)($POSTJ['limit'] ?? 60)));
+			echo json_encode([
+				'result'     => 'success',
+				'domain'     => $domain,
+				'candidates' => taphish_homoglyph_candidates($domain, $limit),
+			]);
+		}
+		if($POSTJ['action_type'] == "email_posture_lookup") {
+			$domain = (string)($POSTJ['domain'] ?? '');
+			$result = taphish_lookup_email_posture($domain);
+			echo json_encode(['result' => 'success', 'posture' => $result]);
 		}
 		if($POSTJ['action_type'] == "upload_tracker_image")
 			uploadTrackerImage($conn,$POSTJ);
