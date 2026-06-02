@@ -54,14 +54,18 @@
         var dot = $('#m_cron_dot');
         var st  = $('#m_cron_status');
         var sb  = $('#sidebar_cron_status');
+        // Strip only the state classes we own — don't clobber whatever
+        // base class the page (or a future runtime hook) attached.
+        var DOT_STATES = 'is-success is-warn is-danger';
+        var SB_STATES  = 'is-ready is-warn is-down';
         if (data && data.result === true) {
-            dot.text('●').removeClass().addClass('t-metric-num is-success');
+            dot.text('●').removeClass(DOT_STATES).addClass('is-success');
             st.text('Running');
-            sb.text('● ready').removeClass().addClass('sidebar-footer-status is-ready');
+            sb.text('● ready').removeClass(SB_STATES).addClass('is-ready');
         } else {
-            dot.text('●').removeClass().addClass('t-metric-num is-warn');
+            dot.text('●').removeClass(DOT_STATES).addClass('is-warn');
             st.text('Stopped');
-            sb.text('● stopped').removeClass().addClass('sidebar-footer-status is-warn');
+            sb.text('● stopped').removeClass(SB_STATES).addClass('is-warn');
         }
     }
 
