@@ -37,6 +37,8 @@ if (isset($conn) && $conn instanceof mysqli) {
 	if (is_file(dirname(__FILE__) . '/capture_alerting.php')) {
 		require_once(dirname(__FILE__) . '/capture_alerting.php');
 		taphish_ensure_capture_schema($conn);
+		// Phase 3.45e: add is_2fa_capture + repeat_webhook_sent.
+		taphish_ensure_capture_schema_v2($conn);
 	}
 	// Phase 3.43a: create tb_core_engagement on first boot.
 	if (is_file(dirname(__FILE__) . '/engagement.php')) {

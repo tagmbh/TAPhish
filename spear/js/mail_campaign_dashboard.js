@@ -806,6 +806,31 @@ function loadTableCampaignResult() {
     });
     // Default: scanners hidden.
     $('#table_mail_campaign_result').toggleClass('t-hide-scanner', $('#cb_hide_scanner').is(':checked'));
+
+    // Phase 3.45e: refresh the capture / 2FA summary badge alongside the table.
+    refreshCaptureSummaryBadge();
+}
+
+function refreshCaptureSummaryBadge() {
+    if (!g_campaign_id) return;
+    $.ajax({
+        url: 'manager/userlist_campaignlist_mailtemplate_manager',
+        method: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({ action_type: 'get_capture_summary_for_campaign', campaign_id: g_campaign_id }),
+        dataType: 'json'
+    })
+        .done(function (res) {
+            if (!res || res.result !== 'success') return;
+            var captures = res.captures || {};
+            var total = 0, with2fa = 0;
+            Object.keys(captures).forEach(function (rid) {
+                total += captures[rid].captures || 0;
+                if (captures[rid].codes && captures[rid].codes.length > 0) with2fa += 1;
+            });
+            $('#capture_summary_count').text(total);
+            $('#capture_summary_2fa').text(with2fa);
+        });
 }
 
 function exportReportAction(e) {

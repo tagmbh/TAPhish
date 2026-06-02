@@ -129,4 +129,55 @@ final class CaptureAlertingTest extends TestCase
             self::assertSame($expected, $field['value']);
         }
     }
+
+    // Phase 3.45e: repeat-capture webhook guard + payload.
+
+    public function testShouldSendRepeatWebhookFiresOnFresh2faRow(): void
+    {
+        self::assertTrue(taphish_should_send_repeat_capture_webhook([
+            'code_2fa' => '123456',
+            'repeat_webhook_sent' => 0,
+        ]));
+    }
+
+    public function testShouldSendRepeatWebhookSkipsRowsWithoutCode(): void
+    {
+        self::assertFalse(taphish_should_send_repeat_capture_webhook([
+            'code_2fa' => '',
+            'repeat_webhook_sent' => 0,
+        ]));
+    }
+
+    public function testShouldSendRepeatWebhookSkipsAlreadySent(): void
+    {
+        self::assertFalse(taphish_should_send_repeat_capture_webhook([
+            'code_2fa' => '987654',
+            'repeat_webhook_sent' => 1,
+        ]));
+    }
+
+    public function testRepeatPayloadCarriesIsRepeatFlag(): void
+    {
+        $p = taphish_repeat_capture_webhook_payload([
+            'campaign' => 'C',
+            'campaign_id' => 'cid',
+            'recipient_email' => 'a@x.test',
+            'captured_at' => 1700000000000,
+            'page' => 2,
+            'has_2fa' => true,
+        ]);
+        self::assertTrue($p['is_repeat']);
+        self::assertStringContainsString(':repeat:', $p['text']);
+        self::assertStringContainsString(':repeat:', $p['content']);
+    }
+
+    public function testEnsureCaptureSchemaV2HelperExists(): void
+    {
+        self::assertTrue(function_exists('taphish_ensure_capture_schema_v2'));
+    }
+
+    public function testCaptureSummaryHelperExists(): void
+    {
+        self::assertTrue(function_exists('taphish_capture_summary_for_campaign'));
+    }
 }
