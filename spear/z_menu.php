@@ -120,6 +120,7 @@
       <!-- Sidebar navigation-->
       <nav class="sidebar-nav">
          <ul id="sidebarnav" class="p-t-30">
+            <li class="sidebar-section">Workspace</li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/Home" aria-expanded="false"><i class="mdi mdi-home"></i><span class="hide-menu">Home</span></a></li>
             <li class="sidebar-item">
                <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-watch-vibrate"></i><span class="hide-menu">Quick Tracker </span></a>
@@ -148,6 +149,7 @@
             </li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/MailCmpDashboard" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><i class="icon-right-corn mdi mdi-email-outline"></i><span class="hide-menu">Email Campaign Dashboard</span></a></li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/WebMailCmpDashboard" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><i class="icon-bottom mdi mdi-email-outline"></i><i class="icon-right mdi mdi-web"></i><span class="hide-menu">Web-MailCamp Dashboard</span></a></li>
+            <li class="sidebar-section">Toolkit</li>
             <li class="sidebar-item">
                <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-cloud"></i><span class="hide-menu">Hosted Pages</span></a>
                <ul aria-expanded="false" class="collapse  first-level">
@@ -171,4 +173,8 @@
       <!-- End Sidebar navigation -->
    </div>
    <!-- End Sidebar scroll-->
+   <div class="sidebar-footer">
+      <span class="sidebar-footer-version">v<?php echo BRAND_PRODUCT_VERSION; ?></span>
+      <span class="sidebar-footer-status" id="sidebar_cron_status">&middot;</span>
+   </div>
 </aside>

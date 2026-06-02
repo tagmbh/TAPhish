@@ -1,6 +1,7 @@
 <?php
 //-------------------Session check-----------------------
 require_once(dirname(__FILE__) . '/session_manager.php');
+require_once(dirname(__FILE__) . '/log_classifier.php');
 if(isSessionValid() == false)
 	die("Access denied");
 csrf_require();
@@ -18,6 +19,8 @@ if (isset($_POST)) {
 			checkSniperPhishProcess($conn,false);
 		if($POSTJ['action_type'] == "start_process")
 			startSniperPhishProcess($conn);
+		if($POSTJ['action_type'] == "get_recent_log_entries")
+			getRecentLogEntries($conn, (int)($POSTJ['limit'] ?? 10));
 	}
 }
 //-----------------------------
@@ -117,5 +120,34 @@ function startSniperPhishProcess($conn){
 	}
 	else
 		echo json_encode(['result' => true]);	//Already running
+}
+
+// Phase 3.33: read the last $limit rows from tb_log and classify each
+// for the dashboard activity feed. Read-only; the classifier is pure.
+function getRecentLogEntries($conn, $limit = 10) {
+	$limit = max(1, min(50, (int)$limit));
+	$stmt = $conn->prepare(
+		"SELECT username, log, date FROM tb_log ORDER BY id DESC LIMIT ?"
+	);
+	if ($stmt === false) {
+		echo json_encode(['result' => 'failed', 'error' => 'Database error']);
+		return;
+	}
+	$stmt->bind_param('i', $limit);
+	$stmt->execute();
+	$res = $stmt->get_result();
+	$rows = [];
+	while ($r = $res->fetch_assoc()) {
+		$cls = taphish_classify_log_entry((string)($r['log'] ?? ''));
+		$rows[] = [
+			'time'     => (string)($r['date'] ?? ''),
+			'kind'     => $cls['kind'],
+			'severity' => $cls['severity'],
+			'message'  => (string)($r['log'] ?? ''),
+			'username' => (string)($r['username'] ?? ''),
+		];
+	}
+	$stmt->close();
+	echo json_encode(['result' => 'success', 'entries' => $rows]);
 }
 ?>
