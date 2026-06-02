@@ -100,7 +100,7 @@
                <div id="loginform">
                   <div class="text-center p-t-20 p-b-20">
                      <span class="db">
-                        <img src="images/brand/logo.png" alt="t-alpha" />
+                        <img src="images/brand/logo.svg" alt="TAPhish by T-Alpha GmbH" style="max-width: 280px; height: auto;" />
                      </span>
                   </div>
                   <?php if ($totp_step): ?>

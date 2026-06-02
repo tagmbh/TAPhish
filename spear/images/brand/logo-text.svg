@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 40" role="img" aria-label="TAPhish by T-Alpha GmbH">
+  <text x="0" y="26"
+        font-family="IBM Plex Sans, Inter, system-ui, sans-serif"
+        font-weight="700" font-size="26" fill="#0071bb" letter-spacing="-0.5">TAPhish</text>
+  <text x="1" y="38"
+        font-family="IBM Plex Sans, Inter, system-ui, sans-serif"
+        font-weight="500" font-size="7.5" fill="#8a96a7" letter-spacing="2.2">BY T-ALPHA GMBH</text>
+</svg>

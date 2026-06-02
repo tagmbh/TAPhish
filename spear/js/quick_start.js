@@ -132,9 +132,151 @@
             });
     }
 
+    // ----- Step 2: OSINT pre-check fan-out --------------------------------
+
+    function lane(id, payload) {
+        var $el = $('#' + id);
+        $el.html('<span class="text-muted">…loading…</span>');
+        return post(payload)
+            .then(function (res) { return { id: id, res: res }; })
+            .catch(function ()    { return { id: id, res: { result: 'failed' } }; });
+    }
+
+    function renderDmarc(res) {
+        if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
+        var p = res.posture || {};
+        var v = (p.recommendation && p.recommendation.verdict) || 'unknown';
+        var msg = (p.recommendation && p.recommendation.message) || '';
+        var dmarc = p.dmarc && p.dmarc.policy ? 'DMARC p=' + esc(p.dmarc.policy) : 'no DMARC';
+        var spf = p.spf && p.spf.all ? 'SPF ' + esc(p.spf.all) : 'no SPF';
+        var badge = ({
+            'hardened':            'success',
+            'partially-hardened':  'info',
+            'monitoring':          'warning',
+            'spf-only-strict':     'warning',
+            'wide-open':           'danger',
+            'unknown':             'secondary'
+        })[v] || 'secondary';
+        return '<span class="badge badge-' + badge + '">' + esc(v) + '</span>'
+            + '<div class="mt-2">' + dmarc + ' &middot; ' + spf + '</div>'
+            + (msg ? '<div class="text-muted mt-1">' + esc(msg) + '</div>' : '');
+    }
+
+    function renderMx(res) {
+        if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
+        var mx = res.mx || {};
+        var prim = mx.primary || {};
+        var label = prim.label || '—';
+        var cat = prim.category || 'unknown';
+        var cats = (mx.pretext_categories || []).slice(0, 3).join(' &middot; ');
+        return '<strong>' + esc(label) + '</strong>'
+            + '<div class="text-muted">' + esc(cat) + ' &middot; ' + (mx.count || 0) + ' MX</div>'
+            + '<div class="mt-2"><span class="text-muted">Suggested pretexts:</span> ' + cats + '</div>';
+    }
+
+    function renderHomoglyph(res) {
+        if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
+        var c = (res.candidates || []).slice(0, 6);
+        if (!c.length) return '<span class="text-muted">no candidates</span>';
+        return '<ol class="mb-0 pl-3">' + c.map(function (x) {
+            return '<li><code>' + esc(x.domain) + '</code> <span class="text-muted">'
+                + esc(x.kind) + ' &middot; score ' + (x.score || 0).toFixed(2) + '</span></li>';
+        }).join('') + '</ol>';
+    }
+
+    function renderHunter(res) {
+        if (!res) return '<span class="text-danger">lookup failed</span>';
+        if (res.result !== 'success') {
+            var err = res.err || res.error || '';
+            if (/api\s*key/i.test(err)) {
+                return '<span class="text-muted">Hunter.io API key not configured</span>'
+                    + '<div class="small text-muted mt-1">'
+                    + 'Add one in <a href="SettingsGeneral">Settings → General</a> to enable email-format guessing.'
+                    + '</div>';
+            }
+            return '<span class="text-danger">' + esc(err || 'lookup failed') + '</span>';
+        }
+        var org = res.organization || '';
+        var results = Array.isArray(res.results) ? res.results.slice(0, 4) : [];
+        if (!org && !results.length) return '<span class="text-muted">no data</span>';
+        return (org ? '<strong>' + esc(org) + '</strong>' : '')
+            + (results.length ? '<ul class="mb-0 pl-3 mt-1">' + results.map(function (r) {
+                var who = (r.name || (r.first_name + ' ' + r.last_name)).trim();
+                return '<li><code>' + esc(r.email || '') + '</code>'
+                    + (who ? ' <span class="text-muted">— ' + esc(who) + '</span>' : '')
+                    + '</li>';
+            }).join('') + '</ul>' : '');
+    }
+
+    function renderSubdomains(res) {
+        if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
+        var subs = res.subdomains || res.domains || res.results || [];
+        if (!Array.isArray(subs) || !subs.length) return '<span class="text-muted">no subdomains found</span>';
+        return '<span class="text-muted">' + subs.length + ' found</span>'
+            + '<ul class="mb-0 pl-3 mt-1">' + subs.slice(0, 6).map(function (s) {
+                return '<li><code>' + esc(s) + '</code></li>';
+            }).join('') + '</ul>';
+    }
+
+    function renderWeb(res) {
+        if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
+        var w = res.web || {};
+        if (!w.reachable) return '<span class="text-warning">site unreachable (status ' + (w.status || 0) + ')</span>';
+        var parts = [];
+        if (w.title) parts.push('<strong>' + esc(w.title) + '</strong>');
+        if (w.generator) parts.push('<span class="text-muted">generator: ' + esc(w.generator) + '</span>');
+        var rob = w.robots || {};
+        if (rob.present) parts.push('robots: ' + (rob.sitemaps.length ? rob.sitemaps.length + ' sitemap(s)' : 'no sitemap')
+            + (rob.disallow_hits.length ? ' &middot; ' + rob.disallow_hits.length + ' disallow' : ''));
+        var sec = w.security_txt || {};
+        if (sec.present) parts.push('security.txt: ' + (sec.contact.length ? esc(sec.contact[0]) : 'no contact'));
+        return parts.length ? parts.join('<br>') : '<span class="text-muted">no data</span>';
+    }
+
+    function runOsint(domain) {
+        domain = (domain || '').trim().toLowerCase();
+        if (!domain) {
+            if (window.toastr) toastr.warning('Enter a target domain first');
+            return;
+        }
+        $('#osint_panel').show();
+        Object.entries({
+            osint_dmarc:      { action_type: 'email_posture_lookup', domain: domain },
+            osint_mx:         { action_type: 'mx_classify_domain',   domain: domain },
+            osint_homoglyph:  { action_type: 'homoglyph_candidates', domain: domain, limit: 30 },
+            osint_subdomains: { action_type: 'osint_crt_sh_subdomains', domain: domain },
+            osint_hunter:    { action_type: 'osint_hunter_search',     domain: domain, limit: 15 },
+            osint_web:        { action_type: 'web_fingerprint',      domain: domain }
+        }).forEach(function (kv) {
+            lane(kv[0], kv[1]).then(function (out) {
+                var renderer = ({
+                    osint_dmarc:      renderDmarc,
+                    osint_mx:         renderMx,
+                    osint_homoglyph:  renderHomoglyph,
+                    osint_subdomains: renderSubdomains,
+                    osint_hunter:    renderHunter,
+                    osint_web:        renderWeb
+                })[out.id];
+                $('#' + out.id).html(renderer ? renderer(out.res) : '—');
+            });
+        });
+    }
+
     $(function () {
         $('#frm_engagement').on('submit', onSubmit);
         $('#btn_refresh_eng').on('click', refreshList);
+        $('#btn_osint_run').on('click', function () { runOsint($('#osint_domain').val()); });
+        $('#btn_osint_use_from_eng').on('click', function (e) {
+            e.preventDefault();
+            var first = ($('#eng_scope').val() || '').split(/[\s,;]+/)[0] || '';
+            if (first) {
+                $('#osint_domain').val(first);
+                runOsint(first);
+            } else if (window.toastr) toastr.warning('Enter at least one authorised domain in Step 1 first');
+        });
+        $('#osint_domain').on('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); runOsint($(this).val()); }
+        });
         refreshList();
     });
 })();

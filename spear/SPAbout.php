@@ -74,10 +74,10 @@
                            <a class="navbar-brand">
                               <!-- Logo icon -->
                               <b class="logo-icon p-l-10">
-                                 <img src="images/brand/logo-icon.png" alt="<?php echo htmlspecialchars(BRAND_PRODUCT_NAME); ?>" class="light-logo" />
+                                 <img src="images/brand/logo-icon.svg" alt="<?php echo htmlspecialchars(BRAND_PRODUCT_NAME); ?>" class="light-logo" />
                               </b>
                               <span class="logo-text">
-                                 <img src="images/brand/logo-text.png" alt="<?php echo htmlspecialchars(BRAND_PRODUCT_NAME); ?>" class="light-logo" />
+                                 <img src="images/brand/logo-text.svg" alt="<?php echo htmlspecialchars(BRAND_PRODUCT_NAME); ?>" class="light-logo" />
                               </span>
                            </a>
                            <h5 id="lb_version"></h5>

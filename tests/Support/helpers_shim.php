@@ -27,3 +27,5 @@ require_once __DIR__ . '/../../spear/manager/customer_report_aggregator.php';
 require_once __DIR__ . '/../../spear/manager/bounce_detection.php';
 require_once __DIR__ . '/../../spear/manager/ab_variants.php';
 require_once __DIR__ . '/../../spear/manager/engagement.php';
+require_once __DIR__ . '/../../spear/manager/mx_classify.php';
+require_once __DIR__ . '/../../spear/manager/web_fingerprint.php';

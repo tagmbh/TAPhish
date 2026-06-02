@@ -8,6 +8,8 @@ require_once(dirname(__FILE__) . '/pretext_library.php');
 require_once(dirname(__FILE__) . '/homoglyph.php');
 require_once(dirname(__FILE__) . '/dmarc_lookup.php');
 require_once(dirname(__FILE__) . '/engagement.php');
+require_once(dirname(__FILE__) . '/mx_classify.php');
+require_once(dirname(__FILE__) . '/web_fingerprint.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -112,6 +114,24 @@ if (isset($_POST)) {
 			echo json_encode([
 				'result' => 'success',
 				'engagements' => taphish_engagement_list($conn),
+			]);
+		}
+
+		// Phase 3.43b: OSINT pre-check fan-out. Each action runs one
+		// helper; the wizard JS issues them in parallel and renders into
+		// the OSINT card lanes.
+		if($POSTJ['action_type'] == "mx_classify_domain") {
+			$domain = (string)($POSTJ['domain'] ?? '');
+			echo json_encode([
+				'result' => 'success',
+				'mx'     => taphish_mx_classify_domain($domain),
+			]);
+		}
+		if($POSTJ['action_type'] == "web_fingerprint") {
+			$domain = (string)($POSTJ['domain'] ?? '');
+			echo json_encode([
+				'result' => 'success',
+				'web'    => taphish_web_fingerprint($domain),
 			]);
 		}
 		if($POSTJ['action_type'] == "upload_tracker_image")

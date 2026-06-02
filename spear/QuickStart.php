@@ -95,16 +95,99 @@
                      </div>
                      <div class="card mt-3">
                         <div class="card-body">
-                           <h6 class="card-title">What's next</h6>
-                           <p class="text-muted small mb-2">Phase 3.43a ships Step 1. Subsequent slices add:</p>
+                           <h6 class="card-title">Wizard slices</h6>
                            <ol class="small mb-0 pl-3">
-                              <li>OSINT pre-check (SPF/DMARC/MX, homoglyph, subdomain enum)</li>
-                              <li>Pretext picker filtered by detected tech stack</li>
-                              <li>Sender setup with DKIM key gen + SMTP probe</li>
-                              <li>Recipient upload + per-domain scope check</li>
-                              <li>Landing page (clone / AI / library)</li>
-                              <li>Pre-flight gates + send/schedule</li>
+                              <li><strong>Step 1 — Engagement metadata</strong> <span class="badge badge-info">3.43a</span></li>
+                              <li><strong>Step 2 — OSINT pre-check</strong> <span class="badge badge-info">3.43b</span></li>
+                              <li>Step 3 — Pretext picker filtered by tech stack <span class="badge badge-secondary">soon</span></li>
+                              <li>Step 4 — Sender setup with DKIM gen + SMTP probe <span class="badge badge-secondary">soon</span></li>
+                              <li>Step 5 — Recipient upload + per-domain scope check <span class="badge badge-secondary">soon</span></li>
+                              <li>Step 6 — Landing page (clone / AI / library) <span class="badge badge-secondary">soon</span></li>
+                              <li>Step 7 — Pre-flight gates + send / schedule <span class="badge badge-secondary">soon</span></li>
                            </ol>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- ============ Step 2 — OSINT pre-check ============ -->
+               <div class="row">
+                  <div class="col-12">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 2 — OSINT pre-check</h5>
+                           <p class="text-muted small">
+                              Drop the target's primary domain. The wizard fans out the
+                              pre-engagement helpers TAPhish already ships and renders the
+                              results side by side so you can shape the campaign accordingly.
+                              All lookups are non-invasive (DNS + a tiny number of public
+                              HTTPS fetches).
+                           </p>
+                           <div class="form-row align-items-end">
+                              <div class="form-group col-md-6 mb-2">
+                                 <label>Target domain</label>
+                                 <input type="text" id="osint_domain" class="form-control" placeholder="acme.com" autocomplete="off">
+                              </div>
+                              <div class="form-group col-md-6 mb-2">
+                                 <button class="btn btn-info" type="button" id="btn_osint_run">
+                                    <i class="fa fa-search"></i> Run pre-check
+                                 </button>
+                                 <button class="btn btn-link" type="button" id="btn_osint_use_from_eng">
+                                    Use first authorised domain from engagement
+                                 </button>
+                              </div>
+                           </div>
+
+                           <div class="row" id="osint_panel" style="display:none;">
+                              <div class="col-md-6 col-lg-4 mb-3">
+                                 <div class="card h-100">
+                                    <div class="card-body">
+                                       <h6 class="card-title">SPF / DMARC posture</h6>
+                                       <div id="osint_dmarc" class="small">—</div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="col-md-6 col-lg-4 mb-3">
+                                 <div class="card h-100">
+                                    <div class="card-body">
+                                       <h6 class="card-title">MX / tech stack</h6>
+                                       <div id="osint_mx" class="small">—</div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="col-md-6 col-lg-4 mb-3">
+                                 <div class="card h-100">
+                                    <div class="card-body">
+                                       <h6 class="card-title">Look-alike domains</h6>
+                                       <div id="osint_homoglyph" class="small">—</div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="col-md-6 col-lg-4 mb-3">
+                                 <div class="card h-100">
+                                    <div class="card-body">
+                                       <h6 class="card-title">Subdomain enum (crt.sh)</h6>
+                                       <div id="osint_subdomains" class="small">—</div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="col-md-6 col-lg-4 mb-3">
+                                 <div class="card h-100">
+                                    <div class="card-body">
+                                       <h6 class="card-title">Email format (Hunter)</h6>
+                                       <div id="osint_hunter" class="small">—</div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="col-md-6 col-lg-4 mb-3">
+                                 <div class="card h-100">
+                                    <div class="card-body">
+                                       <h6 class="card-title">Web fingerprint</h6>
+                                       <div id="osint_web" class="small">—</div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
                         </div>
                      </div>
                   </div>
