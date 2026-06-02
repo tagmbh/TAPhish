@@ -133,4 +133,18 @@ final class LogClassifierTest extends TestCase
         $r = taphish_classify_log_entry('Template copied: Office365-reset-clone');
         self::assertSame(['kind' => 'TMPL', 'severity' => 'ok'], $r);
     }
+
+    // Phase 3.40: scanner hits surface in the activity feed as SCAN/warn.
+
+    public function testScannerHitOnQuickTrackerIsScanWarn(): void
+    {
+        $r = taphish_classify_log_entry('Scanner hit on quick tracker QT123 (UA contains "safelinks")');
+        self::assertSame(['kind' => 'SCAN', 'severity' => 'warn'], $r);
+    }
+
+    public function testScannerHitOnPixelIsScanWarn(): void
+    {
+        $r = taphish_classify_log_entry('Scanner hit on mail-open pixel for campaign C42 (PTR contains "amazonaws")');
+        self::assertSame(['kind' => 'SCAN', 'severity' => 'warn'], $r);
+    }
 }

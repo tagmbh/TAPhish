@@ -21,6 +21,10 @@ if (!function_exists('taphish_classify_log_entry')) {
         // Order matters: more specific phrases first.
         $rules = [
             // [substring, kind, severity]
+            // Phase 3.40: scanner hits must classify before the generic
+            // 'campaign' rule because the log line carries
+            // "for campaign <id>" in its body.
+            ['scanner hit',            'SCAN', 'warn'],
             ['2fa disabled',           'AUTH', 'warn'],
             ['2fa enabled',            'AUTH', 'ok'],
             ['failed login',           'AUTH', 'warn'],
