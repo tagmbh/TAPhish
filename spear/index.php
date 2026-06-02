@@ -72,12 +72,8 @@
       <!-- Favicon icon -->
       <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
       <title>TAPhish — Operator Console</title>
-      <!-- Phase 3.32: distinctive type stack via Google Fonts. Operator
-           panel is private so external font load is acceptable; subset
-           kept tight. preconnect cuts ~150ms off first paint. -->
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+      <!-- Phase 3.37: distinctive type stack now self-hosted (see
+           spear/css/fonts/) — no third-party requests on first paint. -->
       <!-- Custom CSS -->
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
       <link rel="stylesheet" type="text/css" href="css/brand.css">
