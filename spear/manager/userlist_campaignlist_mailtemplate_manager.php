@@ -17,6 +17,7 @@ require_once(dirname(__FILE__) . '/dkim_helper.php');
 require_once(dirname(__FILE__) . '/recipient_import.php');
 require_once(dirname(__FILE__) . '/preflight_checks.php');
 require_once(dirname(__FILE__) . '/beef_integration.php');
+require_once(dirname(__FILE__) . '/landing_library.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -189,7 +190,9 @@ if (isset($_POST)) {
 			]);
 			echo json_encode(['result' => 'success'] + $report);
 		}
-		// Phase 3.45d: list usable landing-page sources for Step 6.
+		// Phase 3.45d / 3.46: list usable landing-page sources for Step 6.
+		// Library now reads from spear/sniperhost/library/ via the
+		// landing_library helpers — the hardcoded shortcut list is gone.
 		if($POSTJ['action_type'] == "wizard_list_landing_options") {
 			$clones = [];
 			$base = dirname(__FILE__, 2) . '/sniperhost/cloned';
@@ -200,19 +203,50 @@ if (isset($_POST)) {
 				}
 				sort($clones);
 			}
-			// Hand-curated library shortcut list.
-			$library = [
-				['key' => 'm365-login',     'label' => 'Microsoft 365 sign-in'],
-				['key' => 'google-login',   'label' => 'Google Workspace sign-in'],
-				['key' => 'okta-login',     'label' => 'Okta universal login'],
-				['key' => 'owa-login',      'label' => 'Outlook on the web'],
-				['key' => 'vpn-portal',     'label' => 'Generic VPN portal'],
-			];
+			$library = array_map(function ($e) {
+				return [
+					'key'         => $e['slug'],
+					'label'       => $e['name'],
+					'description' => $e['description'],
+					'pattern'     => $e['pattern'],
+					'has_2fa'     => $e['has_2fa'],
+				];
+			}, landing_library_list());
 			echo json_encode([
 				'result'  => 'success',
 				'clones'  => $clones,
 				'library' => $library,
 			]);
+		}
+		// Phase 3.46: full library list (used by LandingLibrary page).
+		if($POSTJ['action_type'] == "library_list") {
+			echo json_encode([
+				'result'  => 'success',
+				'library' => landing_library_list(),
+			]);
+		}
+		// Phase 3.46: clone a library entry to the operator's sniperhost/cloned/.
+		// Substitutes {{POST_URL}} + {{TRACKER_URL}} on the way through.
+		if($POSTJ['action_type'] == "library_clone_to_my_sites") {
+			$source = (string)($POSTJ['source_slug'] ?? '');
+			$dest   = (string)($POSTJ['dest_slug']   ?? '');
+			$post_url    = (string)($POSTJ['post_url']    ?? '');
+			$tracker_url = (string)($POSTJ['tracker_url'] ?? '');
+			$force       = !empty($POSTJ['force']);
+			if ($post_url === '') {
+				// Default to a sensible track.php on this host.
+				$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+				$proto  = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? $scheme;
+				$host   = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? '');
+				$post_url = $host !== '' ? ($proto . '://' . $host . '/track.php') : '/track.php';
+			}
+			$r = landing_library_clone_to_path($source, $dest, $post_url, $tracker_url, $force);
+			if ($r['ok']) {
+				logIt('Site cloned: ' . $r['slug'] . ' from library ' . $source);
+				echo json_encode(['result' => 'success'] + $r);
+			} else {
+				echo json_encode(['result' => 'failed', 'error' => $r['err']]);
+			}
 		}
 		// Phase 3.45d: Launch orchestrator. CAS-protected status
 		// transition; on insert failure we revert the engagement back

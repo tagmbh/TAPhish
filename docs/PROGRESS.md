@@ -11,7 +11,7 @@ Living document. Updated when phases ship.
 ## Where we are
 
 - Production fork live at <https://ptbe.autodiscover.li/spear/> (operator panel).
-- **Test suite**: 560 tests / 1525 assertions, all green.
+- **Test suite**: 576 tests / 1561 assertions, all green.
 - **Last verified end-to-end**: Phase 3.45 (all 5 slices) — 2026-06-02. Playwright walked the QuickStart Wizard end-to-end (Steps 1–7 all render, stepper advances, DKIM gen produces real `v=DKIM1; k=rsa; p=…` records on Hostpoint, recipient preview surfaces partial-import errors, pre-flight evaluates 5 gates, CAS status transitions reject double-launch correctly, EngagementView reads + writes via the new dispatcher actions). One pre-existing `moment is not defined` warning in `common_scripts.js` — unrelated to 3.45.
 - **CI/CD**: GitHub Actions → FTPS deploy to Hostpoint Shared.
 
@@ -48,6 +48,7 @@ Living document. Updated when phases ship.
 | SiteCloner UX | After-clone box now shows publicly-accessible landing-page URL (built from request scheme/host honoring `X-Forwarded-Proto`) with Copy + Open buttons, plus a three-step "use this clone in a campaign" hint deep-linking to MailCampaign / WebTracker. Existing-clones table grows per-row open / copy URL links. |
 | Branding | Footer was `t-alpha GmbH` (lowercase) — official brand is `T-Alpha GmbH`. Fixed in `brand.php` + tests. New `brand_copyright()` shape links to `www.t-alpha.ch` + appends product name + version. New SVG logos (`logo.svg` / `logo-text.svg` / `logo-icon.svg`) replace the old PNGs — crisp at any zoom, lead with `TAPhish` wordmark + small "BY T-ALPHA GMBH" caption. Old PNGs removed. |
 | 3.46-pre | **Home launchpad + Shodan OSINT + wizard auto-fills**. Home gets a "Jump back in" tile grid (QuickStart, Engagements, Sender Toolkit, Toolset Checker, Pretext Library, Site Cloner, Campaigns, Settings) filling the previously-empty space below the activity feed. New `spear/manager/osint_shodan.php` mirrors the `osint_hunter` pattern (pure parser + injectable resolver seam + curl wrapper); new dispatcher action `osint_shodan_host`; sixth lane on QuickStart Step 2 (resolved IP + org/country + open ports + CVE refs + last-seen). Operator's Shodan API key lives in `localStorage` only, sent inline per request. After Step 1 saves, the wizard cascades the first scope domain into the OSINT target field, derives a DKIM selector from the slug, and auto-runs the OSINT pre-check. 16 new tests. |
+| 3.46 | **Landing-page clone library**. New `spear/sniperhost/library/` ships hand-curated structural templates with placeholder branding (operators drop in the target's real logo/copy per engagement). Three templates covering the three common credential-collection patterns: `m365-login` (multi-step email → password → 2FA with `code_2fa` capture), `vpn-portal` (single-page user / password / OTP, modeled on generic SSL-VPN landings), `sso-redirect` (1.2 s spinner interstitial → form, generic SAML/IdP pattern). Each template uses `{{POST_URL}}` + `{{TRACKER_URL}}` placeholders that the clone action substitutes at copy-time. New `spear/manager/landing_library.php` pure helpers (list / template-files / substitute / clone-to-path; injectable roots so tests stay offline). New dispatcher actions `library_list` + `library_clone_to_my_sites`. New `LandingLibrary.php` gallery page with per-template card (pattern badge, captured-fields list, "customize before launch" callout) + "Clone to my sites" modal with destination slug suggestion + tracker/POST URL overrides. QuickStart Step 6 "Library shortcuts" card now reads from the library helper (no more "planned" labels) + deep-links to the gallery. New sidebar entry under Toolkit; Home launchpad gets a Landing Library tile. 16 new tests. |
 | 3.52 | **BeEF integration (read-mostly surface)**. BYO BeEF (operator runs their own server, typically on a separate ~€5/mo VPS — Hostpoint Shared can't host the Ruby daemon). New `spear/manager/beef_integration.php` (hook-snippet builder, REST auth, hook list summarizer, scope validator, scope tagger, scope collector — all pure, injectable HTTP seam). Credentials encrypted at rest via the Phase 3.38 envelope (BeEF base URL + username + password as JSON in `tb_store`). New `tb_data_clone_meta` table (idempotent boot-time migration) tracks per-clone `beef_hook_enabled`. SettingsGeneral grows a BeEF integration block (URL + username + password, Save + Test buttons, anti-malware warning surfaced explicitly — SmartScreen/Sophos/Symantec/EDR signature-detect the hook). SiteCloner grows a per-clone "Inject BeEF hook" checkbox (default off); the cloner splices the snippet before `</body>` via the new pure `site_cloner_inject_hook` helper. Home gets a "BeEF hooked browsers" widget that polls every 30 s while the tab is visible, surfaces in-scope vs out-of-scope chips (matched against active engagements' `scope_allowlist`), degrades gracefully on not_configured / unreachable / auth_failed. New BEEF audit-log kind (info / warn / error). Module execution stays in BeEF's own UI — TAPhish never POSTs to `/api/modules/...`. 47 new tests. |
 
 ## What you can already do today
@@ -69,11 +70,7 @@ Living document. Updated when phases ship.
 
 ## Roadmap — next phases
 
-### Phase 3.46 — Landing-page clone library *(highest impact, build next)*
-
-Hand-curated, tested clones for the high-frequency targets — M365 login, Okta login, Google Workspace, Outlook Web Access, generic SAML SSO, VPN portal (Fortinet / Cisco). Each clone includes the form-submit endpoint wired to `track.php` and an optional 2FA second-step page that captures `code_2fa` (Phase 3.42 column). The Quick-Start Step 6 picker already shows library shortcut deep-links — this is the build-out behind them.
-
-### Phase 3.47 — Engagement reports + PDF export
+### Phase 3.47 — Engagement reports + PDF export *(highest impact, build next)*
 
 Per-engagement PDF report aggregating across every linked campaign:
 - Campaign summary (send time, recipient count by domain — no individual PII)
@@ -112,5 +109,5 @@ Phase 3.35 captures everything; today only the last 10 entries surface on the Ho
 - Public docs site: <https://taphish.t-alpha.ch/> (GitHub Pages)
 - Repo: <https://github.com/tagmbh/TAPhish>
 - Deploy: Actions → `Deploy to operator host (FTPS)` → Run workflow (untick Dry-run for live push)
-- Tests: `vendor/bin/phpunit` (560/1525)
+- Tests: `vendor/bin/phpunit` (576/1561)
 - Lint: `php -l <file>`

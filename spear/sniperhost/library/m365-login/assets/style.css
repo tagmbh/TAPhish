@@ -1,0 +1,112 @@
+/* Minimal "office sign-in" baseline. Operator layers brand on top. */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  background: #f2f2f2;
+  color: #1b1b1b;
+  min-height: 100vh;
+}
+.signin-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+.signin-card {
+  background: #fff;
+  padding: 44px 44px 32px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+.signin-logo {
+  height: 24px;
+  margin-bottom: 18px;
+  color: #5e5e5e;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.signin-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 4px 0 12px;
+}
+.signin-sub {
+  font-size: 15px;
+  color: #5e5e5e;
+  margin: 0 0 16px;
+}
+.signin-field {
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  border-bottom: 1px solid #666;
+  font-size: 15px;
+  background: transparent;
+  outline: none;
+}
+.signin-field:focus { border-bottom-color: #0067b8; }
+.signin-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.signin-btn {
+  background: #0067b8;
+  color: #fff;
+  border: none;
+  padding: 8px 28px;
+  font-size: 15px;
+  cursor: pointer;
+  min-width: 108px;
+}
+.signin-btn:hover { background: #005ba1; }
+.signin-btn.secondary {
+  background: #fff;
+  color: #0067b8;
+  border: 1px solid #cdcdcd;
+}
+.signin-footer {
+  text-align: center;
+  padding: 18px;
+  font-size: 12px;
+  color: #7a7a7a;
+}
+.signin-meta {
+  display: flex;
+  gap: 14px;
+  margin-top: 18px;
+  font-size: 13px;
+}
+.signin-meta a {
+  color: #0067b8;
+  text-decoration: none;
+}
+.signin-meta a:hover { text-decoration: underline; }
+.signin-account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid #dadada;
+  border-radius: 2px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  background: #fafafa;
+}
+.signin-account-chip .dot {
+  width: 24px;
+  height: 24px;
+  background: #cdcdcd;
+  border-radius: 50%;
+}
+.code-box {
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-size: 22px;
+  font-family: 'Consolas', 'Menlo', monospace;
+}

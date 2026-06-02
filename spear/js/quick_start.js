@@ -539,9 +539,15 @@
                      +  '</div></div></div>';
                 html += '<div class="col-md-4 mb-3"><div class="card h-100"><div class="card-body">'
                      +    '<h6>Library shortcuts</h6>'
-                     +    '<ul class="small mb-0 pl-3">'
-                     +    (res.library || []).map(function (l) { return '<li>' + esc(l.label) + ' <span class="text-muted">— planned</span></li>'; }).join('')
+                     +    '<p class="small text-muted mb-2">Curated templates (multi-step / single-page / SSO-redirect). Each is a starting point; customize per engagement.</p>'
+                     +    '<ul class="small mb-2 pl-3">'
+                     +    (res.library || []).map(function (l) {
+                            var tag = l.has_2fa ? ' <span class="badge badge-success">+2FA</span>' : '';
+                            return '<li><strong>' + esc(l.label) + '</strong>' + tag +
+                                   '<br><span class="text-muted">' + esc(l.pattern || '') + '</span></li>';
+                          }).join('')
                      +    '</ul>'
+                     +    '<a class="btn btn-sm btn-info" href="LandingLibrary">Open library</a>'
                      +  '</div></div></div>';
                 $('#landing_options').html(html);
             })

@@ -162,6 +162,7 @@
                   <li class="sidebar-item"><a href="/spear/sniperhost/FileHost" class="sidebar-link"><i class="mdi mdi-file-multiple"></i><span class="hide-menu"> Files </span></a></li>
                   <li class="sidebar-item"><a href="/spear/sniperhost/LandingPage" class="sidebar-link"><i class="mdi mdi-google-pages"></i><span class="hide-menu"> Landing Page </span></a></li>
                   <li class="sidebar-item"><a href="/spear/SiteCloner" class="sidebar-link"><i class="mdi mdi-content-copy"></i><span class="hide-menu"> Site Cloner </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/LandingLibrary" class="sidebar-link"><i class="mdi mdi-library-books"></i><span class="hide-menu"> Landing Library </span></a></li>
                </ul>
             </li>
             <li class="sidebar-item">
