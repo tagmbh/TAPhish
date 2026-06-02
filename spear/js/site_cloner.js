@@ -19,6 +19,41 @@ function postSiteCloner(payload) {
    return postJson(SITE_CLONER_ENDPOINT, payload);
 }
 
+function buildPublicUrlFromSlug(slug) {
+   return (
+      window.location.protocol +
+      "//" +
+      window.location.host +
+      "/spear/sniperhost/cloned/" +
+      slug +
+      "/"
+   );
+}
+
+function copyToClipboard(text) {
+   if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+         () => window.toastr && toastr.success("Copied"),
+         () => window.toastr && toastr.error("Copy failed")
+      );
+      return;
+   }
+   const ta = document.createElement("textarea");
+   ta.value = text;
+   ta.setAttribute("readonly", "");
+   ta.style.position = "absolute";
+   ta.style.left = "-9999px";
+   document.body.appendChild(ta);
+   ta.select();
+   try {
+      document.execCommand("copy");
+      window.toastr && toastr.success("Copied");
+   } catch (_) {
+      window.toastr && toastr.error("Copy failed");
+   }
+   document.body.removeChild(ta);
+}
+
 function renderCloneResult(res) {
    const target = $("#clone_result");
    target.empty();
@@ -28,18 +63,68 @@ function renderCloneResult(res) {
       );
       return;
    }
+   const publicUrl = res.public_url || buildPublicUrlFromSlug(res.slug);
    const box = $("<div>").addClass("alert alert-success");
    box.append(
       $("<strong>").text("Cloned: "),
       $("<code>").text(res.slug),
       $("<br>"),
       $("<small>").text(
-         "Path: " + res.path + " — assets: " + res.asset_count + " — html bytes: " + res.bytes
+         "Assets: " + res.asset_count + " · HTML bytes: " + res.bytes + " · On disk: " + res.path
       )
    );
+
+   const urlGroup = $("<div>").addClass("input-group input-group-sm mt-3");
+   urlGroup.append(
+      $("<div>").addClass("input-group-prepend").append(
+         $("<span>").addClass("input-group-text").text("Public URL")
+      )
+   );
+   const urlInput = $("<input>")
+      .attr("type", "text")
+      .attr("readonly", true)
+      .addClass("form-control")
+      .val(publicUrl)
+      .on("focus", function () { this.select(); });
+   urlGroup.append(urlInput);
+   urlGroup.append(
+      $("<div>").addClass("input-group-append").append(
+         $("<button>")
+            .addClass("btn btn-outline-secondary")
+            .attr("type", "button")
+            .text("Copy")
+            .on("click", () => copyToClipboard(publicUrl)),
+         $("<a>")
+            .addClass("btn btn-outline-secondary")
+            .attr("href", publicUrl)
+            .attr("target", "_blank")
+            .attr("rel", "noopener noreferrer")
+            .text("Open")
+      )
+   );
+   box.append(urlGroup);
+
+   const help = $("<div>").addClass("mt-3 small");
+   help.append(
+      $("<strong>").text("Use this clone in a campaign:"),
+      $("<ol>").addClass("mb-0 pl-3").append(
+         $("<li>").html(
+            'In <a href="MailCampaign">Mail Campaign</a> open or create a campaign, then set the landing/target URL to the <em>Public URL</em> above.'
+         ),
+         $("<li>").html(
+            'Or in <a href="WebTracker">Web Tracker</a> create a tracker that points at the Public URL — the tracker script is already injected into the clone if you picked one above.'
+         ),
+         $("<li>").text(
+            "Optional: re-clone with Force-overwrite checked once you wire the tracker, so the same slug stays live."
+         )
+      )
+   );
+   box.append(help);
+
    if (res.warnings && res.warnings.length) {
-      const list = $("<ul>").addClass("mt-2 mb-0");
+      const list = $("<ul>").addClass("mt-3 mb-0");
       res.warnings.forEach((w) => list.append($("<li>").text(w)));
+      box.append($("<div>").addClass("mt-3 small text-warning").text("Warnings:"));
       box.append(list);
    }
    target.append(box);
@@ -56,8 +141,29 @@ function renderCloneList(clones) {
    }
    clones.forEach((c) => {
       const meta = c.meta || {};
+      const publicUrl = c.public_url || buildPublicUrlFromSlug(c.slug);
       const tr = $("<tr>");
-      tr.append($("<td>").append($("<code>").text(c.slug)));
+      tr.append(
+         $("<td>").append(
+            $("<code>").text(c.slug),
+            $("<br>"),
+            $("<a>")
+               .attr("href", publicUrl)
+               .attr("target", "_blank")
+               .attr("rel", "noopener noreferrer")
+               .addClass("small")
+               .text("open"),
+            $("<span>").addClass("small text-muted").text(" · "),
+            $("<a>")
+               .attr("href", "#")
+               .addClass("small")
+               .text("copy URL")
+               .on("click", (e) => {
+                  e.preventDefault();
+                  copyToClipboard(publicUrl);
+               })
+         )
+      );
       tr.append(
          $("<td>").append(
             $("<a>")

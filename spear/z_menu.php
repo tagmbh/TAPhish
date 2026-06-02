@@ -122,6 +122,7 @@
          <ul id="sidebarnav" class="p-t-30">
             <li class="sidebar-section">Workspace</li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/Home" aria-expanded="false"><i class="mdi mdi-home"></i><span class="hide-menu">Home</span></a></li>
+            <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/QuickStart" aria-expanded="false"><i class="mdi mdi-rocket-launch"></i><span class="hide-menu">Quick Start</span></a></li>
             <li class="sidebar-item">
                <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-watch-vibrate"></i><span class="hide-menu">Quick Tracker </span></a>
                <ul aria-expanded="false" class="collapse  first-level">

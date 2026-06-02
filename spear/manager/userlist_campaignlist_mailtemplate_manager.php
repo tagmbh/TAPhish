@@ -7,6 +7,7 @@ require_once(dirname(__FILE__) . '/secret_at_rest.php');
 require_once(dirname(__FILE__) . '/pretext_library.php');
 require_once(dirname(__FILE__) . '/homoglyph.php');
 require_once(dirname(__FILE__) . '/dmarc_lookup.php');
+require_once(dirname(__FILE__) . '/engagement.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -84,6 +85,34 @@ if (isset($_POST)) {
 			$domain = (string)($POSTJ['domain'] ?? '');
 			$result = taphish_lookup_email_posture($domain);
 			echo json_encode(['result' => 'success', 'posture' => $result]);
+		}
+
+		// Phase 3.43a: engagement metadata (Quick-Start Wizard step 1).
+		if($POSTJ['action_type'] == "save_engagement") {
+			$payload = is_array($POSTJ['payload'] ?? null) ? $POSTJ['payload'] : [];
+			$v = taphish_engagement_validate_input($payload);
+			if (!$v['ok']) {
+				echo json_encode(['result' => 'failed', 'errors' => $v['errors']]);
+			} else {
+				$createdBy = (string)($_SESSION['username'] ?? '');
+				$id = taphish_engagement_insert($conn, $v['normalized'], $createdBy);
+				if ($id === null) {
+					echo json_encode(['result' => 'failed', 'error' => 'Could not save engagement.']);
+				} else {
+					logIt('Engagement created: ' . $v['normalized']['name']);
+					echo json_encode([
+						'result'        => 'success',
+						'engagement_id' => $id,
+						'slug'          => $v['normalized']['slug'],
+					]);
+				}
+			}
+		}
+		if($POSTJ['action_type'] == "list_engagements") {
+			echo json_encode([
+				'result' => 'success',
+				'engagements' => taphish_engagement_list($conn),
+			]);
 		}
 		if($POSTJ['action_type'] == "upload_tracker_image")
 			uploadTrackerImage($conn,$POSTJ);

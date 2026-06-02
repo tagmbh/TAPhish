@@ -38,6 +38,11 @@ if (isset($conn) && $conn instanceof mysqli) {
 		require_once(dirname(__FILE__) . '/capture_alerting.php');
 		taphish_ensure_capture_schema($conn);
 	}
+	// Phase 3.43a: create tb_core_engagement on first boot.
+	if (is_file(dirname(__FILE__) . '/engagement.php')) {
+		require_once(dirname(__FILE__) . '/engagement.php');
+		taphish_engagement_ensure_schema($conn);
+	}
 }
 // Phase 3.9: detect operators still using the bootstrap "sniperphish"
 // password so the JS guard in z_menu.php can redirect them to

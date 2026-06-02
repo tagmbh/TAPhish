@@ -155,4 +155,18 @@ final class LogClassifierTest extends TestCase
         $r = taphish_classify_log_entry('Capture: first submit on tracker XYZ123 [+2FA]');
         self::assertSame(['kind' => 'CAPT', 'severity' => 'ok'], $r);
     }
+
+    // Phase 3.43a: engagement metadata creation surfaces as ENGM/ok.
+
+    public function testEngagementCreatedIsEngmOk(): void
+    {
+        $r = taphish_classify_log_entry('Engagement created: Acme Q3');
+        self::assertSame(['kind' => 'ENGM', 'severity' => 'ok'], $r);
+    }
+
+    public function testSiteClonedIsClonOk(): void
+    {
+        $r = taphish_classify_log_entry('Site cloned: acme-login from https://target.example');
+        self::assertSame(['kind' => 'CLON', 'severity' => 'ok'], $r);
+    }
 }
