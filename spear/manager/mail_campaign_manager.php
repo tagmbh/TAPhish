@@ -421,9 +421,14 @@ function multi_get_mcampinfo_from_mcamp_list_id_get_live_mcamp_data($conn, $POST
 		    		$f_found = true;
 		    }		    
 		}
+		// Phase 3.45a: expose is_scanner per row so the dashboard
+		// renderer can tag <tr data-scanner="1"> and the operator can
+		// hide scanner hits with a single toggle.
+		if(!empty($tmp))
+			$tmp['is_scanner'] = (int)($row['is_scanner'] ?? 0);
 		if(!empty($tmp))
 			if(empty($search_value) || (!empty($search_value) && $f_found == true))
-				array_push($arr_filtered,$tmp);	
+				array_push($arr_filtered,$tmp);
 	}
 
 	$totalRecords_with_filter = sizeof($arr_filtered);

@@ -90,6 +90,10 @@ if (!function_exists('customer_report_compute_kpis')) {
         $failed      = 0;
         $opened      = 0;
         $totalOpens  = 0;
+        // Phase 3.45a: scanner traffic is recorded but excluded from
+        // the headline open-rate so SafeLinks / Proofpoint pre-fetches
+        // don't inflate the customer's "recipients clicked" number.
+        $scannerHits = 0;
 
         foreach ($rows as $r) {
             $status = (int) ($r['sending_status'] ?? 0);
@@ -101,8 +105,13 @@ if (!function_exists('customer_report_compute_kpis')) {
                 $failed++;
             }
 
+            $isScanner = !empty($r['is_scanner']);
+            if ($isScanner) {
+                $scannerHits++;
+            }
+
             $opens = customer_report_parse_open_times($r['mail_open_times'] ?? null);
-            if (count($opens) > 0) {
+            if (count($opens) > 0 && !$isScanner) {
                 $opened++;
                 $totalOpens += count($opens);
             }
@@ -115,6 +124,7 @@ if (!function_exists('customer_report_compute_kpis')) {
             'failed'             => $failed,
             'opened'             => $opened,
             'total_opens'        => $totalOpens,
+            'scanner_hit_count'  => $scannerHits,
             'send_success_rate'  => customer_report_format_pct($sent, $total),
             'open_rate_of_sent'  => customer_report_format_pct($opened, $sent),
             'open_rate_of_total' => customer_report_format_pct($opened, $total),

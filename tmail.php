@@ -35,21 +35,19 @@ $user_details = verifyMailCmapaignUser($conn, $campaign_id, $user_id);
 if(verifyMailCmapaign($conn, $campaign_id) == true && $user_details != 'empty'){
 
     $user_agent = htmlspecialchars($_SERVER['HTTP_USER_AGENT'] ?? '');
-    // Phase 3.40: same scanner gate as qt.php. On scanner verdict we
-    // skip the open-pixel UPDATE and just serve the image — counting
-    // a SafeLinks pre-fetch as "recipient opened the email" is the
-    // single biggest source of false-positive engagement metrics.
+    // Phase 3.40 + 3.45a: classify the visitor and tag the row with
+    // is_scanner so the dashboard "hide scanner hits" toggle and the
+    // KPI aggregator can exclude them — without losing the data, so
+    // operators can audit scanner traffic per vendor when needed.
     $verdict = taphish_classify_visitor(
         $user_agent,
         taphish_resolve_visitor_ptr($public_ip),
         -1
     );
-    if ($verdict['kind'] === 'scanner') {
-        if (function_exists('logIt')) {
-            logIt('Scanner hit on mail-open pixel for campaign ' . $campaign_id . ' (' . $verdict['reason'] . ')', 'system');
-        }
-        displayImage($mail_template_id);
-        return;
+    $is_scanner = ($verdict['kind'] === 'scanner') ? 1 : 0;
+    $scanner_reason = $is_scanner ? mb_substr((string) $verdict['reason'], 0, 160) : null;
+    if ($is_scanner && function_exists('logIt')) {
+        logIt('Scanner hit on mail-open pixel for campaign ' . $campaign_id . ' (' . $verdict['reason'] . ')', 'system');
     }
 
     $date_time = round(microtime(true) * 1000); //(new DateTime())->format('d-m-Y H:i:s.u');
@@ -125,8 +123,8 @@ if(verifyMailCmapaign($conn, $campaign_id) == true && $user_details != 'empty'){
         $allHeaders = json_encode($tmp);
     }
 
-    $stmt = $conn->prepare("UPDATE tb_data_mailcamp_live SET mail_open_times=?,public_ip=?,ip_info=?,user_agent=?,mail_client=?,platform=?,device_type=?,all_headers=? WHERE campaign_id=? AND rid=?");
-    $stmt->bind_param('ssssssssss', $mail_open_times,$public_ip,$ip_info,$user_agent,$mail_client,$user_os,$device_type,$allHeaders,$campaign_id,$user_id);
+    $stmt = $conn->prepare("UPDATE tb_data_mailcamp_live SET mail_open_times=?,public_ip=?,ip_info=?,user_agent=?,mail_client=?,platform=?,device_type=?,all_headers=?,is_scanner=?,scanner_reason=? WHERE campaign_id=? AND rid=?");
+    $stmt->bind_param('ssssssssisss', $mail_open_times,$public_ip,$ip_info,$user_agent,$mail_client,$user_os,$device_type,$allHeaders,$is_scanner,$scanner_reason,$campaign_id,$user_id);
     $stmt->execute();
 }
 

@@ -191,4 +191,29 @@ final class ScannerDetectTest extends TestCase
         );
         self::assertSame('real', $r['kind']);
     }
+
+    // Phase 3.45a: schema migration + KPI-filter helper.
+
+    public function testEnsureSchemaHelperIsDefined(): void
+    {
+        // Pure-helper tier: the function exists and is callable; the
+        // actual DDL is exercised at boot in session_manager.
+        self::assertTrue(function_exists('taphish_scanner_ensure_schema'));
+    }
+
+    public function testShouldFilterScannerInKpisDefaultsTrue(): void
+    {
+        self::assertTrue(taphish_should_filter_scanner_in_kpis([]));
+    }
+
+    public function testShouldFilterScannerInKpisRespectsExplicitFalse(): void
+    {
+        self::assertFalse(taphish_should_filter_scanner_in_kpis(['include_scanner_hits' => true]));
+    }
+
+    public function testShouldFilterScannerInKpisRespectsExplicitFalseyZero(): void
+    {
+        self::assertTrue(taphish_should_filter_scanner_in_kpis(['include_scanner_hits' => 0]));
+        self::assertTrue(taphish_should_filter_scanner_in_kpis(['include_scanner_hits' => '']));
+    }
 }

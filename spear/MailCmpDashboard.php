@@ -197,6 +197,11 @@
                                     <div class="col-md-1">
                                        <button type="button" class="btn btn-success mdi mdi-reload " data-toggle="tooltip" data-placement="top" title="Refresh table" onclick="loadTableCampaignResult()"></button>
                                     </div>
+                                    <div class="col-md-3">
+                                       <label class="small text-muted mb-0" title="Filter out hits classified as URL-scanner traffic (SafeLinks, Proofpoint, Mimecast, …). Phase 3.45a.">
+                                          <input type="checkbox" id="cb_hide_scanner" checked> Hide scanner hits
+                                       </label>
+                                    </div>
                                     <div class="align-items-right ml-auto">
                                        <div class="row">
                                           <button type="button" class="btn btn-warning item_private mr-2" id="btn_poll_bounces" onclick="pollBounces($(this))" title="Open the sender mailbox over IMAP and mark recipients whose mail bounced" data-toggle="tooltip" data-placement="bottom"><i class="m-r-10 fas fa-exclamation-triangle"></i> Refresh bounces</button>

@@ -1349,3 +1349,8 @@ a:focus-visible {
     border-color: var(--t-border);
     color: var(--t-text-mute);
 }
+
+/* Phase 3.45a — hide scanner-flagged rows when the dashboard toggle is on. */
+.t-hide-scanner tr[data-scanner="1"] {
+    display: none;
+}
