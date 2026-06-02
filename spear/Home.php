@@ -176,6 +176,11 @@
                         <div class="t-quickact-name">Site Cloner</div>
                         <div class="t-quickact-sub">Clone a login page &middot; auto-wire to <code>track.php</code></div>
                      </a>
+                     <a class="t-quickact-tile" href="/spear/LandingLibrary">
+                        <div class="t-quickact-icon">&#128218;</div>
+                        <div class="t-quickact-name">Landing Library</div>
+                        <div class="t-quickact-sub">Curated clone templates &middot; M365 multi-step &middot; VPN portal &middot; SSO redirect</div>
+                     </a>
                      <a class="t-quickact-tile" href="/spear/MailCampaignList">
                         <div class="t-quickact-icon">&#9993;</div>
                         <div class="t-quickact-name">Campaigns</div>

