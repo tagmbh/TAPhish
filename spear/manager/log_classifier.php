@@ -52,6 +52,12 @@ if (!function_exists('taphish_classify_log_entry')) {
             ['engagement',             'ENGM', 'ok'],
             // SiteCloner workflow: capture cloned-site events.
             ['site cloned',            'CLON', 'ok'],
+            // Phase 3.52: BeEF integration. Order matters — the more
+            // specific "out-of-scope" rule must come before the generic
+            // "beef hook" rule.
+            ['beef hook out-of-scope', 'BEEF', 'warn'],
+            ['beef poll failed',       'BEEF', 'error'],
+            ['beef hook',              'BEEF', 'ok'],
         ];
 
         foreach ($rules as [$needle, $kind, $sev]) {

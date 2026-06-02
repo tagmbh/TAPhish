@@ -409,6 +409,94 @@ if (!function_exists('beef_settings_load')) {
     }
 }
 
+if (!function_exists('taphish_clone_meta_ensure_schema')) {
+    /**
+     * Phase 3.52 task 4: idempotently create tb_data_clone_meta on
+     * first boot. Mirrors the Phase 3.45a additive-migration pattern.
+     *
+     * One row per cloned slug. beef_hook_enabled drives the cloner's
+     * decision to inject the hook script; engagement_id is a forward-
+     * compatibility column so future phases can scope clones cleanly.
+     */
+    function taphish_clone_meta_ensure_schema(\mysqli $conn): void
+    {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_data_clone_meta'"
+        );
+        if ($stmt === false) return;
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_row();
+        $stmt->close();
+        if ($row && (int) $row[0] > 0) return;
+        @$conn->query(
+            "CREATE TABLE tb_data_clone_meta (
+                slug                VARCHAR(160) NOT NULL PRIMARY KEY,
+                beef_hook_enabled   TINYINT(1) NOT NULL DEFAULT 0,
+                engagement_id       INT NULL,
+                created_at          BIGINT NOT NULL,
+                updated_at          BIGINT NOT NULL,
+                KEY (engagement_id)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    }
+}
+
+if (!function_exists('taphish_clone_meta_upsert')) {
+    /**
+     * Set the per-clone hook toggle (creating the row if needed). Uses
+     * MySQL's ON DUPLICATE KEY UPDATE so a re-clone with a different
+     * toggle stays consistent without a transactional read-modify-write.
+     */
+    function taphish_clone_meta_upsert(\mysqli $conn, string $slug, bool $beefHookEnabled, ?int $engagementId = null): bool
+    {
+        $slug = trim($slug);
+        if ($slug === '') return false;
+        $now    = (int) (microtime(true) * 1000);
+        $flag   = $beefHookEnabled ? 1 : 0;
+        $stmt = $conn->prepare(
+            "INSERT INTO tb_data_clone_meta
+               (slug, beef_hook_enabled, engagement_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               beef_hook_enabled = VALUES(beef_hook_enabled),
+               engagement_id     = VALUES(engagement_id),
+               updated_at        = VALUES(updated_at)"
+        );
+        if ($stmt === false) return false;
+        $stmt->bind_param('siiii', $slug, $flag, $engagementId, $now, $now);
+        $ok = $stmt->execute();
+        $stmt->close();
+        return (bool) $ok;
+    }
+}
+
+if (!function_exists('taphish_clone_meta_get')) {
+    /**
+     * Read the metadata row for a slug or null if none exists.
+     *
+     * @return array{slug:string, beef_hook_enabled:bool, engagement_id:?int}|null
+     */
+    function taphish_clone_meta_get(\mysqli $conn, string $slug): ?array
+    {
+        $stmt = $conn->prepare(
+            "SELECT slug, beef_hook_enabled, engagement_id
+               FROM tb_data_clone_meta WHERE slug = ?"
+        );
+        if ($stmt === false) return null;
+        $stmt->bind_param('s', $slug);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row) return null;
+        return [
+            'slug'              => (string) $row['slug'],
+            'beef_hook_enabled' => (bool) (int) $row['beef_hook_enabled'],
+            'engagement_id'     => $row['engagement_id'] === null ? null : (int) $row['engagement_id'],
+        ];
+    }
+}
+
 if (!function_exists('beef_settings_delete')) {
     /**
      * Forget the stored settings row entirely. Used when the operator
