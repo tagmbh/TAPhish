@@ -235,3 +235,191 @@ if (!function_exists('beef_default_http')) {
         ];
     }
 }
+
+// ---- Phase 3.52 task 2: settings storage + authentication ---------------
+
+if (!function_exists('beef_authenticate')) {
+    /**
+     * POST <base>/api/admin/login with the operator's BeEF username +
+     * password; return the session token on success, null otherwise.
+     *
+     * BeEF's REST auth flow is username/password → session-token, not
+     * a static API key. We do the login per dashboard poll so the
+     * token never has to be persisted (BeEF rotates it across server
+     * restarts anyway).
+     *
+     * HTTP via the injectable seam used by beef_list_hooked_browsers().
+     *
+     * @return array{ok: bool, token?: string, err?: string}
+     */
+    function beef_authenticate(string $baseUrl, string $username, string $password, ?callable $http = null): array
+    {
+        $base = rtrim(trim($baseUrl), '/');
+        if ($base === '' || !preg_match('#^https?://#i', $base)) {
+            return ['ok' => false, 'err' => 'Invalid BeEF base URL'];
+        }
+        if (trim($username) === '' || $password === '') {
+            return ['ok' => false, 'err' => 'Missing BeEF credentials'];
+        }
+        $body = json_encode(['username' => $username, 'password' => $password]);
+        if ($body === false) {
+            return ['ok' => false, 'err' => 'Could not encode credentials'];
+        }
+        $fn   = $http ?? 'beef_default_http';
+        $resp = $fn('POST', $base . '/api/admin/login', [
+            'timeout' => 5,
+            'body'    => $body,
+        ]);
+        $status = (int) ($resp['status'] ?? 0);
+        if ($status === 0) {
+            return ['ok' => false, 'err' => 'BeEF unreachable (transport failure)'];
+        }
+        if ($status === 401 || $status === 403) {
+            return ['ok' => false, 'err' => 'BeEF rejected credentials'];
+        }
+        if ($status !== 200) {
+            return ['ok' => false, 'err' => 'HTTP ' . $status];
+        }
+        $tok = beef_parse_auth_response((string) ($resp['body'] ?? ''));
+        if ($tok === null) {
+            return ['ok' => false, 'err' => 'BeEF response missing session token'];
+        }
+        return ['ok' => true, 'token' => $tok];
+    }
+}
+
+if (!function_exists('beef_settings_serialize')) {
+    /**
+     * Pure serializer for the (base_url, username, password) triple
+     * the operator types on SettingsBeefIntegration. Output is the
+     * exact JSON string the at-rest envelope encrypts.
+     *
+     * Kept pure so the round-trip can be tested without mysqli or the
+     * envelope (Phase 3.38).
+     */
+    function beef_settings_serialize(string $baseUrl, string $username, string $password): string
+    {
+        return (string) json_encode([
+            'base_url' => trim($baseUrl),
+            'username' => trim($username),
+            'password' => $password,
+        ], JSON_UNESCAPED_SLASHES);
+    }
+}
+
+if (!function_exists('beef_settings_deserialize')) {
+    /**
+     * Inverse of beef_settings_serialize(). Returns null on any shape
+     * the storage layer didn't write itself (i.e. a manual tb_store
+     * row from before this code shipped).
+     */
+    function beef_settings_deserialize(?string $payload): ?array
+    {
+        if ($payload === null || $payload === '') return null;
+        $j = json_decode($payload, true);
+        if (!is_array($j)) return null;
+        if (!isset($j['base_url'], $j['username'], $j['password'])) return null;
+        return [
+            'base_url' => (string) $j['base_url'],
+            'username' => (string) $j['username'],
+            'password' => (string) $j['password'],
+        ];
+    }
+}
+
+if (!function_exists('beef_settings_mask_password')) {
+    /**
+     * Render a never-leaks placeholder for the password field. The
+     * dispatcher's `beef_settings_load` action returns this; the full
+     * password never goes back to the browser after it's stored.
+     */
+    function beef_settings_mask_password(string $password): string
+    {
+        if ($password === '') return '';
+        $len = strlen($password);
+        return str_repeat('•', min(8, max(4, $len)));
+    }
+}
+
+if (!function_exists('beef_settings_save')) {
+    /**
+     * Upsert the encrypted settings row into tb_store
+     * (type='beef_integration', name='credentials'). Mirrors the
+     * Phase 3.42 capture_webhook pattern. Encryption is opportunistic:
+     * if the at-rest envelope (Phase 3.38) is unavailable we fall back
+     * to plaintext — same posture as the rest of the codebase, so a
+     * fresh install without the key still works.
+     *
+     * @return bool whether the row was successfully written
+     */
+    function beef_settings_save(\mysqli $conn, string $baseUrl, string $username, string $password): bool
+    {
+        $payload = beef_settings_serialize($baseUrl, $username, $password);
+        if (function_exists('secret_at_rest_get_key') && function_exists('secret_at_rest_encrypt')) {
+            $key = secret_at_rest_get_key();
+            if ($key !== null) {
+                $enc = secret_at_rest_encrypt($payload, $key);
+                if ($enc !== null) $payload = $enc;
+            }
+        }
+        $del = $conn->prepare("DELETE FROM tb_store WHERE type='beef_integration' AND name='credentials'");
+        if ($del !== false) {
+            $del->execute();
+            $del->close();
+        }
+        $ins = $conn->prepare(
+            "INSERT INTO tb_store (type, name, info, content) VALUES ('beef_integration', 'credentials', 'Phase 3.52 BeEF integration credentials', ?)"
+        );
+        if ($ins === false) return false;
+        $ins->bind_param('s', $payload);
+        $ok = $ins->execute();
+        $ins->close();
+        return (bool) $ok;
+    }
+}
+
+if (!function_exists('beef_settings_load')) {
+    /**
+     * Read the (base_url, username, password) triple back from
+     * tb_store. Transparently decrypts via the Phase 3.38 envelope's
+     * passthrough decrypt — works on both encrypted and legacy
+     * plaintext rows.
+     *
+     * @return array{base_url:string, username:string, password:string}|null
+     */
+    function beef_settings_load(\mysqli $conn): ?array
+    {
+        $stmt = $conn->prepare(
+            "SELECT content FROM tb_store WHERE type='beef_integration' AND name='credentials'"
+        );
+        if ($stmt === false) return null;
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row || empty($row['content'])) return null;
+        $payload = (string) $row['content'];
+        if (function_exists('secret_at_rest_get_key') && function_exists('secret_at_rest_passthrough_decrypt')) {
+            $key = secret_at_rest_get_key();
+            if ($key !== null) {
+                $plain = secret_at_rest_passthrough_decrypt($payload, $key);
+                if (is_string($plain)) $payload = $plain;
+            }
+        }
+        return beef_settings_deserialize($payload);
+    }
+}
+
+if (!function_exists('beef_settings_delete')) {
+    /**
+     * Forget the stored settings row entirely. Used when the operator
+     * pastes an empty URL in the settings UI.
+     */
+    function beef_settings_delete(\mysqli $conn): bool
+    {
+        $del = $conn->prepare("DELETE FROM tb_store WHERE type='beef_integration' AND name='credentials'");
+        if ($del === false) return false;
+        $ok = $del->execute();
+        $del->close();
+        return (bool) $ok;
+    }
+}

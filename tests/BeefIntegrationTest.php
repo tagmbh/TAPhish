@@ -239,4 +239,103 @@ final class BeefIntegrationTest extends TestCase
         $r = beef_list_hooked_browsers('http://x:3000', 'tok_x', $fake);
         self::assertFalse($r['ok']);
     }
+
+    // ---- Phase 3.52 task 2: authentication --------------------------------
+
+    public function testAuthenticatePostsCredentialsAndReturnsToken(): void
+    {
+        $captured = [];
+        $fake = function ($method, $url, $opts) use (&$captured) {
+            $captured = ['method' => $method, 'url' => $url, 'body' => $opts['body'] ?? ''];
+            return ['status' => 200, 'body' => json_encode(['success' => true, 'token' => 'tok_xyz'])];
+        };
+        $r = beef_authenticate('http://10.0.0.5:3000', 'beef', 'hunter2', $fake);
+        self::assertTrue($r['ok']);
+        self::assertSame('tok_xyz', $r['token']);
+        self::assertSame('POST', $captured['method']);
+        self::assertStringContainsString('/api/admin/login', $captured['url']);
+        $sent = json_decode($captured['body'], true);
+        self::assertSame('beef', $sent['username']);
+        self::assertSame('hunter2', $sent['password']);
+    }
+
+    public function testAuthenticateRejectsBadUrl(): void
+    {
+        $r = beef_authenticate('not-a-url', 'beef', 'hunter2');
+        self::assertFalse($r['ok']);
+        self::assertStringContainsString('Invalid', $r['err']);
+    }
+
+    public function testAuthenticateRejectsMissingCreds(): void
+    {
+        $r = beef_authenticate('http://x:3000', '', '');
+        self::assertFalse($r['ok']);
+        self::assertStringContainsString('credentials', $r['err']);
+    }
+
+    public function testAuthenticateSurfaces401AsCredFailure(): void
+    {
+        $fake = fn() => ['status' => 401, 'body' => ''];
+        $r = beef_authenticate('http://x:3000', 'beef', 'wrong', $fake);
+        self::assertFalse($r['ok']);
+        self::assertStringContainsString('rejected', $r['err']);
+    }
+
+    public function testAuthenticateSurfacesTransportFailure(): void
+    {
+        $fake = fn() => ['status' => 0, 'body' => ''];
+        $r = beef_authenticate('http://x:3000', 'beef', 'p', $fake);
+        self::assertFalse($r['ok']);
+        self::assertStringContainsString('unreachable', $r['err']);
+    }
+
+    public function testAuthenticateRejectsResponseWithoutToken(): void
+    {
+        $fake = fn() => ['status' => 200, 'body' => json_encode(['success' => true])];
+        $r = beef_authenticate('http://x:3000', 'beef', 'p', $fake);
+        self::assertFalse($r['ok']);
+        self::assertStringContainsString('token', $r['err']);
+    }
+
+    // ---- settings serialize / deserialize ---------------------------------
+
+    public function testSettingsRoundTripPreservesAllThreeFields(): void
+    {
+        $payload = beef_settings_serialize('http://10.0.0.5:3000', 'beef', 'hunter2!');
+        $back = beef_settings_deserialize($payload);
+        self::assertSame('http://10.0.0.5:3000', $back['base_url']);
+        self::assertSame('beef', $back['username']);
+        self::assertSame('hunter2!', $back['password']);
+    }
+
+    public function testSettingsSerializeTrimsBaseUrlAndUsername(): void
+    {
+        $payload = beef_settings_serialize('  http://x:3000  ', '  beef  ', '  preserved  ');
+        $back = beef_settings_deserialize($payload);
+        self::assertSame('http://x:3000', $back['base_url']);
+        self::assertSame('beef', $back['username']);
+        // password preserves leading/trailing whitespace
+        self::assertSame('  preserved  ', $back['password']);
+    }
+
+    public function testSettingsDeserializeReturnsNullForJunk(): void
+    {
+        self::assertNull(beef_settings_deserialize(null));
+        self::assertNull(beef_settings_deserialize(''));
+        self::assertNull(beef_settings_deserialize('not json'));
+        self::assertNull(beef_settings_deserialize(json_encode(['base_url' => 'http://x']))); // missing fields
+    }
+
+    public function testMaskPasswordHidesContent(): void
+    {
+        self::assertSame('', beef_settings_mask_password(''));
+        self::assertSame('••••',     beef_settings_mask_password('abcd'));
+        self::assertSame('••••••••', beef_settings_mask_password('verylongpassword123'));
+    }
+
+    public function testMaskPasswordReturnsConstantWidthFromShortInputs(): void
+    {
+        // 3-char input pads to the minimum 4 dots so length doesn't leak.
+        self::assertSame('••••', beef_settings_mask_password('abc'));
+    }
 }
