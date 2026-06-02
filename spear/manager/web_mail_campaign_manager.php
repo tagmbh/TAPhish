@@ -123,7 +123,8 @@ function getTimelineDataWeb($conn, $campaign_id, $tracker_id, $user_group_id){
 	$stmt->execute();
 	$result = $stmt->get_result();
 	if($result->num_rows > 0)
-		$user_data = json_decode($result->fetch_assoc()['user_data']);
+		// Phase 3.38: unseal user_data envelope before json_decode.
+		$user_data = json_decode((string)recipient_data_unseal($result->fetch_assoc()['user_data']));
 
 
 	$stmt = $conn->prepare("SELECT rid,time FROM tb_data_webpage_visit WHERE tracker_id = ?");
@@ -177,7 +178,8 @@ function getWebcampGraphData($conn, $campaign_id, $tracker_id, $user_group_id, $
 	$stmt->execute();
 	$result = $stmt->get_result();
 	if($result->num_rows > 0)
-		$total_user_count = count((array)json_decode($result->fetch_assoc()['user_data']));
+		// Phase 3.38: unseal user_data envelope before counting recipients.
+		$total_user_count = count((array)json_decode((string)recipient_data_unseal($result->fetch_assoc()['user_data'])));
 	else
 		$total_user_count = 0;
 

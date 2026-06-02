@@ -108,22 +108,27 @@ function addUserToTable($conn, &$POSTJ){
 		die(json_encode(['result' => 'failed', 'error' => 'Error adding user!']));			
 
 	$row = getUserGroupFromGroupId($conn, $user_group_id);
+	// Phase 3.38: user_data may hold a legacy plaintext JSON blob OR an
+	// enc1: at-rest envelope. recipient_data_unseal() returns the
+	// plaintext JSON in both cases (or null if a missing key blocks
+	// decrypt — we treat that as "empty list" rather than blow up,
+	// matching the previous behavior).
 	if(empty($row) || empty($row["user_data"]))
 		$user_data =[];
 	else
-		$user_data = json_decode($row["user_data"],true);
+		$user_data = json_decode((string)recipient_data_unseal($row["user_data"]),true) ?? [];
 
 	$uid = getRandomStr(10);
 	array_push($user_data,['uid'=>$uid, 'fname'=>$POSTJ['fname'], 'lname'=>$POSTJ['lname'], 'email'=>$POSTJ['email'], 'notes'=>$POSTJ['notes']]);
-	$user_data = json_encode(array_unique($user_data, SORT_REGULAR));
+	$user_data_sealed = recipient_data_seal(json_encode(array_unique($user_data, SORT_REGULAR)));
 
 	if(checkAnIDExist($conn,$user_group_id,'user_group_id','tb_core_mailcamp_user_group')){
 		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=?, user_data=? WHERE user_group_id=?");
-		$stmt->bind_param('sss', $user_group_name,$user_data,$user_group_id);
+		$stmt->bind_param('sss', $user_group_name,$user_data_sealed,$user_group_id);
 	}
 	else{
 		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,user_data,date) VALUES(?,?,?,?)");
-		$stmt->bind_param('ssss', $user_group_id,$user_group_name,$user_data,$GLOBALS['entry_time']);
+		$stmt->bind_param('ssss', $user_group_id,$user_group_name,$user_data_sealed,$GLOBALS['entry_time']);
 	}
 
 	if($stmt->execute() === TRUE){
@@ -161,24 +166,25 @@ function updateUser($conn, &$POSTJ){
 	$row = getUserGroupFromGroupId($conn, $user_group_id);
 
 	if(!empty($row)){
-		$user_data = json_decode($row["user_data"],true);
+		// Phase 3.38: unseal before edit, re-seal before write.
+		$user_data = json_decode((string)recipient_data_unseal($row["user_data"]),true) ?? [];
 
 		$index = array_search($uid, array_column($user_data, 'uid'));
 		if($index !== false ){	//returns false if not found
 			$user_data[$index]= ['uid'=>$uid, 'fname'=>$POSTJ['fname'], 'lname'=>$POSTJ['lname'], 'email'=>$POSTJ['email'], 'notes'=>$POSTJ['notes']];
-			$user_data = json_encode($user_data);
+			$user_data_sealed = recipient_data_seal(json_encode($user_data));
 			$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_data=? WHERE user_group_id=?");
-			$stmt->bind_param('ss', $user_data,$user_group_id);
+			$stmt->bind_param('ss', $user_data_sealed,$user_group_id);
 			if($stmt->execute() === TRUE)
-				echo(json_encode(['result' => 'success']));				
-			else 
-				echo(json_encode(['result' => 'failed', 'error' => 'Error updating row!']));		
+				echo(json_encode(['result' => 'success']));
+			else
+				echo(json_encode(['result' => 'failed', 'error' => 'Error updating row!']));
 		}
 		else
 			echo(json_encode(['result' => 'failed', 'error' => 'Error updating row. User not found!']));
 	}
 	else
-		echo(json_encode(['result' => 'failed', 'error' => 'Error updating row. User group not found!']));	
+		echo(json_encode(['result' => 'failed', 'error' => 'Error updating row. User group not found!']));
 }
 
 function deleteUser($conn, $user_group_id, $uid){
@@ -188,18 +194,19 @@ function deleteUser($conn, $user_group_id, $uid){
 	$result = $stmt->get_result();
 	if($result->num_rows != 0){
 		$row = $result->fetch_assoc();
-		$user_data = json_decode($row["user_data"],true);
+		// Phase 3.38: unseal before delete-by-uid, re-seal before write.
+		$user_data = json_decode((string)recipient_data_unseal($row["user_data"]),true) ?? [];
 
 		$index = array_search($uid, array_column($user_data, 'uid'));
 		if($index !== false ){	//returns false if not found
 			unset($user_data[$index]);
-			$user_data = json_encode($user_data);
+			$user_data_sealed = recipient_data_seal(json_encode($user_data));
 			$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_data=? WHERE user_group_id=?");
-			$stmt->bind_param('ss', $user_data,$user_group_id);
+			$stmt->bind_param('ss', $user_data_sealed,$user_group_id);
 			if($stmt->execute() === TRUE)
-				echo(json_encode(['result' => 'success']));				
-			else 
-				echo(json_encode(['result' => 'failed', 'error' => 'Error deleting row!']));		
+				echo(json_encode(['result' => 'success']));
+			else
+				echo(json_encode(['result' => 'failed', 'error' => 'Error deleting row!']));
 		}else
 			echo(json_encode(['result' => 'failed', 'error' => 'Error deleting row. User not found!']));
 	}
@@ -214,14 +221,15 @@ function downloadUser($conn, $user_group_id){
 	$result = $stmt->get_result();
 	if($result->num_rows != 0){
 		$row = $result->fetch_assoc();
-		$user_data = json_decode($row["user_data"],true);
+		// Phase 3.38: unseal before serializing to CSV.
+		$user_data = json_decode((string)recipient_data_unseal($row["user_data"]),true) ?? [];
 
-		$f = fopen('php://memory', 'w'); 
-		fputcsv($f, ['First Name', 'Last Name', 'Email', 'Notes'], ','); 
+		$f = fopen('php://memory', 'w');
+		fputcsv($f, ['First Name', 'Last Name', 'Email', 'Notes'], ',');
 
 	    foreach ($user_data as $line) {
 	    	unset($line['uid']);	//remove uid field
-	        fputcsv($f, $line, ','); 
+	        fputcsv($f, $line, ',');
 	    }
 
 	    fseek($f, 0);
@@ -236,17 +244,27 @@ function downloadUser($conn, $user_group_id){
 function getUserGroupList($conn){
 	$resp = [];
 	$DTime_info = getTimeInfo($conn);
-	$result = mysqli_query($conn, "SELECT user_group_id,user_group_name,JSON_LENGTH(user_data) as user_count,date FROM tb_core_mailcamp_user_group");
+	// Phase 3.38: SELECT user_data instead of JSON_LENGTH(user_data) —
+	// once the column holds an enc1: envelope, server-side JSON parsing
+	// is impossible. Compute count client-side after recipient_data_unseal().
+	$result = mysqli_query($conn, "SELECT user_group_id,user_group_name,user_data,date FROM tb_core_mailcamp_user_group");
 	if(mysqli_num_rows($result) > 0){
 		foreach (mysqli_fetch_all($result, MYSQLI_ASSOC) as $row){
-			$row["user_data"] = json_decode($row["user_data"]);	//avoid double json encoding
+			$plain = recipient_data_unseal($row["user_data"]);
+			$parsed = $plain === null ? [] : (json_decode((string)$plain, true) ?? []);
+			$row["user_count"] = is_array($parsed) ? count($parsed) : 0;
+			// Drop the raw user_data from the list payload — callers
+			// of getUserGroupList don't need the recipient details, and
+			// shipping plaintext PII over an AJAX response we don't have
+			// to is the wrong default.
+			unset($row["user_data"]);
 			$row["date"] = getInClientTime_FD($DTime_info,$row['date'],null,'d-m-Y h:i A');
-        	array_push($resp,$row);
+			array_push($resp,$row);
 		}
 		echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);
 	}
 	else
-		echo json_encode(['error' => 'No data']);	
+		echo json_encode(['error' => 'No data']);
 }
 
 function uploadUserCVS($conn, &$POSTJ){
@@ -271,21 +289,22 @@ function uploadUserCVS($conn, &$POSTJ){
 	}
 
 	$row = getUserGroupFromGroupId($conn, $user_group_id);
+	// Phase 3.38: unseal existing rows before merge, re-seal before write.
 	if(!empty($row['user_data']))
-		$old_user_data = json_decode($row["user_data"],true);
+		$old_user_data = json_decode((string)recipient_data_unseal($row["user_data"]),true) ?? [];
 	else
 		$old_user_data = [];
 
 	$user_data = array_merge($old_user_data,$arr_users);
-	$user_data = json_encode($user_data);
+	$user_data_sealed = recipient_data_seal(json_encode($user_data));
 
 	if(checkAnIDExist($conn,$user_group_id,'user_group_id','tb_core_mailcamp_user_group')){
 		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=?, user_data=? WHERE user_group_id=?");
-		$stmt->bind_param('sss', $user_group_name,$user_data,$user_group_id);
+		$stmt->bind_param('sss', $user_group_name,$user_data_sealed,$user_group_id);
 	}
 	else{
 		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,user_data,date) VALUES(?,?,?,?)");
-		$stmt->bind_param('ssss', $user_group_id,$user_group_name,$user_data,$GLOBALS['entry_time']);
+		$stmt->bind_param('ssss', $user_group_id,$user_group_name,$user_data_sealed,$GLOBALS['entry_time']);
 	}
 
 	if($stmt->execute() === TRUE){
@@ -315,14 +334,15 @@ function getUserGroupFromGroupIdTable($conn,&$POSTJ){
 	$row = getUserGroupFromGroupId($conn, $user_group_id);
 
 	if(!empty($row)){
-		$user_data = json_decode($row["user_data"],true);
+		// Phase 3.38: unseal before search + DataTables paging.
+		$user_data = json_decode((string)recipient_data_unseal($row["user_data"]),true) ?? [];
 		foreach ($user_data as $item){
 		    $m_array = preg_grep('/.*'.$search_value.'.*/', $item);
 		    if(!empty($m_array))
 		    	array_push($arr_filtered, $item);
 		}
 
-		$totalRecords = empty($row['user_data'])?0:sizeof($user_data);
+		$totalRecords = empty($user_data)?0:sizeof($user_data);
 		$totalRecords_with_filter = sizeof($arr_filtered);
 		$resp = array(
 		  "draw" => intval($draw),

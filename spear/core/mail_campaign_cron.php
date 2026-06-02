@@ -36,11 +36,12 @@ function getUSERGROUP($conn,$user_group_id){
 	$stmt->execute();
 	$result = $stmt->get_result();
 	if($row = $result->fetch_assoc()){
-		$row['user_data'] = json_decode($row["user_data"],true);	//avoid double json encoding
+		// Phase 3.38: unseal recipient list before the cron worker sends.
+		$row['user_data'] = json_decode((string)recipient_data_unseal($row["user_data"]),true) ?? [];
 		return ($row) ;
 	}
 	else
-		die(json_encode(['result' => 'Invalid user group id '.$user_group_id]));	
+		die(json_encode(['result' => 'Invalid user group id '.$user_group_id]));
 }
 
 function getMTEMPLATE($conn, $mail_template_id){
