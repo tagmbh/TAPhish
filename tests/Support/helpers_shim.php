@@ -16,6 +16,7 @@ require_once __DIR__ . '/../../spear/manager/ai_landing_page.php';
 require_once __DIR__ . '/../../spear/manager/recipient_tz.php';
 require_once __DIR__ . '/../../spear/manager/totp.php';
 require_once __DIR__ . '/../../spear/manager/log_classifier.php';
+require_once __DIR__ . '/../../spear/manager/pretext_library.php';
 require_once __DIR__ . '/../../spear/manager/login_throttle.php';
 require_once __DIR__ . '/../../spear/manager/secret_at_rest.php';
 require_once __DIR__ . '/../../spear/manager/customer_report_aggregator.php';
