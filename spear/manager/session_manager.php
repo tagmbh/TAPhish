@@ -52,6 +52,11 @@ if (isset($conn) && $conn instanceof mysqli) {
 		require_once(dirname(__FILE__) . '/scanner_detect.php');
 		taphish_scanner_ensure_schema($conn);
 	}
+	// Phase 3.52: per-clone metadata table (BeEF hook toggle lives here).
+	if (is_file(dirname(__FILE__) . '/beef_integration.php')) {
+		require_once(dirname(__FILE__) . '/beef_integration.php');
+		taphish_clone_meta_ensure_schema($conn);
+	}
 }
 // Phase 3.9: detect operators still using the bootstrap "sniperphish"
 // password so the JS guard in z_menu.php can redirect them to

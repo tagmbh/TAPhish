@@ -169,4 +169,24 @@ final class LogClassifierTest extends TestCase
         $r = taphish_classify_log_entry('Site cloned: acme-login from https://target.example');
         self::assertSame(['kind' => 'CLON', 'severity' => 'ok'], $r);
     }
+
+    // Phase 3.52: BeEF integration audit-log rules.
+
+    public function testBeefHookSeenIsBeefOk(): void
+    {
+        $r = taphish_classify_log_entry('BeEF hook observed on login.acme.com (id=1)');
+        self::assertSame(['kind' => 'BEEF', 'severity' => 'ok'], $r);
+    }
+
+    public function testBeefOutOfScopeIsBeefWarn(): void
+    {
+        $r = taphish_classify_log_entry('BeEF hook out-of-scope on evil.other.com (id=7)');
+        self::assertSame(['kind' => 'BEEF', 'severity' => 'warn'], $r);
+    }
+
+    public function testBeefPollFailedIsBeefError(): void
+    {
+        $r = taphish_classify_log_entry('BeEF poll failed: HTTP 401 (token expired?)');
+        self::assertSame(['kind' => 'BEEF', 'severity' => 'error'], $r);
+    }
 }
