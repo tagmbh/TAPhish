@@ -175,6 +175,62 @@ if (!function_exists('mail_sender_unseal_pwd')) {
     }
 }
 
+// ---- Phase 3.38: recipient list PII at-rest ----------------------------
+//
+// The tb_core_mailcamp_user_group.user_data column holds a JSON-encoded
+// array of recipient rows (fname, lname, email, notes) — the most
+// sensitive single column in the panel. Same envelope pattern as the
+// SMTP-password wrappers above so existing plaintext rows continue to
+// work and new writes get encrypted transparently.
+
+if (!function_exists('recipient_data_seal')) {
+    /**
+     * Encrypt a JSON-encoded recipient blob for at-rest storage. Empty
+     * input passes through. Falls back to plaintext (with a log note)
+     * when the on-disk key is missing, matching the mail-sender helper.
+     */
+    function recipient_data_seal(string $plaintext_json): string
+    {
+        if ($plaintext_json === '') {
+            return '';
+        }
+        $key = secret_at_rest_get_key();
+        if ($key === null) {
+            if (function_exists('logIt')) {
+                logIt('recipient_data_seal: at-rest key unavailable, storing plaintext', 'system');
+            }
+            return $plaintext_json;
+        }
+        $enc = secret_at_rest_encrypt($plaintext_json, $key);
+        return $enc ?? $plaintext_json;
+    }
+}
+
+if (!function_exists('recipient_data_unseal')) {
+    /**
+     * Decrypt for use. Plaintext (legacy or fallback) passes through.
+     * Returns the JSON string (or null/empty passthrough). Callers
+     * still need to json_decode() the result.
+     */
+    function recipient_data_unseal(?string $stored): ?string
+    {
+        if ($stored === null || $stored === '') {
+            return $stored;
+        }
+        if (!secret_at_rest_is_encrypted($stored)) {
+            return $stored;
+        }
+        $key = secret_at_rest_get_key();
+        if ($key === null) {
+            // Can't decrypt — return null rather than feed a ciphertext
+            // envelope into json_decode() (which would silently produce
+            // an empty recipient list).
+            return null;
+        }
+        return secret_at_rest_decrypt($stored, $key);
+    }
+}
+
 // ---- Filesystem-backed key lookup -------------------------------------
 
 if (!function_exists('secret_at_rest_get_key')) {

@@ -108,4 +108,30 @@ final class SecretAtRestTest extends TestCase
         $enc = secret_at_rest_encrypt($pt, $key);
         self::assertSame($pt, secret_at_rest_decrypt($enc, $key));
     }
+
+    // Phase 3.38: recipient_data_{seal,unseal} passthrough behavior.
+    // The full encrypt round-trip needs the on-disk key file, which a
+    // unit test shouldn't touch. We test the passthrough paths that
+    // run BEFORE the key lookup: empty input + already-plaintext input.
+
+    public function testRecipientDataUnsealReturnsNullForNull(): void
+    {
+        self::assertNull(recipient_data_unseal(null));
+    }
+
+    public function testRecipientDataUnsealReturnsEmptyForEmpty(): void
+    {
+        self::assertSame('', recipient_data_unseal(''));
+    }
+
+    public function testRecipientDataUnsealPassesLegacyPlaintextThrough(): void
+    {
+        $legacy = '[{"uid":"a","fname":"Test","email":"t@example"}]';
+        self::assertSame($legacy, recipient_data_unseal($legacy));
+    }
+
+    public function testRecipientDataSealReturnsEmptyForEmpty(): void
+    {
+        self::assertSame('', recipient_data_seal(''));
+    }
 }

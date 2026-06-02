@@ -326,12 +326,13 @@ function getUserGroupData($conn, $campaign_id){
 		$result = $stmt->get_result();
 		if($result->num_rows != 0){
 			$row = $result->fetch_assoc();
-			$row['user_data'] = json_decode($row["user_data"]);	//avoid double json encoding
+			// Phase 3.38: unseal recipient list before decoding.
+			$row['user_data'] = json_decode((string)recipient_data_unseal($row["user_data"])) ?? [];
 			$row['date'] = getInClientTime_FD($DTime_info,$row['date']);
 			echo json_encode($row) ;
-		}		
+		}
 		else
-			echo json_encode(['error' => 'No data']);	
+			echo json_encode(['error' => 'No data']);
 	}
 	else
 		echo json_encode(['error' => 'No data']);	
