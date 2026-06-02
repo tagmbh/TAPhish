@@ -26,7 +26,7 @@
       </style>
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
    </head>
-   <body>
+   <body class="dim-panel">
       <!-- ============================================================== -->
       <!-- Preloader - style you can find in spinners.css -->
       <!-- ============================================================== -->
