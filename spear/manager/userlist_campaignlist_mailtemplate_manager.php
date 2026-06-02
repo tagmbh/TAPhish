@@ -16,6 +16,7 @@ require_once(dirname(__FILE__) . '/capture_alerting.php');
 require_once(dirname(__FILE__) . '/dkim_helper.php');
 require_once(dirname(__FILE__) . '/recipient_import.php');
 require_once(dirname(__FILE__) . '/preflight_checks.php');
+require_once(dirname(__FILE__) . '/beef_integration.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -325,6 +326,59 @@ if (isset($_POST)) {
 				'result' => 'success',
 				'web'    => taphish_web_fingerprint($domain),
 			]);
+		}
+		// ---- Phase 3.52 task 2: BeEF settings + test connection ----
+		// Settings live in tb_store encrypted via the Phase 3.38
+		// envelope. Save accepts a sentinel ("•••" placeholder) for
+		// the password field meaning "keep existing"; Load NEVER
+		// returns the password — only a fixed-width mask.
+		if($POSTJ['action_type'] == "beef_settings_save") {
+			$base = trim((string)($POSTJ['base_url'] ?? ''));
+			$user = trim((string)($POSTJ['username'] ?? ''));
+			$pass = (string)($POSTJ['password'] ?? '');
+			if ($base === '') {
+				// Empty base URL = forget the row entirely.
+				beef_settings_delete($conn);
+				echo json_encode(['result' => 'success', 'cleared' => true]);
+			} elseif (!preg_match('#^https?://#i', $base)) {
+				echo json_encode(['result' => 'failed', 'error' => 'Invalid base URL — must start with http:// or https://']);
+			} else {
+				// "•••" sentinel = keep existing password (operator
+				// edited only URL / username).
+				if ($pass === '' || preg_match('/^•+$/u', $pass)) {
+					$existing = beef_settings_load($conn);
+					$pass = $existing ? $existing['password'] : '';
+				}
+				$ok = beef_settings_save($conn, $base, $user, $pass);
+				echo json_encode(['result' => $ok ? 'success' : 'failed']);
+			}
+		}
+		if($POSTJ['action_type'] == "beef_settings_load") {
+			$s = beef_settings_load($conn);
+			if ($s === null) {
+				echo json_encode(['result' => 'success', 'configured' => false]);
+			} else {
+				echo json_encode([
+					'result'           => 'success',
+					'configured'       => true,
+					'base_url'         => $s['base_url'],
+					'username'         => $s['username'],
+					'password_masked'  => beef_settings_mask_password($s['password']),
+				]);
+			}
+		}
+		if($POSTJ['action_type'] == "beef_test_connection") {
+			$s = beef_settings_load($conn);
+			if ($s === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'BeEF settings not configured']);
+			} else {
+				$r = beef_authenticate($s['base_url'], $s['username'], $s['password']);
+				if ($r['ok']) {
+					echo json_encode(['result' => 'success', 'ok' => true]);
+				} else {
+					echo json_encode(['result' => 'success', 'ok' => false, 'error' => $r['err']]);
+				}
+			}
 		}
 		// Phase 3.46-pre: Shodan host lookup. Operator's API key is
 		// sent inline so it never persists server-side. Returns open
