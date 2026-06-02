@@ -410,3 +410,37 @@ function clearJunkSPData(e){
         enableDisableMe(e);
     }); 
 }
+// ---- Phase 3.42: capture webhook URL config -----------------------
+
+(function () {
+    function postSettings(payload) {
+        return $.ajax({
+            url: 'manager/settings_manager',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify(payload),
+            dataType: 'json'
+        });
+    }
+    $(function () {
+        postSettings({ action_type: 'get_capture_webhook_url' }).done(function (d) {
+            if (d && d.result === 'success' && typeof d.url === 'string') {
+                $('#capture_webhook_url').val(d.url);
+            }
+        });
+        $('#btn_save_capture_webhook').on('click', function () {
+            var url = $('#capture_webhook_url').val().trim();
+            postSettings({ action_type: 'set_capture_webhook_url', url: url })
+                .done(function (d) {
+                    if (d && d.result === 'success') {
+                        toastr.success('', 'Webhook URL saved.');
+                    } else {
+                        toastr.error('', (d && d.error) || 'Save failed.');
+                    }
+                })
+                .fail(function (xhr) {
+                    toastr.error('', 'Request failed (HTTP ' + xhr.status + ').');
+                });
+        });
+    });
+})();

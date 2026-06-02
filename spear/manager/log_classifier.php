@@ -25,6 +25,9 @@ if (!function_exists('taphish_classify_log_entry')) {
             // 'campaign' rule because the log line carries
             // "for campaign <id>" in its body.
             ['scanner hit',            'SCAN', 'warn'],
+            // Phase 3.42: first capture per recipient on a campaign.
+            ['capture: first submit',  'CAPT', 'ok'],
+            ['capture webhook',        'SYS',  'ok'],
             ['2fa disabled',           'AUTH', 'warn'],
             ['2fa enabled',            'AUTH', 'ok'],
             ['failed login',           'AUTH', 'warn'],

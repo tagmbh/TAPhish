@@ -147,4 +147,12 @@ final class LogClassifierTest extends TestCase
         $r = taphish_classify_log_entry('Scanner hit on mail-open pixel for campaign C42 (PTR contains "amazonaws")');
         self::assertSame(['kind' => 'SCAN', 'severity' => 'warn'], $r);
     }
+
+    // Phase 3.42: first capture per recipient surfaces as CAPT/ok.
+
+    public function testFirstCaptureIsCaptOk(): void
+    {
+        $r = taphish_classify_log_entry('Capture: first submit on tracker XYZ123 [+2FA]');
+        self::assertSame(['kind' => 'CAPT', 'severity' => 'ok'], $r);
+    }
 }
