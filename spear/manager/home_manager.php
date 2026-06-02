@@ -21,6 +21,74 @@ if (isset($_POST)) {
 			startSniperPhishProcess($conn);
 		if($POSTJ['action_type'] == "get_recent_log_entries")
 			getRecentLogEntries($conn, (int)($POSTJ['limit'] ?? 10));
+
+		// Phase 3.52 task 6: hooked-browsers list. Polled every 30 s by
+		// the Home page widget. Returns degraded states (not_configured /
+		// unreachable / auth_failed) so the UI can give a useful chip
+		// rather than a red error.
+		if($POSTJ['action_type'] == "beef_list_hooks") {
+			require_once(dirname(__FILE__) . '/beef_integration.php');
+			$s = beef_settings_load($conn);
+			if ($s === null || $s['base_url'] === '') {
+				echo json_encode([
+					'result' => 'success',
+					'state'  => 'not_configured',
+					'hooks'  => [],
+				]);
+			} else {
+				$auth = beef_authenticate($s['base_url'], $s['username'], $s['password']);
+				if (!$auth['ok']) {
+					$state = stripos($auth['err'], 'rejected') !== false
+						? 'auth_failed' : 'unreachable';
+					if (function_exists('logIt')) {
+						logIt('BeEF poll failed: ' . $auth['err']);
+					}
+					echo json_encode([
+						'result' => 'success',
+						'state'  => $state,
+						'err'    => $auth['err'],
+						'hooks'  => [],
+					]);
+				} else {
+					$list = beef_list_hooked_browsers($s['base_url'], $auth['token']);
+					if (!$list['ok']) {
+						if (function_exists('logIt')) {
+							logIt('BeEF poll failed: ' . $list['err']);
+						}
+						echo json_encode([
+							'result' => 'success',
+							'state'  => 'unreachable',
+							'err'    => $list['err'],
+							'hooks'  => [],
+						]);
+					} else {
+						$scope  = beef_collect_active_scope($conn);
+						$tagged = beef_tag_hooks_with_scope($list['hooks'], $scope);
+						// Audit-log out-of-scope hooks once per poll. Identity is
+						// (hook id) which BeEF reuses across polls, so a hook that's
+						// seen for 10 polls only logs once per session anyway because
+						// the activity feed is rate-limited downstream.
+						if (function_exists('logIt')) {
+							foreach ($tagged as $t) {
+								if (!$t['in_scope']) {
+									logIt('BeEF hook out-of-scope: id=' . $t['id']
+										. ' on ' . $t['domain']);
+								} else {
+									logIt('BeEF hook observed: id=' . $t['id']
+										. ' on ' . $t['domain']);
+								}
+							}
+						}
+						echo json_encode([
+							'result' => 'success',
+							'state'  => 'ok',
+							'hooks'  => $tagged,
+							'scope'  => $scope,
+						]);
+					}
+				}
+			}
+		}
 	}
 }
 //-----------------------------

@@ -409,6 +409,78 @@ if (!function_exists('beef_settings_load')) {
     }
 }
 
+if (!function_exists('beef_tag_hooks_with_scope')) {
+    /**
+     * Phase 3.52 task 8: tag each hook row with in_scope / reason
+     * derived from the engagement scope_allowlist. Pure function so
+     * the dashboard can be tested without a live BeEF.
+     *
+     * @param array $hooks rows from beef_summarize_hooks()
+     * @param array $scopeAllowlist domains the operator authorized
+     * @return array same rows with `in_scope:bool, scope_reason:string` appended
+     */
+    function beef_tag_hooks_with_scope(array $hooks, array $scopeAllowlist): array
+    {
+        $out = [];
+        foreach ($hooks as $h) {
+            $v = beef_validate_browser_in_scope($h, $scopeAllowlist);
+            $out[] = $h + [
+                'in_scope'      => $v['in_scope'],
+                'scope_reason'  => $v['reason'],
+            ];
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('beef_collect_active_scope')) {
+    /**
+     * Phase 3.52 task 8: roll up the active engagements' scope_allowlist
+     * fields into a flat list of allowed root domains. "Active" =
+     * status IN ('live', 'draft') — we don't drop hooks against
+     * completed engagements but we do want any live or pending one
+     * to validate.
+     *
+     * Returns [] if the engagement table doesn't exist yet (fresh
+     * install pre-3.43a) or if no engagements are configured — the
+     * caller should treat that as "no scope guard available" rather
+     * than "every hook is out-of-scope".
+     */
+    function beef_collect_active_scope(\mysqli $conn): array
+    {
+        // Defensive: the engagement table is a 3.43a addition; older
+        // installs might not have it.
+        $check = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_core_engagement'"
+        );
+        if ($check === false) return [];
+        $check->execute();
+        $row = $check->get_result()->fetch_row();
+        $check->close();
+        if (!$row || (int) $row[0] === 0) return [];
+
+        $stmt = $conn->prepare(
+            "SELECT scope_allowlist FROM tb_core_engagement
+              WHERE status IN ('draft','live')"
+        );
+        if ($stmt === false) return [];
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $all = [];
+        while ($r = $res->fetch_assoc()) {
+            $raw = (string) ($r['scope_allowlist'] ?? '');
+            if ($raw === '') continue;
+            foreach (preg_split('/[\s,;]+/', $raw) ?: [] as $d) {
+                $d = strtolower(trim($d));
+                if ($d !== '') $all[$d] = true;
+            }
+        }
+        $stmt->close();
+        return array_keys($all);
+    }
+}
+
 if (!function_exists('taphish_clone_meta_ensure_schema')) {
     /**
      * Phase 3.52 task 4: idempotently create tb_data_clone_meta on

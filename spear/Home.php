@@ -120,6 +120,22 @@
                   </div>
                </div>
 
+               <!-- Phase 3.52 task 6: hooked-browsers widget. Polls every 30s
+                    when the tab is visible. Empty / not-configured / unreachable
+                    all degrade gracefully — operator never sees a hard error. -->
+               <div class="t-activity" id="t_beef" style="margin-top: 18px;">
+                  <div class="t-activity-head">
+                     <div class="t-activity-title">
+                        BeEF hooked browsers
+                        <span class="badge badge-secondary ml-2" id="t_beef_count">—</span>
+                     </div>
+                     <div class="t-activity-meta" id="t_beef_meta">checking&hellip;</div>
+                  </div>
+                  <div class="t-activity-body" id="t_beef_body">
+                     <div class="t-activity-empty">Loading&hellip;</div>
+                  </div>
+               </div>
+
                <!-- Phase 3.46-pre: Quick-action launchpad. Operators hit Home
                     most often as the engagement entry point — these tiles
                     deep-link to the wizard / common tasks so a fresh login
@@ -206,6 +222,7 @@
       <!--This page JavaScript -->
       <script src="js/common_scripts.js"></script>
       <script src="js/dashboard.js"></script>
+      <script src="js/home_beef.js"></script>
       <script defer src="js/libs/sidebarmenu.js"></script>
       <script defer src="js/libs/toastr.min.js"></script>
    </body>

@@ -11,7 +11,7 @@ Living document. Updated when phases ship.
 ## Where we are
 
 - Production fork live at <https://ptbe.autodiscover.li/spear/> (operator panel).
-- **Test suite**: 497 tests / 1379 assertions, all green.
+- **Test suite**: 560 tests / 1525 assertions, all green.
 - **Last verified end-to-end**: Phase 3.45 (all 5 slices) — 2026-06-02. Playwright walked the QuickStart Wizard end-to-end (Steps 1–7 all render, stepper advances, DKIM gen produces real `v=DKIM1; k=rsa; p=…` records on Hostpoint, recipient preview surfaces partial-import errors, pre-flight evaluates 5 gates, CAS status transitions reject double-launch correctly, EngagementView reads + writes via the new dispatcher actions). One pre-existing `moment is not defined` warning in `common_scripts.js` — unrelated to 3.45.
 - **CI/CD**: GitHub Actions → FTPS deploy to Hostpoint Shared.
 
@@ -47,6 +47,8 @@ Living document. Updated when phases ship.
 | 3.45e | **Captures + 2FA visibility + repeat webhook**. New `is_2fa_capture` + `repeat_webhook_sent` columns on `tb_data_webform_submit` (idempotent boot-time migration). New `taphish_should_send_repeat_capture_webhook` guard + `taphish_repeat_capture_webhook_payload` builder (`is_repeat: true` flag, `:repeat:` icon swap). New `taphish_capture_summary_for_campaign` aggregator. `track.php` now flags 2FA captures and fires the repeat-capture webhook on a second 2FA-bearing submit; the `repeat_webhook_sent` flag is stamped so it only fires once. New dispatcher `get_capture_summary_for_campaign`. `MailCmpDashboard` grows a "Captures · 2FA" badge alongside the recipient table. 6 new tests. |
 | SiteCloner UX | After-clone box now shows publicly-accessible landing-page URL (built from request scheme/host honoring `X-Forwarded-Proto`) with Copy + Open buttons, plus a three-step "use this clone in a campaign" hint deep-linking to MailCampaign / WebTracker. Existing-clones table grows per-row open / copy URL links. |
 | Branding | Footer was `t-alpha GmbH` (lowercase) — official brand is `T-Alpha GmbH`. Fixed in `brand.php` + tests. New `brand_copyright()` shape links to `www.t-alpha.ch` + appends product name + version. New SVG logos (`logo.svg` / `logo-text.svg` / `logo-icon.svg`) replace the old PNGs — crisp at any zoom, lead with `TAPhish` wordmark + small "BY T-ALPHA GMBH" caption. Old PNGs removed. |
+| 3.46-pre | **Home launchpad + Shodan OSINT + wizard auto-fills**. Home gets a "Jump back in" tile grid (QuickStart, Engagements, Sender Toolkit, Toolset Checker, Pretext Library, Site Cloner, Campaigns, Settings) filling the previously-empty space below the activity feed. New `spear/manager/osint_shodan.php` mirrors the `osint_hunter` pattern (pure parser + injectable resolver seam + curl wrapper); new dispatcher action `osint_shodan_host`; sixth lane on QuickStart Step 2 (resolved IP + org/country + open ports + CVE refs + last-seen). Operator's Shodan API key lives in `localStorage` only, sent inline per request. After Step 1 saves, the wizard cascades the first scope domain into the OSINT target field, derives a DKIM selector from the slug, and auto-runs the OSINT pre-check. 16 new tests. |
+| 3.52 | **BeEF integration (read-mostly surface)**. BYO BeEF (operator runs their own server, typically on a separate ~€5/mo VPS — Hostpoint Shared can't host the Ruby daemon). New `spear/manager/beef_integration.php` (hook-snippet builder, REST auth, hook list summarizer, scope validator, scope tagger, scope collector — all pure, injectable HTTP seam). Credentials encrypted at rest via the Phase 3.38 envelope (BeEF base URL + username + password as JSON in `tb_store`). New `tb_data_clone_meta` table (idempotent boot-time migration) tracks per-clone `beef_hook_enabled`. SettingsGeneral grows a BeEF integration block (URL + username + password, Save + Test buttons, anti-malware warning surfaced explicitly — SmartScreen/Sophos/Symantec/EDR signature-detect the hook). SiteCloner grows a per-clone "Inject BeEF hook" checkbox (default off); the cloner splices the snippet before `</body>` via the new pure `site_cloner_inject_hook` helper. Home gets a "BeEF hooked browsers" widget that polls every 30 s while the tab is visible, surfaces in-scope vs out-of-scope chips (matched against active engagements' `scope_allowlist`), degrades gracefully on not_configured / unreachable / auth_failed. New BEEF audit-log kind (info / warn / error). Module execution stays in BeEF's own UI — TAPhish never POSTs to `/api/modules/...`. 47 new tests. |
 
 ## What you can already do today
 
@@ -110,5 +112,5 @@ Phase 3.35 captures everything; today only the last 10 entries surface on the Ho
 - Public docs site: <https://taphish.t-alpha.ch/> (GitHub Pages)
 - Repo: <https://github.com/tagmbh/TAPhish>
 - Deploy: Actions → `Deploy to operator host (FTPS)` → Run workflow (untick Dry-run for live push)
-- Tests: `vendor/bin/phpunit` (497/1379)
+- Tests: `vendor/bin/phpunit` (560/1525)
 - Lint: `php -l <file>`
