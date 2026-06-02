@@ -6,6 +6,7 @@ if (!file_exists($_db_file)) {
 }
 require_once($_db_file);
 require_once(dirname(__FILE__) . '/spear/manager/common_functions.php');
+require_once(dirname(__FILE__) . '/spear/manager/scanner_detect.php');
 require_once(dirname(__FILE__) . '/spear/libs/browser_detect/BrowserDetection.php');
 date_default_timezone_set('UTC');
 
@@ -33,8 +34,25 @@ $public_ip = getPublicIP();
 $user_details = verifyMailCmapaignUser($conn, $campaign_id, $user_id);
 if(verifyMailCmapaign($conn, $campaign_id) == true && $user_details != 'empty'){
 
-    $user_agent = htmlspecialchars($_SERVER['HTTP_USER_AGENT']);   
-    $date_time = round(microtime(true) * 1000); //(new DateTime())->format('d-m-Y H:i:s.u');    
+    $user_agent = htmlspecialchars($_SERVER['HTTP_USER_AGENT'] ?? '');
+    // Phase 3.40: same scanner gate as qt.php. On scanner verdict we
+    // skip the open-pixel UPDATE and just serve the image — counting
+    // a SafeLinks pre-fetch as "recipient opened the email" is the
+    // single biggest source of false-positive engagement metrics.
+    $verdict = taphish_classify_visitor(
+        $user_agent,
+        taphish_resolve_visitor_ptr($public_ip),
+        -1
+    );
+    if ($verdict['kind'] === 'scanner') {
+        if (function_exists('logIt')) {
+            logIt('Scanner hit on mail-open pixel for campaign ' . $campaign_id . ' (' . $verdict['reason'] . ')', 'system');
+        }
+        displayImage($mail_template_id);
+        return;
+    }
+
+    $date_time = round(microtime(true) * 1000); //(new DateTime())->format('d-m-Y H:i:s.u');
     $user_os = $ua_info->getPlatformVersion();
     $device_type = $ua_info->isMobile()?"Mobile":"Desktop";
 	$ip_info = getIPInfo($conn, $public_ip);
