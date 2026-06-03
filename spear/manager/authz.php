@@ -200,6 +200,23 @@ if (!defined('TAPHISH_POLICY')) {
         'wizard_recipient_preview'           => ['super-admin', 'operator'],
         'wizard_save_progress'               => ['super-admin', 'operator'],
         'wizard_launch_campaign'             => ['engagement_member'],
+
+        // --- Phase 3.48 admin UI (tasks 5/6): role assignment, API tokens, members ---
+        // Assigning a global role is super-admin only (settings_manager.php).
+        'set_user_role'                      => ['super-admin'],
+        // Per-operator API tokens — self-service over the operator's OWN tokens
+        // (the manager resolves user_id from the session; one user can never
+        // touch another's). read-only is excluded: a token only ever does what
+        // its owner can, so a read-only token is pointless credential sprawl.
+        'list_api_tokens'                    => ['super-admin', 'operator'],
+        'mint_api_token'                     => ['super-admin', 'operator'],
+        'revoke_api_token'                   => ['super-admin', 'operator'],
+        // Engagement membership management (engagement.php; carries engagement_id).
+        // Mutations are owner-or-super-admin; viewing the roster needs membership.
+        'list_engagement_members'            => ['engagement_member'],
+        'add_engagement_member'              => ['super-admin', 'engagement_owner'],
+        'remove_engagement_member'           => ['super-admin', 'engagement_owner'],
+        'set_engagement_member_role'         => ['super-admin', 'engagement_owner'],
     ]);
 }
 
@@ -336,6 +353,131 @@ if (!function_exists('taphish_engagement_add_member')) {
         $ins->bind_param('iisi', $engagement_id, $uid, $role, $ts);
         $ok = $ins->execute();
         $ins->close();
+        return (bool) $ok;
+    }
+}
+
+if (!function_exists('taphish_engagement_members')) {
+    /**
+     * Phase 3.48: the membership roster for an engagement — one row per member
+     * with their account details + engagement role, newest membership first.
+     * Never returns secrets; safe to render in the EngagementMembers grid.
+     */
+    function taphish_engagement_members(\mysqli $conn, int $engagement_id): array
+    {
+        if (!($conn instanceof \mysqli) || $engagement_id <= 0) {
+            return [];
+        }
+        $stmt = $conn->prepare(
+            "SELECT u.id AS user_id, u.username, u.name, u.role AS global_role,
+                    m.role AS engagement_role, m.created_at
+             FROM tb_core_engagement_member m
+             JOIN tb_main u ON u.id = m.user_id
+             WHERE m.engagement_id = ?
+             ORDER BY m.created_at DESC, u.username ASC"
+        );
+        if ($stmt === false) {
+            return [];
+        }
+        $stmt->bind_param('i', $engagement_id);
+        $stmt->execute();
+        $res  = $stmt->get_result();
+        $rows = [];
+        while ($r = $res->fetch_assoc()) {
+            $rows[] = $r;
+        }
+        $stmt->close();
+        return $rows;
+    }
+}
+
+if (!function_exists('taphish_engagement_count_owners')) {
+    /** Phase 3.48: how many members hold role='owner' on an engagement. */
+    function taphish_engagement_count_owners(\mysqli $conn, int $engagement_id): int
+    {
+        if (!($conn instanceof \mysqli) || $engagement_id <= 0) {
+            return 0;
+        }
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) AS n FROM tb_core_engagement_member
+             WHERE engagement_id = ? AND role = 'owner'"
+        );
+        if ($stmt === false) {
+            return 0;
+        }
+        $stmt->bind_param('i', $engagement_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return (int) ($row['n'] ?? 0);
+    }
+}
+
+if (!function_exists('taphish_engagement_remove_member')) {
+    /**
+     * Phase 3.48: drop a user from an engagement. Refuses to remove the LAST
+     * owner — an engagement with no owner can never be administered again
+     * (only the owner/super-admin tier can manage members). super-admin can
+     * still reach it implicitly, but we don't want to strand the roster.
+     */
+    function taphish_engagement_remove_member(\mysqli $conn, int $engagement_id, string $username): bool
+    {
+        if (!($conn instanceof \mysqli) || $engagement_id <= 0 || $username === '') {
+            return false;
+        }
+        $cur = taphish_engagement_role($conn, $engagement_id, $username);
+        if ($cur === null) {
+            return false; // not a member
+        }
+        if ($cur === 'owner' && taphish_engagement_count_owners($conn, $engagement_id) <= 1) {
+            return false; // would strand the engagement with no owner
+        }
+        $stmt = $conn->prepare(
+            "DELETE m FROM tb_core_engagement_member m
+             JOIN tb_main u ON u.id = m.user_id
+             WHERE m.engagement_id = ? AND u.username = ?"
+        );
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('is', $engagement_id, $username);
+        $ok = $stmt->execute() && $stmt->affected_rows > 0;
+        $stmt->close();
+        return $ok;
+    }
+}
+
+if (!function_exists('taphish_engagement_set_member_role')) {
+    /**
+     * Phase 3.48: change an existing member's engagement role
+     * (owner | member | read-only). Refuses to demote the last owner away from
+     * 'owner' for the same stranding reason as removal.
+     */
+    function taphish_engagement_set_member_role(\mysqli $conn, int $engagement_id, string $username, string $role): bool
+    {
+        $valid = ['owner', 'member', 'read-only'];
+        if (!($conn instanceof \mysqli) || $engagement_id <= 0 || $username === '' || !in_array($role, $valid, true)) {
+            return false;
+        }
+        $cur = taphish_engagement_role($conn, $engagement_id, $username);
+        if ($cur === null) {
+            return false; // not a member — use add instead
+        }
+        if ($cur === 'owner' && $role !== 'owner' && taphish_engagement_count_owners($conn, $engagement_id) <= 1) {
+            return false; // last owner can't demote themselves out of ownership
+        }
+        $stmt = $conn->prepare(
+            "UPDATE tb_core_engagement_member m
+             JOIN tb_main u ON u.id = m.user_id
+             SET m.role = ?
+             WHERE m.engagement_id = ? AND u.username = ?"
+        );
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('sis', $role, $engagement_id, $username);
+        $ok = $stmt->execute();
+        $stmt->close();
         return (bool) $ok;
     }
 }

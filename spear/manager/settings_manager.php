@@ -22,11 +22,13 @@ if (isset($_POST)) {
 		if($POSTJ['action_type'] == "get_user_list")
 			getUserList($conn);
 		if($POSTJ['action_type'] == "add_account")
-			addAccount($conn,$POSTJ['name'], $POSTJ['username'], $POSTJ['mail'], $POSTJ['dp_name'], $POSTJ['current_pwd'], $POSTJ['new_pwd']);
+			addAccount($conn,$POSTJ['name'], $POSTJ['username'], $POSTJ['mail'], $POSTJ['dp_name'], $POSTJ['current_pwd'], $POSTJ['new_pwd'], $POSTJ['role'] ?? 'operator');
 		if($POSTJ['action_type'] == "modify_account")
 			modifyAccount($conn,$POSTJ['name'], $POSTJ['username'], $POSTJ['mail'], $POSTJ['dp_name'], $POSTJ['current_pwd'], $POSTJ['new_pwd']);
 		if($POSTJ['action_type'] == "delete_account")
 			deleteAccount($conn,$POSTJ['id']);
+			if($POSTJ['action_type'] == "set_user_role")
+				setUserRole($conn, $POSTJ['id'] ?? 0, $POSTJ['role'] ?? '');
 		if($POSTJ['action_type'] == "get_current_user")
 			getCurrentUser($conn);
 
@@ -225,7 +227,7 @@ function getCurrentUser($conn){
 function getUserList($conn){
 	$resp = [];
 	$DTime_info = getTimeInfo($conn);
-	$result = mysqli_query($conn, "SELECT id,name,username,contact_mail,dp_name,date,last_login FROM tb_main");
+	$result = mysqli_query($conn, "SELECT id,name,username,contact_mail,dp_name,date,last_login,role FROM tb_main");
 	if(mysqli_num_rows($result) > 0){
 		foreach (mysqli_fetch_all($result, MYSQLI_ASSOC) as $row){
 			$row['date'] = getInClientTime_FD($DTime_info,$row['date'],null,'d-m-Y h:i A');
@@ -238,14 +240,19 @@ function getUserList($conn){
 		echo json_encode(['error' => 'No data']);
 }
 
-function addAccount($conn,$name,$username,$contact_mail,$dp_name,$current_pwd,$new_pwd){
+function addAccount($conn,$name,$username,$contact_mail,$dp_name,$current_pwd,$new_pwd,$role='operator'){
 	if(checkAnIDExist($conn,$username,'username','tb_main'))
 		die(json_encode(['result' => 'failed', 'error' => 'Account with this username already exist!']));
 
+	// Phase 3.48 (RBAC): a new account carries a global role. Anything outside
+	// the known tiers falls back to 'operator' (the column default).
+	if(!in_array($role, ['super-admin','operator','read-only','disabled'], true))
+		$role = 'operator';
+
 	if(isCurrentPwdCorrect($conn,$current_pwd)){
 		$new_pwd_hash = hash_user_password($new_pwd);
-		$stmt = $conn->prepare("INSERT INTO tb_main(name, username, password, contact_mail, dp_name, date) VALUES(?,?,?,?,?,?)");
-		$stmt->bind_param('ssssss', $name,$username,$new_pwd_hash,$contact_mail,$dp_name,$GLOBALS['entry_time']);
+		$stmt = $conn->prepare("INSERT INTO tb_main(name, username, password, contact_mail, dp_name, date, role) VALUES(?,?,?,?,?,?,?)");
+		$stmt->bind_param('sssssss', $name,$username,$new_pwd_hash,$contact_mail,$dp_name,$GLOBALS['entry_time'],$role);
 
 		if ($stmt->execute() === TRUE)
 			echo json_encode(['result' => 'success']);	
@@ -315,11 +322,55 @@ function deleteAccount($conn,$id){
 		$stmt = $conn->prepare("DELETE FROM tb_main WHERE id=?");
 		$stmt->bind_param("s", $id);
 		if ($stmt->execute() === TRUE)
-			echo(json_encode(['result' => 'success']));	
-		else 
-			echo(json_encode(['result' => 'failed', 'error' => 'Error deleting account!']));	
+			echo(json_encode(['result' => 'success']));
+		else
+			echo(json_encode(['result' => 'failed', 'error' => 'Error deleting account!']));
 		$stmt->close();
 	}
+}
+
+// Phase 3.48 (RBAC): assign a global role to an account. Guarded by the
+// super-admin-only 'set_user_role' policy. Two anti-lockout rails: the
+// bootstrap admin (id=1) stays super-admin, and the LAST super-admin can't be
+// demoted out of the tier (the CLI hatch remains the break-glass beyond that).
+function setUserRole($conn,$id,$role){
+	$id = (int)$id;
+	if($id <= 0 || !in_array($role, ['super-admin','operator','read-only','disabled'], true)){
+		echo json_encode(['result' => 'failed', 'error' => 'Invalid user or role.']);
+		return;
+	}
+
+	$sel = $conn->prepare("SELECT role FROM tb_main WHERE id=?");
+	$sel->bind_param('i', $id);
+	$sel->execute();
+	$row = $sel->get_result()->fetch_assoc();
+	$sel->close();
+	if(!$row){
+		echo json_encode(['result' => 'failed', 'error' => 'User not found.']);
+		return;
+	}
+	$current = (string)$row['role'];
+
+	if($id === 1 && $role !== 'super-admin'){
+		echo json_encode(['result' => 'failed', 'error' => 'The bootstrap admin account must remain super-admin.']);
+		return;
+	}
+	if($current === 'super-admin' && $role !== 'super-admin'){
+		$cnt = $conn->query("SELECT COUNT(*) AS n FROM tb_main WHERE role='super-admin'");
+		$n = $cnt ? (int)$cnt->fetch_assoc()['n'] : 0;
+		if($n <= 1){
+			echo json_encode(['result' => 'failed', 'error' => 'Cannot demote the last super-admin.']);
+			return;
+		}
+	}
+
+	$stmt = $conn->prepare("UPDATE tb_main SET role=? WHERE id=?");
+	$stmt->bind_param('si', $role, $id);
+	if ($stmt->execute() === TRUE)
+		echo json_encode(['result' => 'success']);
+	else
+		echo json_encode(['result' => 'failed', 'error' => 'Error updating role! '.$stmt->error]);
+	$stmt->close();
 }
 
 //----------------General Settings-----------

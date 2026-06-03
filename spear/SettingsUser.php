@@ -118,6 +118,7 @@
                                           <th>Name</th>
                                           <th>Username</th>
                                           <th>Email</th>
+                                          <th>Role</th>
                                           <th>Date Created</th>
                                           <th>Last Login</th>
                                           <th>Actions</th>
@@ -353,6 +354,17 @@
                            <label for="tb_add_mail" class="col-sm-3 text-left control-label col-form-label">Email:</label>
                            <div class="col-sm-9">
                               <input type="text" class="form-control" id="tb_add_mail">
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="tb_add_role" class="col-sm-3 text-left control-label col-form-label">Role:</label>
+                           <div class="col-sm-9">
+                              <select class="form-control" id="tb_add_role">
+                                 <option value="operator" selected>Operator — run engagements (recon + mutations)</option>
+                                 <option value="super-admin">Super Admin — full access incl. users, settings, audit</option>
+                                 <option value="read-only">Read-only — view dashboards, no changes</option>
+                                 <option value="disabled">Disabled — cannot sign in</option>
+                              </select>
                            </div>
                         </div>
                         <div class="form-group row">
