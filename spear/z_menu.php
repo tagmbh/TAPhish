@@ -24,7 +24,7 @@
             <!-- Logo text -->
             <span class="logo-text">
                <!-- dark Logo text -->
-               <img src="/spear/images/brand/logo-text.svg" alt="TAPhish by T-Alpha GmbH" class="light-logo" />
+               <img src="/spear/images/brand/logo-text-white.svg" alt="TAPhish by T-Alpha GmbH" class="light-logo" />
             </span>
             <!-- Logo icon -->
             <!-- <b class="logo-icon"> -->
