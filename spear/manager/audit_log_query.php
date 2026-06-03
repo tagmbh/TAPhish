@@ -170,11 +170,13 @@ if (!function_exists('audit_log_query')) {
         }
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        // Over-fetch when classifier filter is active. Ceiling matches
-        // the normalize cap (10_000) so a high-limit export with a
-        // classifier filter genuinely gets all matching rows.
+        // Over-fetch when classifier filter is active. Ceiling is
+        // deliberately higher than the normalize cap (40_000 vs the
+        // user-facing 10_000) so a max-limit export with a classifier
+        // filter still gets the full matching window. The 40_000 cap
+        // is a safety net against a runaway scan.
         $fetchLimit = ($f['kind'] !== null || $f['severity'] !== null)
-            ? min(10000, max($f['limit'] * 4, $f['limit']))
+            ? min(40000, max($f['limit'] * 4, $f['limit']))
             : $f['limit'];
 
         $sql = "SELECT username, log, ip, date

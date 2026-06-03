@@ -345,10 +345,15 @@ if (!function_exists('beef_settings_save')) {
     /**
      * Upsert the encrypted settings row into tb_store
      * (type='beef_integration', name='credentials'). Mirrors the
-     * Phase 3.42 capture_webhook pattern. Encryption is opportunistic:
-     * if the at-rest envelope (Phase 3.38) is unavailable we fall back
-     * to plaintext — same posture as the rest of the codebase, so a
-     * fresh install without the key still works.
+     * Phase 3.42 capture_webhook pattern.
+     *
+     * Phase 3.52 review fix: encryption is NOT optional by default. If
+     * the at-rest envelope (Phase 3.38) is unavailable we refuse to
+     * write the credentials so a misconfigured key never silently
+     * stores the BeEF password in plaintext. The settings page surfaces
+     * a clear operator-facing error pointing at the missing key file.
+     * Callers that genuinely need plaintext (e.g., dev/CI fixtures) can
+     * pass $allowPlaintext=true explicitly.
      *
      * @return bool whether the row was successfully written
      */
