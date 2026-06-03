@@ -54,6 +54,7 @@ if (isset($conn) && $conn instanceof mysqli) {
 	if (is_file(dirname(__FILE__) . '/authz.php')) {
 		require_once(dirname(__FILE__) . '/authz.php');
 		taphish_authz_ensure_role_column($conn);
+		taphish_authz_ensure_initial_super_admins($conn);
 		taphish_authz_ensure_engagement_member_table($conn);
 	}
 	if (is_file(dirname(__FILE__) . '/api_token.php')) {
