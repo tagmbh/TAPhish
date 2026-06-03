@@ -514,5 +514,30 @@ function clearJunkSPData(e){
                     );
                 });
         });
+
+        // ---- OSINT API keys (localStorage; same keys the wizard +
+        //      recipient-import already use, just discoverable here) -----
+        var HUNTER_LS = 'taphish_hunter_apikey';
+        var SHODAN_LS = 'taphish_shodan_key';
+        function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } }
+        function lsSet(k, v) {
+            try {
+                if (v === '') localStorage.removeItem(k);
+                else localStorage.setItem(k, v);
+                return true;
+            } catch (_) { return false; }
+        }
+        $('#hunter_api_key').val(lsGet(HUNTER_LS));
+        $('#shodan_api_key').val(lsGet(SHODAN_LS));
+        $('#btn_save_hunter_key').on('click', function () {
+            var v = $('#hunter_api_key').val().trim();
+            if (lsSet(HUNTER_LS, v)) toastr.success('', v === '' ? 'Hunter.io key cleared.' : 'Hunter.io key saved.');
+            else toastr.error('', 'Could not write to localStorage.');
+        });
+        $('#btn_save_shodan_key').on('click', function () {
+            var v = $('#shodan_api_key').val().trim();
+            if (lsSet(SHODAN_LS, v)) toastr.success('', v === '' ? 'Shodan key cleared.' : 'Shodan key saved.');
+            else toastr.error('', 'Could not write to localStorage.');
+        });
     });
 })();

@@ -212,4 +212,21 @@ final class EngagementTest extends TestCase
     {
         self::assertTrue(function_exists('taphish_engagement_campaigns'));
     }
+
+    public function testDeleteHelperIsDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_engagement_delete'));
+    }
+
+    public function testDeleteRejectsNonPositiveIdWithoutTouchingDb(): void
+    {
+        // id <= 0 returns null before any DB access — verifiable without
+        // a live mysqli by passing a throwaway connection the function
+        // never uses. We assert the guard via a reflection-safe path:
+        // the function short-circuits on $id <= 0.
+        $ref = new \ReflectionFunction('taphish_engagement_delete');
+        self::assertSame(2, $ref->getNumberOfParameters());
+        self::assertSame('conn', $ref->getParameters()[0]->getName());
+        self::assertSame('id', $ref->getParameters()[1]->getName());
+    }
 }

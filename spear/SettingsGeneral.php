@@ -214,6 +214,41 @@
                         </div>
                      </div>
                      <hr/>
+                     <!-- OSINT API keys. Stored in the browser's localStorage
+                          (never sent to the TAPhish server except inline on the
+                          OSINT request itself). One discoverable place to set
+                          the keys the QuickStart wizard + Recipient import use. -->
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">OSINT API keys</h6>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <i class="small">
+                              Stored locally in this browser only (<code>localStorage</code>) — never persisted on the
+                              TAPhish server. The QuickStart wizard's OSINT pre-check and the recipient-import
+                              email finder read these keys. Clear a field and save to forget it.
+                           </i>
+                        </div>
+                        <label for="hunter_api_key" class="col-md-2 text-left control-label col-form-label">Hunter.io key:</label>
+                        <div class="col-md-7">
+                           <input type="text" class="form-control" id="hunter_api_key" placeholder="40-char hex key" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-info" id="btn_save_hunter_key"><i class="fa fas fa-save"></i> Save</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <label for="shodan_api_key" class="col-md-2 text-left control-label col-form-label">Shodan key:</label>
+                        <div class="col-md-7">
+                           <input type="text" class="form-control" id="shodan_api_key" placeholder="32-char alphanumeric key" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-info" id="btn_save_shodan_key"><i class="fa fas fa-save"></i> Save</button>
+                        </div>
+                     </div>
+                     <hr/>
                   </div>
                </div>
                <!-- ============================================================== -->

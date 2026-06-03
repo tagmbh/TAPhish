@@ -183,10 +183,24 @@
     function renderDmarc(res) {
         if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
         var p = res.posture || {};
-        var v = (p.recommendation && p.recommendation.verdict) || 'unknown';
-        var msg = (p.recommendation && p.recommendation.message) || '';
-        var dmarc = p.dmarc && p.dmarc.policy ? 'DMARC p=' + esc(p.dmarc.policy) : 'no DMARC';
-        var spf = p.spf && p.spf.all ? 'SPF ' + esc(p.spf.all) : 'no SPF';
+        // Bug fix: taphish_lookup_email_posture returns a FLAT shape —
+        // verdict + recommendation are top-level strings; the DMARC
+        // policy is dmarc.p (not dmarc.policy); the SPF "all" qualifier
+        // is spf.qualifier_all (not spf.all). The old code read nested
+        // keys that never existed, so every domain showed "no DMARC /
+        // no SPF" even when records were present (e.g. t-alpha.ch).
+        var v = p.verdict || 'unknown';
+        var msg = typeof p.recommendation === 'string' ? p.recommendation : '';
+        var dmarcRaw = (typeof p.dmarc_raw === 'string') ? p.dmarc_raw : '';
+        var dmarcPolicy = (p.dmarc && p.dmarc.p) ? p.dmarc.p : '';
+        var dmarc = dmarcRaw !== ''
+            ? 'DMARC' + (dmarcPolicy ? ' p=' + esc(dmarcPolicy) : '')
+            : 'no DMARC';
+        var spfRaw = (typeof p.spf_raw === 'string') ? p.spf_raw : '';
+        var spfAll = (p.spf && p.spf.qualifier_all) ? p.spf.qualifier_all : '';
+        var spf = spfRaw !== ''
+            ? 'SPF' + (spfAll ? ' ' + esc(spfAll) + 'all' : '')
+            : 'no SPF';
         var badge = ({
             'hardened':            'success',
             'partially-hardened':  'info',
