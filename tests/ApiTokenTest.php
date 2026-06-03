@@ -18,9 +18,29 @@ final class ApiTokenTest extends TestCase
             'taphish_api_token_parse', 'taphish_api_token_verify_secret',
             'taphish_api_token_mint', 'taphish_api_token_authenticate',
             'taphish_api_token_list', 'taphish_api_token_revoke',
+            'taphish_extract_bearer_token', 'taphish_can', 'taphish_current_user_role',
         ] as $fn) {
             self::assertTrue(function_exists($fn), "missing: {$fn}");
         }
+    }
+
+    public function testExtractBearerTokenFromAuthorizationHeader(): void
+    {
+        $saved = $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer tphtk_7_Abc123Def456Ghi789Jkl';
+        self::assertSame('tphtk_7_Abc123Def456Ghi789Jkl', taphish_extract_bearer_token());
+
+        $_SERVER['HTTP_AUTHORIZATION'] = 'bearer   tok123';   // case + spacing tolerant
+        self::assertSame('tok123', taphish_extract_bearer_token());
+
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Basic abc';         // not a bearer
+        self::assertSame('', taphish_extract_bearer_token());
+
+        unset($_SERVER['HTTP_AUTHORIZATION']);
+        self::assertSame('', taphish_extract_bearer_token());
+
+        if ($saved !== null) { $_SERVER['HTTP_AUTHORIZATION'] = $saved; }
     }
 
     public function testFormatAndParseRoundTrip(): void

@@ -178,10 +178,22 @@ function isSessionValid($f_redirection=false){	//this check refreshes session ex
 		createSession(false,$_SESSION['username']);
 		return true;
 	}
-	else{
-		terminateSession($f_redirection); //redirect to home if true
-		return false;
+	// Phase 3.48: accept a per-operator API bearer token in place of the
+	// session cookie. On success it authenticates as that operator for this
+	// request; the request still passes the RBAC guard like any session.
+	if (function_exists('taphish_extract_bearer_token') && function_exists('taphish_api_token_authenticate')) {
+		$bearer = taphish_extract_bearer_token();
+		if ($bearer !== '' && isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof mysqli) {
+			$u = taphish_api_token_authenticate($GLOBALS['conn'], $bearer);
+			if ($u !== null) {
+				$_SESSION['username'] = $u;
+				$_SESSION['_api_token_auth'] = true;
+				return true;
+			}
+		}
 	}
+	terminateSession($f_redirection); //redirect to home if true
+	return false;
 }
 
 function setInfoCookie(&$conn, &$username){

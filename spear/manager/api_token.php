@@ -12,6 +12,30 @@
  * a row) are unit-tested; mint/authenticate/list/revoke are DB-backed.
  */
 
+if (!function_exists('taphish_extract_bearer_token')) {
+    /**
+     * Pull the bearer token from the Authorization header, '' if absent.
+     * Checks $_SERVER and getallheaders() (some SAPIs only expose one).
+     */
+    function taphish_extract_bearer_token(): string
+    {
+        $auth = '';
+        if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
+            $auth = (string) $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (!empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $auth = (string) $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        } elseif (function_exists('getallheaders')) {
+            foreach ((array) getallheaders() as $k => $v) {
+                if (strcasecmp($k, 'Authorization') === 0) { $auth = (string) $v; break; }
+            }
+        }
+        if (preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $auth, $m)) {
+            return $m[1];
+        }
+        return '';
+    }
+}
+
 if (!function_exists('taphish_api_token_ensure_table')) {
     function taphish_api_token_ensure_table(\mysqli $conn): void
     {
