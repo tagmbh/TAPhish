@@ -89,9 +89,14 @@
 
     function start() {
         if (timer !== null) return;
-        // Phase 3.52 review fix: don't fire the initial poll on a
-        // background tab. The visibilitychange handler restarts us
-        // when the tab becomes visible.
+        // Second-pass review: claim the slot with a sentinel BEFORE
+        // the ajax / setInterval call so a re-entrant start() during
+        // the refresh's pending phase short-circuits at the guard
+        // above instead of creating a duplicate interval.
+        timer = -1;
+        // Don't fire the initial poll on a background tab. The
+        // visibilitychange handler restarts us when the tab becomes
+        // visible.
         if (!document.hidden) refresh();
         timer = setInterval(function () {
             if (!document.hidden) refresh();

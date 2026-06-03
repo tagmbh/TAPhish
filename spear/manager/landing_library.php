@@ -105,6 +105,9 @@ if (!function_exists('landing_library_js_string_escape')) {
     {
         $s = str_replace('\\', '\\\\', $s);
         $s = str_replace('"',  '\\"',  $s);
+        // Phase 3.46 second-pass review: cover single-quote so templates
+        // using a single-quoted JS string literal can't break out.
+        $s = str_replace("'",  "\\'",  $s);
         $s = str_replace("\r", '\\r',  $s);
         $s = str_replace("\n", '\\n',  $s);
         $s = str_replace('<',  '\\u003c', $s);  // defuse </script>

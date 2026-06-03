@@ -54,13 +54,26 @@ final class LandingLibraryTest extends TestCase
 
     // ---- placeholder substitution ---------------------------------------
 
-    public function testSubstitutesPostUrl(): void
+    public function testSubstitutesPostUrlInJsContext(): void
+    {
+        // {{POST_URL}} is the JS-string-context placeholder; verify
+        // a URL with characters that escape differently between JS
+        // and HTML contexts to prove the right path runs.
+        $out = landing_library_substitute_placeholders(
+            'var POST_URL = "{{POST_URL}}";',
+            'https://op.example/track.php?a=1&b=2'
+        );
+        self::assertStringContainsString('var POST_URL = "https://op.example/track.php?a=1&b=2";', $out);
+        self::assertStringNotContainsString('&amp;', $out);
+    }
+
+    public function testSubstitutesPostUrlAttrInAttributeContext(): void
     {
         $out = landing_library_substitute_placeholders(
-            '<form action="{{POST_URL}}"></form>',
-            'https://op.example/track.php'
+            '<form action="{{POST_URL_ATTR}}"></form>',
+            'https://op.example/track.php?a=1&b=2'
         );
-        self::assertStringContainsString('action="https://op.example/track.php"', $out);
+        self::assertStringContainsString('&amp;', $out);
     }
 
     public function testSubstitutesTrackerUrlWhenPresent(): void
@@ -266,6 +279,16 @@ final class LandingLibraryTest extends TestCase
         $html = 'var X = "{{POST_URL}}";';
         $out = landing_library_substitute_placeholders($html, 'a\\b"c');
         self::assertStringContainsString('var X = "a\\\\b\\"c";', $out);
+    }
+
+    public function testSubstituteJsEscapesSingleQuote(): void
+    {
+        // Single-quote was missing from the escape table in the first
+        // sweep. Single-quoted JS templates need it to prevent
+        // breakout.
+        $html = "var X = '{{POST_URL}}';";
+        $out = landing_library_substitute_placeholders($html, "a'b");
+        self::assertStringContainsString("var X = 'a\\'b';", $out);
     }
 
     public function testSubstituteStripsTrackerTagForBothAttrAndJsPlaceholders(): void

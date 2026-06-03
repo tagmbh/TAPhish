@@ -46,6 +46,13 @@ if (isset($_POST)) {
 			if (!isset($_SESSION['beef_poll_log_seen']) || !is_array($_SESSION['beef_poll_log_seen'])) {
 				$_SESSION['beef_poll_log_seen'] = [];
 			}
+			// Second-pass review: cap the dedup set so a long-running
+			// engagement with churning hook ids doesn't grow the session
+			// payload indefinitely. 500 entries is well above any
+			// realistic concurrent-hook count.
+			if (count($_SESSION['beef_poll_log_seen']) > 500) {
+				$_SESSION['beef_poll_log_seen'] = [];
+			}
 			$s = beef_settings_load($conn);
 			if ($s === null || $s['base_url'] === '') {
 				echo json_encode([
