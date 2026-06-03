@@ -19,22 +19,37 @@
 
     function renderHomoglyph(data) {
         var $r = $('#homoglyph_results').empty();
+        var checked = !!(data && data.validated);
+        $('#homoglyph_check_note').toggle(checked);
         if (!data || data.result !== 'success' || !data.candidates || !data.candidates.length) {
-            $r.html('<div class="text-muted small">No candidates returned.</div>');
+            $r.html('<div class="text-muted small">No ' + (checked ? 'valid registrable ' : '') + 'candidates returned.</div>');
             return;
         }
         var $table = $('<table class="table table-sm table-striped"></table>');
-        $table.append('<thead><tr><th>Domain</th><th style="width:90px;">Kind</th><th style="width:60px;">Score</th></tr></thead>');
+        $table.append('<thead><tr><th>Domain</th>' +
+            (checked ? '<th>Registrable form</th>' : '') +
+            '<th style="width:90px;">Kind</th><th style="width:60px;">Score</th></tr></thead>');
         var $body = $('<tbody></tbody>');
         data.candidates.forEach(function (c) {
             var $row = $('<tr></tr>');
             $row.append('<td style="font-family:var(--t-mono);">' + esc(c.domain) + '</td>');
+            if (checked) {
+                var idna = (c.name_idna && c.name_idna !== c.domain)
+                    ? '<code>' + esc(c.name_idna) + '</code>'
+                    : '<span class="text-muted">same</span>';
+                $row.append('<td style="font-family:var(--t-mono);">' + idna + '</td>');
+            }
             $row.append('<td><span class="t-pretext-tag">' + esc(c.kind) + '</span></td>');
             $row.append('<td>' + esc(c.score) + '</td>');
             $body.append($row);
         });
         $table.append($body);
         $r.append($table);
+    }
+
+    function renderHomoglyphChecked(data) {
+        if (data) data.validated = true;
+        renderHomoglyph(data);
     }
 
     function renderDmarc(data) {
@@ -86,6 +101,7 @@
 
     $(function () {
         trigger('homoglyph_input', 'btn_homoglyph', 'homoglyph_candidates', renderHomoglyph);
+        trigger('homoglyph_input', 'btn_homoglyph_check', 'homoglyph_check_candidates', renderHomoglyphChecked);
         trigger('dmarc_input',     'btn_dmarc',     'email_posture_lookup', renderDmarc);
     });
 })();

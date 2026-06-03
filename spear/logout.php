@@ -13,7 +13,9 @@ $stmt = $conn->prepare("DELETE FROM tb_log WHERE id NOT IN (SELECT id FROM (SELE
 $stmt->execute();
 
 session_destroy();
-header("Location: ../spear");
+// Trailing slash → land directly on /spear/ (login) instead of
+// bouncing /spear → 301 → /spear/.
+header("Location: ./");
 
 //---------------------------------------------------------------
 ?>
