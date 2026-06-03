@@ -36,10 +36,11 @@ final class AuditLogQueryTest extends TestCase
 
     public function testNormalizeClampsLimit(): void
     {
-        self::assertSame(1,   audit_log_normalize_filters(['limit' => 0])['limit']);
-        self::assertSame(1,   audit_log_normalize_filters(['limit' => -5])['limit']);
-        self::assertSame(500, audit_log_normalize_filters(['limit' => 5000])['limit']);
-        self::assertSame(250, audit_log_normalize_filters(['limit' => 250])['limit']);
+        self::assertSame(1,     audit_log_normalize_filters(['limit' => 0])['limit']);
+        self::assertSame(1,     audit_log_normalize_filters(['limit' => -5])['limit']);
+        self::assertSame(5000,  audit_log_normalize_filters(['limit' => 5000])['limit']);
+        self::assertSame(10000, audit_log_normalize_filters(['limit' => 50000])['limit']);
+        self::assertSame(250,   audit_log_normalize_filters(['limit' => 250])['limit']);
     }
 
     public function testNormalizeClampsOffset(): void

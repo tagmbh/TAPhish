@@ -68,7 +68,9 @@
             if (d.state !== 'ok') {
                 $('#t_beef_count').text('—');
                 $('#t_beef_meta').text(d.state.replace('_', ' '));
-                $('#t_beef_body').html('<div class="t-activity-empty">' + renderState(d.state, d.err) + '</div>');
+                // Server now returns d.error (renamed from d.err in the
+                // review sweep); keep the d.err fallback for old caches.
+                $('#t_beef_body').html('<div class="t-activity-empty">' + renderState(d.state, d.error || d.err) + '</div>');
                 return;
             }
             var hooks = d.hooks || [];
@@ -87,7 +89,10 @@
 
     function start() {
         if (timer !== null) return;
-        refresh();
+        // Phase 3.52 review fix: don't fire the initial poll on a
+        // background tab. The visibilitychange handler restarts us
+        // when the tab becomes visible.
+        if (!document.hidden) refresh();
         timer = setInterval(function () {
             if (!document.hidden) refresh();
         }, POLL_MS);

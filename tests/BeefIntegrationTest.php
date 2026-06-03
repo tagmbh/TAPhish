@@ -369,4 +369,17 @@ final class BeefIntegrationTest extends TestCase
     {
         self::assertSame([], beef_tag_hooks_with_scope([], ['x.com']));
     }
+
+    // ---- review sweep: BeEF settings plaintext refusal ------------------
+
+    public function testBeefSettingsSaveSignatureCarriesAllowPlaintextFlag(): void
+    {
+        // Smoke-test the signature so a future refactor that drops the
+        // $allowPlaintext arg is caught here rather than at deploy time.
+        $ref = new \ReflectionFunction('beef_settings_save');
+        $params = $ref->getParameters();
+        self::assertCount(5, $params);
+        self::assertSame('allowPlaintext', $params[4]->getName());
+        self::assertTrue($params[4]->getDefaultValue() === false);
+    }
 }
