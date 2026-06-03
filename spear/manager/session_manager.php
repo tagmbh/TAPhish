@@ -56,6 +56,10 @@ if (isset($conn) && $conn instanceof mysqli) {
 		taphish_authz_ensure_role_column($conn);
 		taphish_authz_ensure_engagement_member_table($conn);
 	}
+	if (is_file(dirname(__FILE__) . '/api_token.php')) {
+		require_once(dirname(__FILE__) . '/api_token.php');
+		taphish_api_token_ensure_table($conn);
+	}
 	// Phase 3.45a: add is_scanner + scanner_reason columns on the live tables.
 	if (is_file(dirname(__FILE__) . '/scanner_detect.php')) {
 		require_once(dirname(__FILE__) . '/scanner_detect.php');
