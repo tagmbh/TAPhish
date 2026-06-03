@@ -79,11 +79,19 @@
                   <div class="col-12 mb-3">
                      <div class="card">
                         <div class="card-body">
-                           <h5 class="card-title d-flex">
+                           <h5 class="card-title d-flex align-items-center">
                               Campaigns linked to this engagement
-                              <button id="btn_refresh_eng_view" class="btn btn-sm btn-secondary ml-auto" type="button">
-                                 <i class="fa fa-sync"></i>
-                              </button>
+                              <div class="ml-auto">
+                                 <!-- Phase 3.47: PDF export. Streams from
+                                      EngagementReportExport so the dispatcher
+                                      stays JSON-only. -->
+                                 <a id="btn_export_pdf" class="btn btn-sm btn-info mr-1" target="_blank" rel="noopener" href="EngagementReportExport?engagement_id=<?php echo (int) $eid; ?>">
+                                    <i class="fa fa-file-pdf"></i> Export PDF
+                                 </a>
+                                 <button id="btn_refresh_eng_view" class="btn btn-sm btn-secondary" type="button">
+                                    <i class="fa fa-sync"></i>
+                                 </button>
+                              </div>
                            </h5>
                            <table class="table table-sm table-striped" id="eng_campaigns_table">
                               <thead><tr><th>Campaign</th><th>Scheduled</th><th>Status</th><th></th></tr></thead>
