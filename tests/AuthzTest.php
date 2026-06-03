@@ -120,4 +120,28 @@ final class AuthzTest extends TestCase
             null, 'view_home', [], function (string $u): string { return 'operator'; }
         ));
     }
+
+    /**
+     * Phase 3.48 task 4 — home_manager.php action coverage. Reads/AJAX-status
+     * are open to any authenticated user; starting the cron worker is a
+     * mutation (operator+); the audit-log query is super-admin only. disabled
+     * gets nothing.
+     */
+    public function testHomeManagerActionPolicies(): void
+    {
+        foreach (['get_home_graphs_data', 'check_process', 'get_recent_log_entries', 'beef_list_hooks'] as $a) {
+            self::assertTrue(taphish_policy_allows($a, 'read-only'), "$a should allow read-only");
+            self::assertTrue(taphish_policy_allows($a, 'operator'), "$a should allow operator");
+            self::assertFalse(taphish_policy_allows($a, 'disabled'), "$a should deny disabled");
+        }
+
+        self::assertTrue(taphish_policy_allows('start_process', 'operator'));
+        self::assertTrue(taphish_policy_allows('start_process', 'super-admin'));
+        self::assertFalse(taphish_policy_allows('start_process', 'read-only'));
+        self::assertFalse(taphish_policy_allows('start_process', 'disabled'));
+
+        self::assertTrue(taphish_policy_allows('audit_log_query', 'super-admin'));
+        self::assertFalse(taphish_policy_allows('audit_log_query', 'operator'));
+        self::assertFalse(taphish_policy_allows('audit_log_query', 'read-only'));
+    }
 }

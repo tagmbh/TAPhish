@@ -12,6 +12,11 @@ if (isset($_POST)) {
 	$POSTJ = json_decode(file_get_contents('php://input'),true);
 
 	if(isset($POSTJ['action_type'])){
+		// Phase 3.48 (RBAC): default-deny guard for every action in this
+		// dispatcher. Unknown / unauthorised actions get 403 +
+		// {result:'forbidden'} + an audit-log line; they never fall through.
+		require_once(dirname(__FILE__) . '/authz.php');
+		taphish_require_authorize_or_die($conn, (string)$POSTJ['action_type'], []);
 		if($POSTJ['action_type'] == "get_home_graphs_data")
 			getHomeGraphsData($conn);
 

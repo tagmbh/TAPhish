@@ -23,6 +23,12 @@ if (!defined('TAPHISH_POLICY')) {
         'view_home'                    => ['*'],
         'list_engagements'             => ['*'],
         'beef_list_hooks'              => ['*'],
+        // --- home_manager.php ---
+        'get_home_graphs_data'         => ['*'],
+        'check_process'                => ['*'],
+        'get_recent_log_entries'       => ['*'],
+        'start_process'                => ['super-admin', 'operator'],
+        'audit_log_query'              => ['super-admin'],
         'view_audit_log'               => ['super-admin'],
         'export_audit_log'             => ['super-admin'],
         'manage_users'                 => ['super-admin'],
