@@ -20,6 +20,8 @@ final class AuthzTest extends TestCase
             'taphish_user_role',
             'taphish_engagement_role',
             'taphish_require_authorize_or_die',
+            'taphish_authz_ensure_role_column',
+            'taphish_authz_ensure_engagement_member_table',
         ] as $fn) {
             self::assertTrue(function_exists($fn), "missing helper: {$fn}");
         }
