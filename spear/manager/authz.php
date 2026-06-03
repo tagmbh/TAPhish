@@ -42,6 +42,69 @@ if (!defined('TAPHISH_POLICY')) {
     ]);
 }
 
+if (!function_exists('taphish_authz_ensure_role_column')) {
+    /**
+     * Phase 3.48 task 2: add tb_main.role (idempotent boot migration, mirrors
+     * the Phase 3.45a pattern). On first add, promote the bootstrap `admin`
+     * to super-admin — one-shot, only when the column was just created, so a
+     * later manual role change is never clobbered.
+     */
+    function taphish_authz_ensure_role_column(\mysqli $conn): void
+    {
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'tb_main'
+               AND COLUMN_NAME = 'role'"
+        );
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->execute();
+        $present = (int) $stmt->get_result()->fetch_row()[0];
+        $stmt->close();
+        if ($present > 0) {
+            return;
+        }
+        @$conn->query("ALTER TABLE tb_main ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'operator'");
+        @$conn->query("UPDATE tb_main SET role = 'super-admin' WHERE username = 'admin'");
+    }
+}
+
+if (!function_exists('taphish_authz_ensure_engagement_member_table')) {
+    /**
+     * Phase 3.48 task 3: create tb_core_engagement_member (idempotent) and
+     * backfill the bootstrap `admin` as owner of every existing engagement so
+     * legacy data isn't orphaned. INSERT IGNORE keeps the backfill safe to run
+     * on every boot — it only adds missing owner rows.
+     */
+    function taphish_authz_ensure_engagement_member_table(\mysqli $conn): void
+    {
+        @$conn->query(
+            "CREATE TABLE IF NOT EXISTS tb_core_engagement_member (
+               engagement_id INT         NOT NULL,
+               user_id       INT         NOT NULL,
+               role          VARCHAR(32) NOT NULL DEFAULT 'operator',
+               created_at    BIGINT      NOT NULL,
+               PRIMARY KEY (engagement_id, user_id),
+               KEY (user_id)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+        $adminId = 0;
+        $res = @$conn->query("SELECT id FROM tb_main WHERE username = 'admin' LIMIT 1");
+        if ($res && ($r = $res->fetch_assoc())) {
+            $adminId = (int) $r['id'];
+        }
+        if ($adminId > 0) {
+            $ts = time();
+            @$conn->query(
+                "INSERT IGNORE INTO tb_core_engagement_member (engagement_id, user_id, role, created_at)
+                 SELECT e.id, {$adminId}, 'owner', {$ts} FROM tb_core_engagement e"
+            );
+        }
+    }
+}
+
 if (!function_exists('taphish_policy_for')) {
     /**
      * Resolve the allowed-tier list for an action. Exact match first, then a

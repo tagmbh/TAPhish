@@ -49,6 +49,13 @@ if (isset($conn) && $conn instanceof mysqli) {
 		// Phase 3.56: wizard_step + wizard_state for a resumable wizard.
 		taphish_engagement_ensure_wizard_columns($conn);
 	}
+	// Phase 3.48: RBAC - tb_main.role (+ admin auto-promote) and the
+	// engagement-membership join table. Idempotent; safe every boot.
+	if (is_file(dirname(__FILE__) . '/authz.php')) {
+		require_once(dirname(__FILE__) . '/authz.php');
+		taphish_authz_ensure_role_column($conn);
+		taphish_authz_ensure_engagement_member_table($conn);
+	}
 	// Phase 3.45a: add is_scanner + scanner_reason columns on the live tables.
 	if (is_file(dirname(__FILE__) . '/scanner_detect.php')) {
 		require_once(dirname(__FILE__) . '/scanner_detect.php');
