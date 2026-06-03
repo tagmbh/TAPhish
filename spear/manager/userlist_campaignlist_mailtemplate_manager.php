@@ -91,6 +91,28 @@ if (isset($_POST)) {
 				'candidates' => taphish_homoglyph_candidates($domain, $limit),
 			]);
 		}
+		// Phase 3.54: validate + IDNA-encode candidates via Hostpoint's
+		// domain-check endpoint; return only the valid (registrable)
+		// names with their punycode form. Capped at 25 so a large
+		// candidate set doesn't fan out into 100+ external calls.
+		if($POSTJ['action_type'] == "homoglyph_check_candidates") {
+			require_once(dirname(__FILE__) . '/domain_check.php');
+			$domain = (string)($POSTJ['domain'] ?? '');
+			$candidates = taphish_homoglyph_candidates($domain, 60);
+			$candidates = array_slice($candidates, 0, 25);
+			$checks = [];
+			foreach ($candidates as $c) {
+				$d = (string)($c['domain'] ?? '');
+				if ($d === '' || isset($checks[$d])) continue;
+				$checks[$d] = domain_check_one($d);
+			}
+			echo json_encode([
+				'result'     => 'success',
+				'domain'     => $domain,
+				'candidates' => domain_check_filter_valid($candidates, $checks),
+				'checked'    => count($checks),
+			]);
+		}
 		if($POSTJ['action_type'] == "email_posture_lookup") {
 			$domain = (string)($POSTJ['domain'] ?? '');
 			$result = taphish_lookup_email_posture($domain);

@@ -35,12 +35,18 @@
                         <div class="card-body">
                            <h5 class="card-title">Look-alike domain candidates</h5>
                            <p class="text-muted small">Paste the target domain. The generator ranks homoglyph swaps, qwerty-typo neighbours, common insertions, and TLD swaps so you can pick what to register.</p>
-                           <div class="input-group mb-3">
+                           <div class="input-group mb-2">
                               <input type="text" id="homoglyph_input" class="form-control" placeholder="target.com" autocomplete="off">
                               <div class="input-group-append">
                                  <button class="btn btn-info" type="button" id="btn_homoglyph">Generate</button>
+                                 <button class="btn btn-outline-secondary" type="button" id="btn_homoglyph_check" title="Validate + IDNA-encode candidates via Hostpoint; show only registrable names">Validate (registrable only)</button>
                               </div>
                            </div>
+                           <p class="text-muted small mb-2" id="homoglyph_check_note" style="display:none;">
+                              Showing only names Hostpoint reports as valid registrable domains, with their punycode
+                              (<code>xn--…</code>) form for IDN/umlaut variants. <strong>Validity is not registration
+                              availability</strong> — confirm the domain is unregistered at your registrar before buying.
+                           </p>
                            <div id="homoglyph_results"></div>
                         </div>
                      </div>
