@@ -38,7 +38,7 @@ final class AuthzTest extends TestCase
     {
         self::assertFalse(taphish_policy_allows('view_home', 'disabled'));
         self::assertFalse(taphish_policy_allows('list_engagements', 'disabled'));
-        self::assertFalse(taphish_policy_allows('view_audit_log', 'disabled'));
+        self::assertFalse(taphish_policy_allows('audit_log_query', 'disabled'));
     }
 
     public function testUnknownActionIsDefaultDenied(): void
@@ -49,9 +49,9 @@ final class AuthzTest extends TestCase
 
     public function testSuperAdminOnlyAction(): void
     {
-        self::assertTrue(taphish_policy_allows('view_audit_log', 'super-admin'));
-        self::assertFalse(taphish_policy_allows('view_audit_log', 'operator'));
-        self::assertFalse(taphish_policy_allows('view_audit_log', 'read-only'));
+        self::assertTrue(taphish_policy_allows('audit_log_query', 'super-admin'));
+        self::assertFalse(taphish_policy_allows('audit_log_query', 'operator'));
+        self::assertFalse(taphish_policy_allows('audit_log_query', 'read-only'));
     }
 
     public function testOperatorTierAction(): void
@@ -63,20 +63,20 @@ final class AuthzTest extends TestCase
 
     public function testEngagementMemberRequiresMembership(): void
     {
-        self::assertTrue(taphish_policy_allows('view_engagement', 'operator', ['engagement_role' => 'member']));
-        self::assertTrue(taphish_policy_allows('view_engagement', 'read-only', ['engagement_role' => 'read-only']));
-        self::assertFalse(taphish_policy_allows('view_engagement', 'operator', ['engagement_role' => null]));
-        self::assertFalse(taphish_policy_allows('view_engagement', 'operator', []));
+        self::assertTrue(taphish_policy_allows('get_engagement_view', 'operator', ['engagement_role' => 'member']));
+        self::assertTrue(taphish_policy_allows('get_engagement_view', 'read-only', ['engagement_role' => 'read-only']));
+        self::assertFalse(taphish_policy_allows('get_engagement_view', 'operator', ['engagement_role' => null]));
+        self::assertFalse(taphish_policy_allows('get_engagement_view', 'operator', []));
         // super-admin implicitly satisfies engagement_member (open question #1).
-        self::assertTrue(taphish_policy_allows('view_engagement', 'super-admin', []));
+        self::assertTrue(taphish_policy_allows('get_engagement_view', 'super-admin', []));
     }
 
     public function testEngagementOwnerRequiresOwnerRole(): void
     {
-        self::assertTrue(taphish_policy_allows('transition_engagement_status', 'operator', ['engagement_role' => 'owner']));
-        self::assertFalse(taphish_policy_allows('transition_engagement_status', 'operator', ['engagement_role' => 'member']));
-        self::assertFalse(taphish_policy_allows('transition_engagement_status', 'operator', []));
-        self::assertTrue(taphish_policy_allows('transition_engagement_status', 'super-admin', []));
+        self::assertTrue(taphish_policy_allows('engagement_transition_status', 'operator', ['engagement_role' => 'owner']));
+        self::assertFalse(taphish_policy_allows('engagement_transition_status', 'operator', ['engagement_role' => 'member']));
+        self::assertFalse(taphish_policy_allows('engagement_transition_status', 'operator', []));
+        self::assertTrue(taphish_policy_allows('engagement_transition_status', 'super-admin', []));
     }
 
     public function testWildcardPolicyKeyMatchesByPrefix(): void
@@ -92,24 +92,24 @@ final class AuthzTest extends TestCase
 
         // Member of engagement 5 → allowed to view it.
         self::assertTrue(taphish_authorize(
-            null, 'view_engagement', ['username' => 'bob', 'engagement_id' => 5],
+            null, 'get_engagement_view', ['username' => 'bob', 'engagement_id' => 5],
             $asOperator, function (int $eid, string $u): ?string { return 'member'; }
         ));
 
         // Not a member → denied (NOT empty data — the caller turns this into 403).
         self::assertFalse(taphish_authorize(
-            null, 'view_engagement', ['username' => 'bob', 'engagement_id' => 9],
+            null, 'get_engagement_view', ['username' => 'bob', 'engagement_id' => 9],
             $asOperator, function (int $eid, string $u): ?string { return null; }
         ));
 
         // Operator hitting a super-admin-only action → denied.
         self::assertFalse(taphish_authorize(
-            null, 'view_audit_log', ['username' => 'bob'], $asOperator
+            null, 'audit_log_query', ['username' => 'bob'], $asOperator
         ));
 
         // Super-admin → allowed for the super-admin-only action.
         self::assertTrue(taphish_authorize(
-            null, 'view_audit_log', ['username' => 'alice'],
+            null, 'audit_log_query', ['username' => 'alice'],
             function (string $u): string { return 'super-admin'; }
         ));
     }
@@ -143,5 +143,82 @@ final class AuthzTest extends TestCase
         self::assertTrue(taphish_policy_allows('audit_log_query', 'super-admin'));
         self::assertFalse(taphish_policy_allows('audit_log_query', 'operator'));
         self::assertFalse(taphish_policy_allows('audit_log_query', 'read-only'));
+    }
+
+    /**
+     * Phase 3.48 task 4 — allow/deny matrix across the guarded dispatchers.
+     * Reads/own-2FA → any authenticated; recon + mutations → operator+;
+     * settings/users/global → super-admin; disabled → nothing.
+     */
+    public function testReadActionsAllowAnyAuthenticated(): void
+    {
+        foreach ([
+            'get_campaign_list', 'get_quick_tracker_list', 'get_web_tracker_list',
+            'get_mail_template_list', 'get_sender_list', 'list_engagements',
+            'list_pretexts', 'download_report', 'totp_get_status', 'get_current_user',
+            'get_campaign_list_web_mail', 'get_mcamp_config_details', 'get_web_tracker_from_id',
+        ] as $a) {
+            self::assertTrue(taphish_policy_allows($a, 'read-only'), "$a → read-only");
+            self::assertTrue(taphish_policy_allows($a, 'operator'), "$a → operator");
+            self::assertTrue(taphish_policy_allows($a, 'super-admin'), "$a → super-admin");
+            self::assertFalse(taphish_policy_allows($a, 'disabled'), "$a → disabled denied");
+        }
+    }
+
+    public function testMutationAndReconActionsRequireOperator(): void
+    {
+        foreach ([
+            'save_quick_tracker', 'delete_web_tracker', 'make_copy_web_tracker',
+            'save_campaign_list', 'start_stop_mailCampaign', 'save_mail_template',
+            'save_sender_list', 'save_user_group', 'upload_user', 'download_user',
+            'get_user_group_list', 'get_user_group_data', 'save_mcamp_config',
+            'osint_hunter_search', 'mx_classify_domain', 'web_fingerprint',
+            'clone_pretext_to_my_templates', 'library_clone_to_my_sites', 'site_clone',
+            'save_engagement', 'wizard_generate_dkim', 'generate_customer_pdf_report',
+        ] as $a) {
+            self::assertTrue(taphish_policy_allows($a, 'operator'), "$a → operator");
+            self::assertTrue(taphish_policy_allows($a, 'super-admin'), "$a → super-admin");
+            self::assertFalse(taphish_policy_allows($a, 'read-only'), "$a → read-only denied");
+            self::assertFalse(taphish_policy_allows($a, 'disabled'), "$a → disabled denied");
+        }
+    }
+
+    public function testAdminActionsRequireSuperAdmin(): void
+    {
+        foreach ([
+            'get_user_list', 'add_account', 'modify_account', 'delete_account',
+            'modify_SP_base_URL', 'clear_log', 'clear_junk_SP_data', 'download_logs',
+            'get_logs', 'get_store_list', 'set_capture_webhook_url',
+            'beef_settings_save', 'beef_settings_load', 'beef_test_connection',
+            'telegram_settings_save', 'telegram_test',
+            'add_user_to_table', 'update_user', 'delete_user', 'audit_log_query',
+        ] as $a) {
+            self::assertTrue(taphish_policy_allows($a, 'super-admin'), "$a → super-admin");
+            self::assertFalse(taphish_policy_allows($a, 'operator'), "$a → operator denied");
+            self::assertFalse(taphish_policy_allows($a, 'read-only'), "$a → read-only denied");
+        }
+    }
+
+    public function testEngagementScopedActions(): void
+    {
+        // view: any member; non-members denied; super-admin implicit.
+        self::assertTrue(taphish_policy_allows('get_engagement_view', 'operator', ['engagement_role' => 'member']));
+        self::assertFalse(taphish_policy_allows('get_engagement_view', 'operator', []));
+        self::assertTrue(taphish_policy_allows('get_engagement_view', 'super-admin', []));
+
+        // transition / delete: owner or super-admin only.
+        self::assertTrue(taphish_policy_allows('engagement_transition_status', 'operator', ['engagement_role' => 'owner']));
+        self::assertFalse(taphish_policy_allows('engagement_transition_status', 'operator', ['engagement_role' => 'member']));
+        self::assertTrue(taphish_policy_allows('delete_engagement', 'super-admin', []));
+        self::assertFalse(taphish_policy_allows('delete_engagement', 'operator', ['engagement_role' => 'member']));
+
+        // launch: member-scoped.
+        self::assertTrue(taphish_policy_allows('wizard_launch_campaign', 'operator', ['engagement_role' => 'owner']));
+        self::assertFalse(taphish_policy_allows('wizard_launch_campaign', 'operator', []));
+    }
+
+    public function testMembershipHelperDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_engagement_add_member'));
     }
 }
