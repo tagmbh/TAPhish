@@ -1051,8 +1051,7 @@ a:focus-visible {
         radial-gradient(800px 700px at 110% 110%, rgba(33,191,115,0.06), transparent 65%);
     z-index: 0;
 }
-.dim-panel .page-wrapper,
-.dim-panel .topbar {
+.dim-panel .page-wrapper {
     position: relative;
     z-index: 1;
 }
@@ -1063,6 +1062,14 @@ a:focus-visible {
    only bump its z-index, which works on the already-positioned element. */
 .dim-panel .left-sidebar {
     z-index: 10;
+}
+/* The topbar must sit ABOVE the sidebar: its left navbar-header holds the
+   logo over the sidebar column, and an absolute sidebar at z-index:10 would
+   otherwise paint over (hide) the logo. page-wrapper stays at z-index:1 so
+   page content still sits below the sidebar — only the topbar is lifted. */
+.dim-panel .topbar {
+    position: relative;
+    z-index: 11;
 }
 
 /* Frosted glass on every surfaced card. */
