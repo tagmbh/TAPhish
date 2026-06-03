@@ -124,6 +124,25 @@ if (isset($_POST)) {
 				'engagements' => taphish_engagement_list($conn),
 			]);
 		}
+		// Delete an engagement. Linked campaigns survive (FK nulled).
+		if($POSTJ['action_type'] == "delete_engagement") {
+			$id = (int)($POSTJ['engagement_id'] ?? 0);
+			if ($id <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id required']);
+			} else {
+				$eng = taphish_engagement_get_by_id($conn, $id);
+				$unlinked = taphish_engagement_delete($conn, $id);
+				if ($unlinked === null) {
+					echo json_encode(['result' => 'failed', 'error' => 'Engagement not found or could not be deleted']);
+				} else {
+					if (function_exists('logIt')) {
+						logIt('Engagement deleted: ' . (string)($eng['slug'] ?? ('#' . $id))
+							. ' (' . $unlinked . ' campaign(s) unlinked)');
+					}
+					echo json_encode(['result' => 'success', 'unlinked' => $unlinked]);
+				}
+			}
+		}
 		// Phase 3.45b: EngagementView data + status transitions.
 		if($POSTJ['action_type'] == "get_engagement_view") {
 			$id = (int)($POSTJ['engagement_id'] ?? 0);

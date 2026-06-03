@@ -449,3 +449,65 @@ if (!function_exists('taphish_engagement_campaigns')) {
         return $out;
     }
 }
+
+if (!function_exists('taphish_engagement_delete')) {
+    /**
+     * Delete an engagement. Linked campaigns are NOT deleted — their
+     * engagement_id FK is set back to NULL so the campaigns survive,
+     * just unlinked (deleting an engagement should never silently
+     * destroy campaign data). The same is done for any per-clone
+     * metadata rows that reference this engagement.
+     *
+     * Returns the number of campaigns that were unlinked on success,
+     * or null if the engagement row didn't exist / the delete failed.
+     */
+    function taphish_engagement_delete(\mysqli $conn, int $id): ?int
+    {
+        if ($id <= 0) {
+            return null;
+        }
+        // Unlink campaigns first so we never orphan a FK if the engagement
+        // delete succeeds but a later statement fails.
+        $unlinked = 0;
+        $stmt = $conn->prepare(
+            "UPDATE tb_core_mailcamp_list SET engagement_id = NULL WHERE engagement_id = ?"
+        );
+        if ($stmt !== false) {
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $unlinked = $stmt->affected_rows;
+            $stmt->close();
+        }
+        // Unlink per-clone metadata if that table exists (Phase 3.52).
+        $checkClone = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_data_clone_meta'"
+        );
+        if ($checkClone !== false) {
+            $checkClone->execute();
+            $row = $checkClone->get_result()->fetch_row();
+            $checkClone->close();
+            if ($row && (int) $row[0] > 0) {
+                $c = $conn->prepare("UPDATE tb_data_clone_meta SET engagement_id = NULL WHERE engagement_id = ?");
+                if ($c !== false) {
+                    $c->bind_param('i', $id);
+                    $c->execute();
+                    $c->close();
+                }
+            }
+        }
+        // Delete the engagement row.
+        $del = $conn->prepare("DELETE FROM tb_core_engagement WHERE id = ?");
+        if ($del === false) {
+            return null;
+        }
+        $del->bind_param('i', $id);
+        $ok = $del->execute();
+        $deleted = $del->affected_rows;
+        $del->close();
+        if (!$ok || $deleted === 0) {
+            return null;
+        }
+        return $unlinked;
+    }
+}

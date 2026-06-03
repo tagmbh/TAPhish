@@ -70,6 +70,11 @@
                               <button type="button" class="btn btn-success" data-to="completed"> Mark completed</button>
                               <button type="button" class="btn btn-danger"  data-to="cancelled"> Cancel</button>
                            </div>
+                           <hr>
+                           <p class="small text-muted mb-1">Deleting removes the engagement. Linked campaigns are kept but unlinked (their data is never destroyed).</p>
+                           <button type="button" class="btn btn-sm btn-outline-danger" id="btn_delete_engagement">
+                              <i class="fa fa-trash"></i> Delete engagement
+                           </button>
                         </div>
                      </div>
                   </div>

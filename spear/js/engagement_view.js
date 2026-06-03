@@ -160,11 +160,40 @@
         });
     }
 
+    function bindDelete(id) {
+        $('#btn_delete_engagement').on('click', function () {
+            var name = $('#eng_name').text() || ('#' + id);
+            if (!window.confirm('Delete engagement "' + name + '"?\n\nLinked campaigns are kept but unlinked. This cannot be undone.')) {
+                return;
+            }
+            var $btn = $(this).prop('disabled', true);
+            post({ action_type: 'delete_engagement', engagement_id: id })
+                .done(function (res) {
+                    if (res && res.result === 'success') {
+                        if (window.toastr) {
+                            toastr.success('Engagement deleted' +
+                                (res.unlinked ? ' (' + res.unlinked + ' campaign(s) unlinked)' : ''));
+                        }
+                        // Drop back to the picker view.
+                        setTimeout(function () { location.href = 'EngagementView'; }, 600);
+                    } else {
+                        $btn.prop('disabled', false);
+                        if (window.toastr) toastr.error((res && res.error) || 'Delete failed');
+                    }
+                })
+                .fail(function () {
+                    $btn.prop('disabled', false);
+                    if (window.toastr) toastr.error('Request failed');
+                });
+        });
+    }
+
     $(function () {
         var id = parseInt($('#eng_view_id').val(), 10) || 0;
         if (id > 0) {
             loadView(id);
             bindTransitions(id);
+            bindDelete(id);
             $('#btn_refresh_eng_view').on('click', function () { loadView(id); });
         } else {
             loadPicker();
