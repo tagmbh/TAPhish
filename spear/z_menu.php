@@ -170,6 +170,7 @@
                <ul aria-expanded="false" class="collapse  first-level">
                   <li class="sidebar-item"><a href="/spear/SettingsGeneral" class="sidebar-link"><i class="mdi mdi-settings"></i><span class="hide-menu"> General Settings </span></a></li>
                   <li class="sidebar-item"><a href="/spear/SettingsUser" class="sidebar-link"><i class="mdi mdi-account-settings-variant"></i><span class="hide-menu"> User Settings </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/SettingsAuditLog" class="sidebar-link"><i class="mdi mdi-clipboard-text-clock"></i><span class="hide-menu"> Audit Log </span></a></li>
                   <li class="sidebar-item"><a href="/spear/SPLogs" class="sidebar-link"><i class="mdi mdi-note-text"></i><span class="hide-menu"> Logs </span></a></li>
                   <li class="sidebar-item"><a href="/spear/SPAbout" class="sidebar-link"><i class="mdi mdi-information"></i><span class="hide-menu"> About </span></a></li>
                </ul>

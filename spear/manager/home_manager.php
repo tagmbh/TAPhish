@@ -22,6 +22,13 @@ if (isset($_POST)) {
 		if($POSTJ['action_type'] == "get_recent_log_entries")
 			getRecentLogEntries($conn, (int)($POSTJ['limit'] ?? 10));
 
+		// Phase 3.51: audit log viewer.
+		if($POSTJ['action_type'] == "audit_log_query") {
+			require_once(dirname(__FILE__) . '/audit_log_query.php');
+			$r = audit_log_query($conn, $POSTJ);
+			echo json_encode(['result' => 'success'] + $r);
+		}
+
 		// Phase 3.52 task 6: hooked-browsers list. Polled every 30 s by
 		// the Home page widget. Returns degraded states (not_configured /
 		// unreachable / auth_failed) so the UI can give a useful chip

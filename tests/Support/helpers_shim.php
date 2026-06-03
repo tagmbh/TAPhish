@@ -37,3 +37,4 @@ require_once __DIR__ . '/../../spear/manager/preflight_checks.php';
 require_once __DIR__ . '/../../spear/manager/beef_integration.php';
 require_once __DIR__ . '/../../spear/manager/landing_library.php';
 require_once __DIR__ . '/../../spear/manager/engagement_report.php';
+require_once __DIR__ . '/../../spear/manager/audit_log_query.php';
