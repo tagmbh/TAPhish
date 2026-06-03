@@ -317,7 +317,7 @@ if (!function_exists('taphish_engagement_list')) {
     function taphish_engagement_list(\mysqli $conn, int $limit = 50): array
     {
         $stmt = $conn->prepare(
-            "SELECT id, slug, name, target_org, start_at, end_at, scope_allowlist, status, created_at
+            "SELECT id, slug, name, target_org, start_at, end_at, scope_allowlist, status, created_at, wizard_step
              FROM tb_core_engagement
              ORDER BY created_at DESC
              LIMIT ?"
@@ -408,7 +408,7 @@ if (!function_exists('taphish_engagement_get_by_id')) {
     function taphish_engagement_get_by_id(\mysqli $conn, int $id): ?array
     {
         $stmt = $conn->prepare(
-            "SELECT id, slug, name, target_org, start_at, end_at, scope_allowlist, notes, status, created_by, created_at
+            "SELECT id, slug, name, target_org, start_at, end_at, scope_allowlist, notes, status, created_by, created_at, wizard_step, wizard_state
              FROM tb_core_engagement WHERE id = ?"
         );
         if ($stmt === false) {
@@ -509,5 +509,91 @@ if (!function_exists('taphish_engagement_delete')) {
             return null;
         }
         return $unlinked;
+    }
+}
+
+if (!function_exists('taphish_engagement_ensure_wizard_columns')) {
+    /**
+     * Phase 3.56: add wizard_step + wizard_state so the QuickStart
+     * wizard is resumable. Idempotent boot-time migration (mirrors the
+     * Phase 3.45a/b pattern).
+     */
+    function taphish_engagement_ensure_wizard_columns(\mysqli $conn): void
+    {
+        $cols = [
+            ['wizard_step',  'TINYINT NOT NULL DEFAULT 1'],
+            ['wizard_state', 'MEDIUMTEXT NULL'],
+        ];
+        foreach ($cols as [$col, $type]) {
+            $stmt = $conn->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                  WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'tb_core_engagement'
+                    AND COLUMN_NAME = ?"
+            );
+            if ($stmt === false) continue;
+            $stmt->bind_param('s', $col);
+            $stmt->execute();
+            $present = (int) $stmt->get_result()->fetch_row()[0];
+            $stmt->close();
+            if ($present > 0) continue;
+            @$conn->query("ALTER TABLE tb_core_engagement ADD COLUMN `{$col}` {$type}");
+        }
+    }
+}
+
+if (!function_exists('taphish_wizard_state_normalize')) {
+    /**
+     * Phase 3.56: reduce an arbitrary wizard-state blob to a small,
+     * whitelisted shape we're willing to persist. NO secrets — the
+     * DKIM private key is shown once and never stored; recipient PII
+     * stays in its encrypted table. We keep only the non-sensitive
+     * inputs needed to restore the wizard's position.
+     *
+     * @return array{step:int, target_domain:string, dkim_selector:string, landing_slug:string, pretext_id:int}
+     */
+    function taphish_wizard_state_normalize(array $in): array
+    {
+        $step = (int) ($in['step'] ?? 1);
+        if ($step < 1) $step = 1;
+        if ($step > 7) $step = 7;
+        return [
+            'step'          => $step,
+            'target_domain' => substr(trim((string) ($in['target_domain'] ?? '')), 0, 253),
+            'dkim_selector' => substr(preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($in['dkim_selector'] ?? ''))) ?? '', 0, 16),
+            'landing_slug'  => substr(preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($in['landing_slug'] ?? ''))) ?? '', 0, 61),
+            'pretext_id'    => max(0, (int) ($in['pretext_id'] ?? 0)),
+        ];
+    }
+}
+
+if (!function_exists('taphish_wizard_state_encode')) {
+    /**
+     * Normalize + JSON-encode for storage in wizard_state.
+     */
+    function taphish_wizard_state_encode(array $in): string
+    {
+        return (string) json_encode(taphish_wizard_state_normalize($in), JSON_UNESCAPED_SLASHES);
+    }
+}
+
+if (!function_exists('taphish_engagement_set_wizard_progress')) {
+    /**
+     * Persist the wizard's current step + normalized state JSON onto
+     * the engagement. Clamps step to 1..7. Returns true on success.
+     */
+    function taphish_engagement_set_wizard_progress(\mysqli $conn, int $id, int $step, array $state): bool
+    {
+        if ($id <= 0) return false;
+        if ($step < 1) $step = 1;
+        if ($step > 7) $step = 7;
+        $json = taphish_wizard_state_encode(['step' => $step] + $state);
+        $stmt = $conn->prepare("UPDATE tb_core_engagement SET wizard_step = ?, wizard_state = ? WHERE id = ?");
+        if ($stmt === false) return false;
+        $stmt->bind_param('isi', $step, $json, $id);
+        $ok = $stmt->execute();
+        $changed = $stmt->affected_rows >= 0;
+        $stmt->close();
+        return $ok && $changed;
     }
 }

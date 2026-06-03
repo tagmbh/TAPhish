@@ -146,6 +146,20 @@ if (isset($_POST)) {
 				'engagements' => taphish_engagement_list($conn),
 			]);
 		}
+		// Phase 3.56: persist wizard progress so the QuickStart wizard
+		// is resumable. step + a whitelisted state blob (no secrets).
+		if($POSTJ['action_type'] == "wizard_save_progress") {
+			$id    = (int)($POSTJ['engagement_id'] ?? 0);
+			$step  = (int)($POSTJ['step'] ?? 1);
+			$state = is_array($POSTJ['state'] ?? null) ? $POSTJ['state'] : [];
+			if ($id <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id required']);
+			} else {
+				$ok = taphish_engagement_set_wizard_progress($conn, $id, $step, $state);
+				echo json_encode($ok ? ['result' => 'success', 'step' => max(1, min(7, $step))]
+					: ['result' => 'failed', 'error' => 'Could not save progress']);
+			}
+		}
 		// Delete an engagement. Linked campaigns survive (FK nulled).
 		if($POSTJ['action_type'] == "delete_engagement") {
 			$id = (int)($POSTJ['engagement_id'] ?? 0);
