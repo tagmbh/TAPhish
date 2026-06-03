@@ -161,6 +161,43 @@
                         </div>
                      </div>
                      <hr/>
+                     <!-- Phase 3.53: Telegram bot alerting (parallel channel) -->
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">Telegram bot alerting</h6>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <i class="small">
+                              A parallel alert channel to the webhook above — fires on the same events (first capture +
+                              repeat 2FA). Create a bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>,
+                              paste its token, and set the chat id (your numeric user id, a <code>-100…</code> group id,
+                              or <code>@channelusername</code>). Stored encrypted at-rest; the token is never shown again
+                              after saving. Clear the token and save to disable.
+                           </i>
+                        </div>
+                        <label for="telegram_token" class="col-md-2 text-left control-label col-form-label">Bot token:</label>
+                        <div class="col-md-7">
+                           <input type="text" class="form-control" id="telegram_token" placeholder="123456789:AAE…" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-info" id="btn_save_telegram"><i class="fa fas fa-save"></i> Save</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <label for="telegram_chat_id" class="col-md-2 text-left control-label col-form-label">Chat id:</label>
+                        <div class="col-md-7">
+                           <input type="text" class="form-control" id="telegram_chat_id" placeholder="-1001234567890 or @channel" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-outline-secondary" id="btn_test_telegram"><i class="fa fas fa-paper-plane"></i> Send test</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12"><div id="telegram_test_result" class="small mt-1"></div></div>
+                     </div>
+                     <hr/>
                      <!-- Phase 3.52: BeEF integration. Operator BYO BeEF;
                           TAPhish stores creds encrypted at-rest and proxies
                           the REST API for the per-clone hook toggle + the

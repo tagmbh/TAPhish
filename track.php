@@ -10,6 +10,7 @@ require_once($_db_file);
 require_once(dirname(__FILE__) . '/spear/manager/common_functions.php');
 require_once(dirname(__FILE__) . '/spear/manager/secret_at_rest.php');
 require_once(dirname(__FILE__) . '/spear/manager/capture_alerting.php');
+require_once(dirname(__FILE__) . '/spear/manager/telegram_alerting.php');
 require_once(dirname(__FILE__) . '/spear/libs/browser_detect/BrowserDetection.php');
 date_default_timezone_set('UTC');
 //-------------------------------------
@@ -99,19 +100,24 @@ elseif(is_numeric($page)){
             // First capture per recipient on this campaign — fire the
             // operator webhook if one is configured. Failure is silent
             // (we don't want to leak that we're watching).
+            $capture_event = [
+                'campaign'        => '', // tracker_id, no campaign-name lookup here
+                'campaign_id'     => $trackerId,
+                'recipient_name'  => '',
+                'recipient_email' => '',
+                'captured_at'     => $date_time,
+                'page'            => (int)$page,
+                'ip'              => $public_ip,
+                'has_2fa'         => $has_2fa,
+            ];
             $hook_url = taphish_get_capture_webhook_url($conn);
             if ($hook_url !== '') {
-                $payload = taphish_capture_webhook_payload([
-                    'campaign'        => '', // tracker_id, no campaign-name lookup here
-                    'campaign_id'     => $trackerId,
-                    'recipient_name'  => '',
-                    'recipient_email' => '',
-                    'captured_at'     => $date_time,
-                    'page'            => (int)$page,
-                    'ip'              => $public_ip,
-                    'has_2fa'         => $has_2fa,
-                ]);
-                @taphish_capture_dispatch_webhook($hook_url, $payload);
+                @taphish_capture_dispatch_webhook($hook_url, taphish_capture_webhook_payload($capture_event));
+            }
+            // Phase 3.53: Telegram bot channel fires on the same event,
+            // independently of the generic webhook above.
+            if (function_exists('taphish_telegram_notify_capture')) {
+                @taphish_telegram_notify_capture($conn, $capture_event);
             }
             if (function_exists('logIt')) {
                 logIt('Capture: first submit on tracker ' . $trackerId . ($has_2fa ? ' [+2FA]' : ''));
@@ -121,8 +127,8 @@ elseif(is_numeric($page)){
             // repeat-capture webhook so the operator hears about it.
             $hook_url = taphish_get_capture_webhook_url($conn);
             $row_for_guard = ['code_2fa' => $code_2fa, 'repeat_webhook_sent' => 0];
-            if ($hook_url !== '' && taphish_should_send_repeat_capture_webhook($row_for_guard)) {
-                $payload = taphish_repeat_capture_webhook_payload([
+            if (taphish_should_send_repeat_capture_webhook($row_for_guard)) {
+                $repeat_event = [
                     'campaign'        => '',
                     'campaign_id'     => $trackerId,
                     'recipient_name'  => '',
@@ -131,8 +137,15 @@ elseif(is_numeric($page)){
                     'page'            => (int)$page,
                     'ip'              => $public_ip,
                     'has_2fa'         => true,
-                ]);
-                @taphish_capture_dispatch_webhook($hook_url, $payload);
+                    'is_repeat'       => true,
+                ];
+                if ($hook_url !== '') {
+                    @taphish_capture_dispatch_webhook($hook_url, taphish_repeat_capture_webhook_payload($repeat_event));
+                }
+                // Phase 3.53: Telegram repeat-capture alert.
+                if (function_exists('taphish_telegram_notify_capture')) {
+                    @taphish_telegram_notify_capture($conn, $repeat_event);
+                }
                 if ($inserted_id > 0) {
                     $upd = $conn->prepare("UPDATE tb_data_webform_submit SET repeat_webhook_sent = 1 WHERE id = ?");
                     if ($upd) {
