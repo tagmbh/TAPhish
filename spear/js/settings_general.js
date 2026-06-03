@@ -539,5 +539,46 @@ function clearJunkSPData(e){
             if (lsSet(SHODAN_LS, v)) toastr.success('', v === '' ? 'Shodan key cleared.' : 'Shodan key saved.');
             else toastr.error('', 'Could not write to localStorage.');
         });
+
+        // ---- Telegram bot alerting -----------------------------------------
+        function loadTelegram() {
+            postSettings({ action_type: 'telegram_settings_load' }).done(function (d) {
+                if (!d || d.result !== 'success') return;
+                if (!d.configured) { $('#telegram_token').val(''); $('#telegram_chat_id').val(''); return; }
+                $('#telegram_token').val(d.token_masked || '');
+                $('#telegram_chat_id').val(d.chat_id || '');
+            });
+        }
+        loadTelegram();
+        $('#btn_save_telegram').on('click', function () {
+            postSettings({
+                action_type: 'telegram_settings_save',
+                token: $('#telegram_token').val(),
+                chat_id: $('#telegram_chat_id').val()
+            })
+                .done(function (d) {
+                    if (d && d.result === 'success') {
+                        toastr.success('', d.cleared ? 'Telegram disabled.' : 'Telegram settings saved.');
+                        loadTelegram();
+                        $('#telegram_test_result').empty();
+                    } else {
+                        toastr.error('', (d && d.error) || 'Save failed.');
+                    }
+                })
+                .fail(function (xhr) { toastr.error('', 'Request failed (HTTP ' + xhr.status + ').'); });
+        });
+        $('#btn_test_telegram').on('click', function () {
+            $('#telegram_test_result').html('<span class="text-muted">sending…</span>');
+            postSettings({ action_type: 'telegram_test' })
+                .done(function (d) {
+                    if (d && d.result === 'success' && d.ok) {
+                        $('#telegram_test_result').html('<span class="text-success"><i class="fa fa-check"></i> Test message sent — check your chat.</span>');
+                    } else {
+                        var err = (d && d.error) || 'Test failed.';
+                        $('#telegram_test_result').html('<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> ' + $('<div>').text(err).html() + '</span>');
+                    }
+                })
+                .fail(function (xhr) { $('#telegram_test_result').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
+        });
     });
 })();

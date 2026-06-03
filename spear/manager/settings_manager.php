@@ -54,6 +54,61 @@ if (isset($_POST)) {
 			if ($ok) logIt('Capture webhook URL updated');
 		}
 
+		// ---- Phase 3.53: Telegram bot alerting --------------------------
+		if($POSTJ['action_type'] == "telegram_settings_load") {
+			require_once(dirname(__FILE__) . '/telegram_alerting.php');
+			$cfg = taphish_get_telegram_config($conn);
+			if ($cfg === null) {
+				echo json_encode(['result' => 'success', 'configured' => false]);
+			} else {
+				echo json_encode([
+					'result'       => 'success',
+					'configured'   => true,
+					'token_masked' => taphish_telegram_mask_token($cfg['token']),
+					'chat_id'      => $cfg['chat_id'],
+				]);
+			}
+		}
+		if($POSTJ['action_type'] == "telegram_settings_save") {
+			require_once(dirname(__FILE__) . '/telegram_alerting.php');
+			$token  = (string)($POSTJ['token']   ?? '');
+			$chatId = trim((string)($POSTJ['chat_id'] ?? ''));
+			if (trim($token) === '') {
+				$ok = taphish_set_telegram_config($conn, '', '');
+				echo json_encode($ok ? ['result' => 'success', 'cleared' => true] : ['result' => 'failed', 'error' => 'Could not clear config']);
+				if ($ok) logIt('Telegram alerting cleared');
+			} else {
+				// "•••" sentinel = keep existing token (operator edited chat id only).
+				if (preg_match('/•/u', $token)) {
+					$existing = taphish_get_telegram_config($conn);
+					$token = $existing ? $existing['token'] : '';
+				}
+				if (!taphish_telegram_validate_token($token)) {
+					echo json_encode(['result' => 'failed', 'error' => 'Invalid bot token format (expect "<digits>:<token>")']);
+				} elseif (!taphish_telegram_validate_chat_id($chatId)) {
+					echo json_encode(['result' => 'failed', 'error' => 'Invalid chat id (numeric, -group id, or @channel)']);
+				} else {
+					$ok = taphish_set_telegram_config($conn, $token, $chatId);
+					echo json_encode($ok
+						? ['result' => 'success']
+						: ['result' => 'failed', 'error' => 'Could not save — at-rest encryption key not configured.']);
+					if ($ok) logIt('Telegram alerting configured');
+				}
+			}
+		}
+		if($POSTJ['action_type'] == "telegram_test") {
+			require_once(dirname(__FILE__) . '/telegram_alerting.php');
+			$cfg = taphish_get_telegram_config($conn);
+			if ($cfg === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'Telegram not configured']);
+			} else {
+				$ok = taphish_telegram_send($cfg['token'], $cfg['chat_id'],
+					"\xe2\x9c\x85 TAPhish test message — your Telegram alerting is wired up.");
+				echo json_encode(['result' => 'success', 'ok' => $ok,
+					'error' => $ok ? null : 'Telegram rejected the message (check token + chat id)']);
+			}
+		}
+
 		// ---- Phase 3.52: BeEF integration settings -----------------------
 		// Encrypted-at-rest credentials live in tb_store; the load action
 		// never returns the password (only a fixed-width mask). A "•••"
