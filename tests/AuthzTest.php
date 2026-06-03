@@ -221,4 +221,15 @@ final class AuthzTest extends TestCase
     {
         self::assertTrue(function_exists('taphish_engagement_add_member'));
     }
+
+    /**
+     * Phase 3.48 task 8 — a denied request logs "Forbidden <action> attempted
+     * by <user>", which must classify as AUTH/warn in the activity feed.
+     */
+    public function testForbiddenLogClassifiesAsAuthWarn(): void
+    {
+        $c = taphish_classify_log_entry('Forbidden save_user_group attempted by bob');
+        self::assertSame('AUTH', $c['kind']);
+        self::assertSame('warn', $c['severity']);
+    }
 }

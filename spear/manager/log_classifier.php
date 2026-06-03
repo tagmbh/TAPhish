@@ -31,6 +31,8 @@ if (!function_exists('taphish_classify_log_entry')) {
             ['2fa disabled',           'AUTH', 'warn'],
             ['2fa enabled',            'AUTH', 'ok'],
             ['failed login',           'AUTH', 'warn'],
+            // Phase 3.48: RBAC denied a request (taphish_require_authorize_or_die).
+            ['forbidden ',             'AUTH', 'warn'],
             ['account login',          'AUTH', 'ok'],
             ['account logout',         'AUTH', 'ok'],
             ['campaign sent',          'CAMP', 'ok'],
