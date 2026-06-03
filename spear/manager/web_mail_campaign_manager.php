@@ -656,13 +656,14 @@ function downloadReport($conn,$campaign_id,$tracker_id,$selected_col,$dic_all_co
 			else
 				array_push($tmp,$col);
 		
-		fputcsv($f, $tmp);
-
-
-		foreach ($arr_odata as $line){ 
-			fputcsv($f, $line, ',');
+		// Phase 3.46 broader sweep: explicit fputcsv args + header_remove
+		// before swapping Content-Type to text/csv.
+		fputcsv($f, $tmp, ',', '"', '');
+		foreach ($arr_odata as $line) {
+			fputcsv($f, $line, ',', '"', '');
 		}
 		fseek($f, 0);
+		header_remove('Content-Type');
 	    header('Content-Type: text/csv');
 	    header('Content-Disposition: attachment;filename="'.$file_name.'.csv"');
 	    fpassthru($f);

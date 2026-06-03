@@ -531,13 +531,13 @@ function downloadLogs($conn,$file_format){
 		    $arr_odata[$i]['date'] = getInClientTime_FD($DTime_info,$row['date'],null,'d-m-Y h:i A');
 
 		if($file_format == 'csv'){
-			$f = fopen('php://memory', 'w'); 
-
-			fputcsv($f, $selected_col);
-
-			foreach ($arr_odata as $line) 
-				fputcsv($f, $line, ',');
+			$f = fopen('php://memory', 'w');
+			// Phase 3.46 broader sweep: explicit fputcsv args + header_remove.
+			fputcsv($f, $selected_col, ',', '"', '');
+			foreach ($arr_odata as $line)
+				fputcsv($f, $line, ',', '"', '');
 			fseek($f, 0);
+			header_remove('Content-Type');
 		    header('Content-Type: text/csv');
 		    header('Content-Disposition: attachment;filename="'.$file_name.'.csv"');
 		    fpassthru($f);

@@ -252,11 +252,15 @@ function downloadReport($conn,$tracker_id,$selected_col,$dic_all_col,$file_name,
 				else
 					array_push($tmp,$col);
 			
-			fputcsv($f, $tmp);
-
-			foreach ($arr_odata as $line) 
-				fputcsv($f, $line, ',');
+			// Phase 3.46 broader sweep: explicit fputcsv args for PHP
+			// 8.5+ (default-$escape deprecation) + header_remove so the
+			// dispatcher's earlier application/json header doesn't
+			// linger on PHP builds with output buffering disabled.
+			fputcsv($f, $tmp, ',', '"', '');
+			foreach ($arr_odata as $line)
+				fputcsv($f, $line, ',', '"', '');
 			fseek($f, 0);
+			header_remove('Content-Type');
 		    header('Content-Type: text/csv');
 		    header('Content-Disposition: attachment;filename="'.$file_name.'.csv"');
 		    fpassthru($f);
