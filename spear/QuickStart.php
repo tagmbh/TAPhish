@@ -1,6 +1,16 @@
 <?php
    require_once(dirname(__FILE__) . '/manager/session_manager.php');
+   require_once(dirname(__FILE__) . '/manager/engagement.php');
    isSessionValid(true);
+
+   // Phase 3.56: resumable wizard. Opened as ?engagement_id=N, we load the
+   // saved step + non-secret state so the stepflow controller jumps straight
+   // back to where the operator left off.
+   $resume = ['id' => 0, 'step' => 1, 'state' => '{}'];
+   $eid = isset($_GET['engagement_id']) ? (int) $_GET['engagement_id'] : 0;
+   if ($eid > 0 && isset($conn) && $conn instanceof mysqli) {
+      $resume = taphish_wizard_resume_payload(taphish_engagement_get_by_id($conn, $eid));
+   }
 ?>
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
@@ -38,7 +48,10 @@
                   <li data-step="6">Landing</li>
                   <li data-step="7">Launch</li>
                </ol>
-               <div class="row">
+               <input type="hidden" id="wizard_engagement_id" value="<?php echo (int) $resume['id']; ?>">
+               <input type="hidden" id="wizard_resume_step" value="<?php echo (int) $resume['step']; ?>">
+               <input type="hidden" id="wizard_resume_state" value="<?php echo htmlspecialchars($resume['state'], ENT_QUOTES); ?>">
+               <div class="row step-wrap" id="step1_wrap">
                   <div class="col-lg-7 mb-4">
                      <div class="card">
                         <div class="card-body">
@@ -97,7 +110,7 @@
                               </button>
                            </h5>
                            <table class="table table-sm table-striped" id="tb_engagements">
-                              <thead><tr><th>Slug</th><th>Window</th><th>Scope</th><th>Status</th></tr></thead>
+                              <thead><tr><th>Slug</th><th>Window</th><th>Scope</th><th>Status</th><th></th></tr></thead>
                               <tbody></tbody>
                            </table>
                         </div>
@@ -120,7 +133,7 @@
                </div>
 
                <!-- ============ Step 2 — OSINT pre-check ============ -->
-               <div class="row">
+               <div class="row step-wrap" id="step2_wrap">
                   <div class="col-12">
                      <div class="card">
                         <div class="card-body">
@@ -217,7 +230,7 @@
                </div>
 
                <!-- ============ Step 3 — Pretext picker ============ -->
-               <div class="row" id="step3_wrap" style="display:none;">
+               <div class="row step-wrap" id="step3_wrap" style="display:none;">
                   <div class="col-12">
                      <div class="card">
                         <div class="card-body">
@@ -235,7 +248,7 @@
                </div>
 
                <!-- ============ Step 4 — Sender setup (DKIM + DNS) ============ -->
-               <div class="row" id="step4_wrap" style="display:none;">
+               <div class="row step-wrap" id="step4_wrap" style="display:none;">
                   <div class="col-12 mb-3">
                      <div class="card">
                         <div class="card-body">
@@ -267,7 +280,7 @@
                </div>
 
                <!-- ============ Step 5 — Recipient preview ============ -->
-               <div class="row" id="step5_wrap" style="display:none;">
+               <div class="row step-wrap" id="step5_wrap" style="display:none;">
                   <div class="col-12 mb-3">
                      <div class="card">
                         <div class="card-body">
@@ -293,7 +306,7 @@
                </div>
 
                <!-- ============ Step 6 — Landing page picker ============ -->
-               <div class="row" id="step6_wrap" style="display:none;">
+               <div class="row step-wrap" id="step6_wrap" style="display:none;">
                   <div class="col-12 mb-3">
                      <div class="card">
                         <div class="card-body">
@@ -312,7 +325,7 @@
                </div>
 
                <!-- ============ Step 7 — Pre-flight + Launch ============ -->
-               <div class="row" id="step7_wrap" style="display:none;">
+               <div class="row step-wrap" id="step7_wrap" style="display:none;">
                   <div class="col-12 mb-3">
                      <div class="card">
                         <div class="card-body">
@@ -362,6 +375,22 @@
                   </div>
                </div>
 
+               <!-- Phase 3.56: shared step navigation. The controller shows one
+                    step at a time, so this bar always sits at the bottom of the
+                    visible wrap. Next is disabled on Step 1 until the engagement
+                    is saved, and hidden on Step 7 (Launch is the terminal action). -->
+               <div class="row" id="wizard_nav_row">
+                  <div class="col-12 mb-4 d-flex align-items-center">
+                     <button class="btn btn-outline-secondary" id="wiz_back" type="button" disabled>
+                        <i class="fa fa-arrow-left"></i> Back
+                     </button>
+                     <span class="text-muted small mx-3" id="wiz_step_label">Step 1 of 7</span>
+                     <button class="btn btn-info ml-auto" id="wiz_next" type="button" disabled title="Save the engagement first">
+                        Next <i class="fa fa-arrow-right"></i>
+                     </button>
+                  </div>
+               </div>
+
             </div>
             <?php include_once 'z_footer.php' ?>
          </div>
@@ -376,5 +405,6 @@
       <script src="js/libs/toastr.min.js"></script>
       <script src="js/common_scripts.js"></script>
       <script src="js/quick_start.js"></script>
+      <script src="js/wizard_stepflow.js"></script>
    </body>
 </html>

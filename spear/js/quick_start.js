@@ -42,15 +42,25 @@
         };
     }
 
+    function statusBadge(status) {
+        return ({
+            'draft':     'badge-secondary',
+            'live':      'badge-info',
+            'completed': 'badge-success',
+            'cancelled': 'badge-danger'
+        })[status] || 'badge-secondary';
+    }
+
     function renderRecent(rows) {
         var $body = $('#tb_engagements tbody').empty();
         if (!rows || !rows.length) {
-            $body.append('<tr><td colspan="4" class="text-muted">No engagements yet.</td></tr>');
+            $body.append('<tr><td colspan="5" class="text-muted">No engagements yet.</td></tr>');
             return;
         }
         rows.forEach(function (e) {
             var scope = (e.scope_allowlist || []).slice(0, 3).join(', ');
             if ((e.scope_allowlist || []).length > 3) scope += ' …';
+            var status = e.status || 'draft';
             var $tr = $('<tr>');
             $tr.append($('<td>').append($('<code>').text(e.slug)));
             $tr.append($('<td>').addClass('small').text(
@@ -58,7 +68,20 @@
             ));
             $tr.append($('<td>').addClass('small text-muted').text(scope || '—'));
             $tr.append($('<td>').append(
-                $('<span>').addClass('badge badge-secondary').text(e.status || 'draft')
+                $('<span>').addClass('badge ' + statusBadge(status)).text(status)
+            ));
+            // Phase 3.56: a draft engagement that hasn't reached Step 7 gets a
+            // "Continue setup" deep-link that resumes the wizard where it left
+            // off; anything else just opens its EngagementView.
+            var resumable = (status === 'draft') && ((parseInt(e.wizard_step, 10) || 1) < 7);
+            $tr.append($('<td>').addClass('text-right').append(
+                resumable
+                    ? $('<a class="btn btn-sm btn-info">')
+                        .attr('href', 'QuickStart?engagement_id=' + e.id)
+                        .html('<i class="fa fa-play"></i> Continue setup')
+                    : $('<a class="btn btn-sm btn-outline-secondary">')
+                        .attr('href', 'EngagementView?engagement_id=' + e.id)
+                        .text('Open')
             ));
             $body.append($tr);
         });
@@ -88,7 +111,12 @@
         post({ action_type: 'save_engagement', payload: readForm() })
             .done(function (res) {
                 if (res && res.result === 'success') {
-                    setStepperState(2);
+                    // Phase 3.56: hand the new engagement id to the stepflow
+                    // controller, which captures it and advances to Step 2.
+                    if (res.engagement_id) {
+                        $('#wizard_engagement_id').val(res.engagement_id);
+                        $(document).trigger('wizard:saved', [res.engagement_id]);
+                    }
                     $('#eng_result').html(
                         '<div class="alert alert-success">' +
                         '<strong>Saved.</strong> Slug: <code>' + esc(res.slug) + '</code>. ' +
@@ -230,8 +258,8 @@
     }
 
     function runPretextPicker(categories) {
-        setStepperState(3);
-        $('#step3_wrap').show();
+        // Phase 3.56: populate Step 3 in place (the stepflow controller owns
+        // when the wrap becomes visible + the stepper highlight).
         $('#step3_categories').text('Preferred categories: ' + (categories.length ? categories.join(' › ') : '(no preference)'));
         $('#step3_pretexts').html(
             '<div class="col-md-6 col-lg-4 mb-3"><div class="card h-100"><div class="card-body">' + skeleton(4) + '</div></div></div>' +
@@ -391,7 +419,6 @@
             if (window.toastr) toastr.warning('Enter a target domain first');
             return;
         }
-        setStepperState(2);
         $('#osint_panel').show();
         var shodanKey = '';
         try { shodanKey = (localStorage.getItem('taphish_shodan_key') || '').trim(); } catch (_) {}
@@ -463,7 +490,6 @@
     }
 
     function runDkimGen() {
-        setStepperState(4);
         $('#dkim_result').html(skeleton(3));
         post({
             action_type: 'wizard_generate_dkim',
@@ -516,7 +542,6 @@
     }
 
     function runRecipientPreview() {
-        setStepperState(5);
         var csv = $('#rcpt_csv').val() || '';
         if (csv.trim() === '') {
             if (window.toastr) toastr.warning('Paste a CSV first');
@@ -531,7 +556,6 @@
     // ----- Step 6: Landing page picker -----------------------------------
 
     function loadLandingOptions() {
-        setStepperState(6);
         $('#landing_options').html(skeleton(3));
         post({ action_type: 'wizard_list_landing_options' })
             .done(function (res) {
@@ -606,7 +630,6 @@
     }
 
     function runPreflight() {
-        setStepperState(7);
         var ctx = gatherPreflightContext();
         $('#preflight_result').html(skeleton(4));
         $('#btn_launch').prop('disabled', true);
@@ -623,7 +646,7 @@
     }
 
     function runLaunch() {
-        var engId = parseInt($('#eng_view_id_persist').val(), 10) || 0;
+        var engId = parseInt($('#wizard_engagement_id').val(), 10) || 0;
         // Best-effort: pick the most recent engagement from the recent list
         // if no explicit id was carried.
         if (!engId) {
@@ -642,6 +665,7 @@
             .done(function (res) {
                 if (res && res.result === 'success') {
                     if (window.toastr) toastr.success('Launched. Campaign ' + res.campaign_id);
+                    $(document).trigger('wizard:launched');
                     window.location.href = 'EngagementView?engagement_id=' + res.engagement_id;
                 } else {
                     if (window.toastr) toastr.error((res && res.error) || 'Launch rejected');
@@ -649,6 +673,22 @@
             })
             .fail(function () { if (window.toastr) toastr.error('Request failed'); });
     }
+
+    // Phase 3.56: surface the per-step entry points the stepflow controller
+    // (wizard_stepflow.js, loaded right after this file) drives. Navigation
+    // and progress persistence live there; this file still owns what each
+    // step actually DOES.
+    window.TAPhishWizard = {
+        post:                post,
+        setStepperState:     setStepperState,
+        loadLandingOptions:  loadLandingOptions,
+        runOsint:            runOsint,
+        runDkimGen:          runDkimGen,
+        runRecipientPreview: runRecipientPreview,
+        runPreflight:        runPreflight,
+        runLaunch:           runLaunch,
+        refreshList:         refreshList
+    };
 
     $(function () {
         $('#frm_engagement').on('submit', onSubmit);
@@ -667,12 +707,11 @@
         });
         $('#btn_shodan_key').on('click', function (e) { e.preventDefault(); manageShodanKey(); });
         // Phase 3.45c: Step 4 + Step 5 wiring.
-        $('#step4_wrap, #step5_wrap').show();
         $('#btn_gen_dkim').on('click', runDkimGen);
         $('#btn_rcpt_preview').on('click', runRecipientPreview);
-        // Phase 3.45d: Step 6 + Step 7 wiring.
-        $('#step6_wrap, #step7_wrap').show();
-        loadLandingOptions();
+        // Phase 3.45d: Step 6 + Step 7 wiring. (Phase 3.56: the stepflow
+        // controller owns step visibility and lazy-loads the landing options
+        // when Step 6 is shown, so we no longer force every wrap visible here.)
         $('#btn_run_preflight').on('click', runPreflight);
         $('#btn_launch').on('click', runLaunch);
         refreshList();

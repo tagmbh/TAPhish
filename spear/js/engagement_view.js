@@ -54,10 +54,16 @@
             $tr.append($('<td>').append(
                 $('<span>').addClass('badge ' + statusBadgeClass(e.status)).text(e.status || 'draft')
             ));
+            // Phase 3.56: resumable drafts deep-link back into the wizard.
+            var resumable = (e.status || 'draft') === 'draft' && ((parseInt(e.wizard_step, 10) || 1) < 7);
             $tr.append($('<td>').append(
-                $('<a class="btn btn-sm btn-info">')
-                    .attr('href', 'EngagementView?engagement_id=' + e.id)
-                    .text('Open')
+                resumable
+                    ? $('<a class="btn btn-sm btn-info">')
+                        .attr('href', 'QuickStart?engagement_id=' + e.id)
+                        .html('<i class="fa fa-play"></i> Continue setup')
+                    : $('<a class="btn btn-sm btn-info">')
+                        .attr('href', 'EngagementView?engagement_id=' + e.id)
+                        .text('Open')
             ));
             $body.append($tr);
         });
@@ -81,6 +87,16 @@
         $('#eng_scope').html('<strong>Authorised scope:</strong> ' + (scope || '—'));
         // Slug stamped for transition buttons.
         $('#eng_transition_btns').data('current-status', eng.status || 'draft');
+        // Phase 3.56: a draft engagement whose wizard hasn't reached Step 7
+        // gets a deep-link that resumes QuickStart at the saved step.
+        var $cont = $('#eng_continue_setup').empty();
+        var step = parseInt(eng.wizard_step, 10) || 1;
+        if ((eng.status || 'draft') === 'draft' && step < 7) {
+            $('<a class="btn btn-sm btn-info">')
+                .attr('href', 'QuickStart?engagement_id=' + (eng.id || $('#eng_view_id').val()))
+                .html('<i class="fa fa-play"></i> Continue setup <span class="text-white-50">(step ' + step + ' of 7)</span>')
+                .appendTo($cont);
+        }
     }
 
     function renderCampaigns(campaigns) {
