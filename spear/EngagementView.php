@@ -72,6 +72,11 @@
                               <button type="button" class="btn btn-danger"  data-to="cancelled"> Cancel</button>
                            </div>
                            <hr>
+                           <p class="small text-muted mb-1">Membership is this engagement's visibility boundary &mdash; owners manage who can see its recipients and run its campaigns.</p>
+                           <a href="EngagementMembers?engagement_id=<?php echo (int) $eid; ?>" class="btn btn-sm btn-outline-info mb-2">
+                              <i class="fa fas fa-users"></i> Manage members
+                           </a>
+                           <hr>
                            <p class="small text-muted mb-1">Deleting removes the engagement. Linked campaigns are kept but unlinked (their data is never destroyed).</p>
                            <button type="button" class="btn btn-sm btn-outline-danger" id="btn_delete_engagement">
                               <i class="fa fa-trash"></i> Delete engagement

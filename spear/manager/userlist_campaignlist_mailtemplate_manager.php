@@ -206,6 +206,61 @@ if (isset($_POST)) {
 				}
 			}
 		}
+		// Phase 3.48: per-engagement membership management. The top-of-file
+		// guard already resolved engagement_role from engagement_id, so list
+		// needs membership and the mutations need owner/super-admin.
+		if($POSTJ['action_type'] == "list_engagement_members") {
+			$id = (int)($POSTJ['engagement_id'] ?? 0);
+			if ($id <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id required']);
+			} else {
+				$eng = taphish_engagement_get_by_id($conn, $id);
+				echo json_encode([
+					'result'     => 'success',
+					'engagement' => $eng ? ['id' => $id, 'name' => ($eng['name'] ?? ''), 'slug' => ($eng['slug'] ?? '')] : ['id' => $id, 'name' => '', 'slug' => ''],
+					'members'    => taphish_engagement_members($conn, $id),
+				], JSON_INVALID_UTF8_IGNORE);
+			}
+		}
+		if($POSTJ['action_type'] == "add_engagement_member") {
+			$id       = (int)($POSTJ['engagement_id'] ?? 0);
+			$username = trim((string)($POSTJ['username'] ?? ''));
+			$role     = (string)($POSTJ['role'] ?? 'member');
+			if ($id <= 0 || $username === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id and username required']);
+			} elseif (!in_array($role, ['owner','member','read-only'], true)) {
+				echo json_encode(['result' => 'failed', 'error' => 'Invalid role']);
+			} elseif (taphish_engagement_role($conn, $id, $username) !== null) {
+				echo json_encode(['result' => 'failed', 'error' => 'That user is already a member.']);
+			} else {
+				$ok = taphish_engagement_add_member($conn, $id, $username, $role);
+				if ($ok) { logIt('Engagement member added: ' . $username . ' to #' . $id . ' as ' . $role); }
+				echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'No such user, or could not add.']);
+			}
+		}
+		if($POSTJ['action_type'] == "set_engagement_member_role") {
+			$id       = (int)($POSTJ['engagement_id'] ?? 0);
+			$username = trim((string)($POSTJ['username'] ?? ''));
+			$role     = (string)($POSTJ['role'] ?? '');
+			if ($id <= 0 || $username === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id and username required']);
+			} else {
+				$ok = taphish_engagement_set_member_role($conn, $id, $username, $role);
+				if ($ok) { logIt('Engagement member role set: ' . $username . ' on #' . $id . ' -> ' . $role); }
+				echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Could not change role (invalid role, not a member, or last owner).']);
+			}
+		}
+		if($POSTJ['action_type'] == "remove_engagement_member") {
+			$id       = (int)($POSTJ['engagement_id'] ?? 0);
+			$username = trim((string)($POSTJ['username'] ?? ''));
+			if ($id <= 0 || $username === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id and username required']);
+			} else {
+				$ok = taphish_engagement_remove_member($conn, $id, $username);
+				if ($ok) { logIt('Engagement member removed: ' . $username . ' from #' . $id); }
+				echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Could not remove (not a member, or last owner).']);
+			}
+		}
 		// Phase 3.45c Step 4 + Step 5 dispatchers.
 		if($POSTJ['action_type'] == "wizard_generate_dkim") {
 			$selector = (string)($POSTJ['selector'] ?? 's1');
