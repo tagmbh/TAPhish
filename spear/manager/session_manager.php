@@ -46,6 +46,8 @@ if (isset($conn) && $conn instanceof mysqli) {
 		taphish_engagement_ensure_schema($conn);
 		// Phase 3.45b: add engagement_id FK on tb_core_mailcamp_list.
 		taphish_engagement_ensure_campaign_fk_column($conn);
+		// Phase 3.56: wizard_step + wizard_state for a resumable wizard.
+		taphish_engagement_ensure_wizard_columns($conn);
 	}
 	// Phase 3.45a: add is_scanner + scanner_reason columns on the live tables.
 	if (is_file(dirname(__FILE__) . '/scanner_detect.php')) {
