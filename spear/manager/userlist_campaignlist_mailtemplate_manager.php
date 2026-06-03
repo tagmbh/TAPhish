@@ -36,6 +36,10 @@ if (isset($_POST)) {
 	$POSTJ = json_decode(file_get_contents('php://input'),true);
 
 	if(isset($POSTJ['action_type'])){
+		// Phase 3.48 (RBAC): default-deny guard for every action in this
+		// dispatcher - unknown/unauthorised actions get 403 + {result:'forbidden'} + audit log.
+		require_once(dirname(__FILE__) . '/authz.php');
+		taphish_require_authorize_or_die($conn, (string)$POSTJ['action_type'], ['engagement_id' => isset($POSTJ['engagement_id']) ? (int)$POSTJ['engagement_id'] : null]);
 		if($POSTJ['action_type'] == "add_user_to_table")
 			addUserToTable($conn, $POSTJ);
 		if($POSTJ['action_type'] == "save_user_group")
@@ -131,6 +135,11 @@ if (isset($_POST)) {
 				if ($id === null) {
 					echo json_encode(['result' => 'failed', 'error' => 'Could not save engagement.']);
 				} else {
+					// Phase 3.48: the creator owns the engagement so engagement-scoped
+					// checks (view / transition / launch) admit them on it.
+					if (function_exists('taphish_engagement_add_member')) {
+						taphish_engagement_add_member($conn, (int)$id, $createdBy, 'owner');
+					}
 					logIt('Engagement created: ' . $v['normalized']['name']);
 					echo json_encode([
 						'result'        => 'success',

@@ -13,6 +13,10 @@ if (isset($_POST)) {
 	$POSTJ = json_decode(file_get_contents('php://input'),true);
 
 	if(isset($POSTJ['action_type'])){
+		// Phase 3.48 (RBAC): default-deny guard for every action in this
+		// dispatcher - unknown/unauthorised actions get 403 + {result:'forbidden'} + audit log.
+		require_once(dirname(__FILE__) . '/authz.php');
+		taphish_require_authorize_or_die($conn, (string)$POSTJ['action_type'], ['engagement_id' => isset($POSTJ['engagement_id']) ? (int)$POSTJ['engagement_id'] : null]);
 
 		if(isSessionValid() == false){
 			$OPS = ['get_campaign_from_campaign_list_id','multi_get_mcampinfo_from_mcamp_list_id_get_live_mcamp_data','get_mail_replied','get_user_group_data'];	//public permitted requests
