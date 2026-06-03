@@ -1,6 +1,7 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/common_functions.php');
+require_once(dirname(__FILE__) . '/api_token.php'); // Phase 3.48: self-service API tokens
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 
 if(isSessionValid() == false)
@@ -29,6 +30,12 @@ if (isset($_POST)) {
 			deleteAccount($conn,$POSTJ['id']);
 			if($POSTJ['action_type'] == "set_user_role")
 				setUserRole($conn, $POSTJ['id'] ?? 0, $POSTJ['role'] ?? '');
+			if($POSTJ['action_type'] == "list_api_tokens")
+				listApiTokens($conn);
+			if($POSTJ['action_type'] == "mint_api_token")
+				mintApiToken($conn, $POSTJ['label'] ?? '');
+			if($POSTJ['action_type'] == "revoke_api_token")
+				revokeApiToken($conn, $POSTJ['id'] ?? 0);
 		if($POSTJ['action_type'] == "get_current_user")
 			getCurrentUser($conn);
 
@@ -371,6 +378,46 @@ function setUserRole($conn,$id,$role){
 	else
 		echo json_encode(['result' => 'failed', 'error' => 'Error updating role! '.$stmt->error]);
 	$stmt->close();
+}
+
+// Phase 3.48 (RBAC): per-operator API tokens. Self-service — every action
+// resolves the acting operator's id from the session, so a user can only ever
+// list/mint/revoke their OWN tokens (the backend revoke is owner-scoped too).
+function settingsCurrentUserId($conn){
+	$username = $_SESSION['username'] ?? '';
+	if($username === '') return 0;
+	$stmt = $conn->prepare("SELECT id FROM tb_main WHERE username=?");
+	if($stmt === false) return 0;
+	$stmt->bind_param('s', $username);
+	$stmt->execute();
+	$row = $stmt->get_result()->fetch_assoc();
+	$stmt->close();
+	return (int)($row['id'] ?? 0);
+}
+
+function listApiTokens($conn){
+	$uid = settingsCurrentUserId($conn);
+	if($uid <= 0){ echo json_encode(['result' => 'failed', 'error' => 'No active session.']); return; }
+	// Raw epoch seconds are formatted client-side (moment.js); no hashes leave the row.
+	echo json_encode(['result' => 'success', 'tokens' => taphish_api_token_list($conn, $uid)], JSON_INVALID_UTF8_IGNORE);
+}
+
+function mintApiToken($conn,$label){
+	$uid = settingsCurrentUserId($conn);
+	if($uid <= 0){ echo json_encode(['result' => 'failed', 'error' => 'No active session.']); return; }
+	$label = trim((string)$label);
+	if($label === ''){ echo json_encode(['result' => 'failed', 'error' => 'A label is required.']); return; }
+	$minted = taphish_api_token_mint($conn, $uid, $label);
+	if($minted === null){ echo json_encode(['result' => 'failed', 'error' => 'Could not create token.']); return; }
+	// The plaintext is returned exactly ONCE and is never recoverable again.
+	echo json_encode(['result' => 'success', 'id' => $minted['id'], 'token' => $minted['token']]);
+}
+
+function revokeApiToken($conn,$id){
+	$uid = settingsCurrentUserId($conn);
+	if($uid <= 0){ echo json_encode(['result' => 'failed', 'error' => 'No active session.']); return; }
+	$ok = taphish_api_token_revoke($conn, (int)$id, $uid);
+	echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Token not found or already revoked.']);
 }
 
 //----------------General Settings-----------
