@@ -600,8 +600,14 @@ function downloadUser($conn, $user_group_id){
 	    }
 
 	    fseek($f, 0);
+	    // Phase 3.46 broader sweep: quoted+escaped filename so a group
+	    // name with spaces / semicolons / quotes doesn't produce a
+	    // malformed header. header_remove to clear the dispatcher's
+	    // earlier application/json header.
+	    $safeName = addcslashes((string) $row['user_group_name'], '"\\');
+	    header_remove('Content-Type');
 	    header('Content-Type: text/csv');
-	    header('Content-Disposition: attachment; filename='.$row['user_group_name']);
+	    header('Content-Disposition: attachment; filename="' . $safeName . '.csv"');
 	    fpassthru($f);
 	}
 	else
