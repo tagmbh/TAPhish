@@ -1,6 +1,11 @@
 <?php
    require_once(dirname(__FILE__) . '/manager/session_manager.php');
    isSessionValid(true);
+   require_once(dirname(__FILE__) . '/manager/authz.php'); // Phase 3.48: gate the user-admin block
+   // Fail closed: only a confirmed super-admin sees the account-management UI.
+   // (Profile + 2FA below stay visible to every operator — those are self-service.)
+   $canManageUsers = (function_exists('taphish_can') && isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof \mysqli)
+      ? taphish_can($GLOBALS['conn'], 'manage_users') : false;
 ?>
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
@@ -92,6 +97,7 @@
                              </div>
                           </div>
                      </div>
+                     <?php if ($canManageUsers): ?>
                      <hr/>
 
                      <div class="row">
@@ -131,6 +137,7 @@
                            </div>
                         </div>
                      </div>
+                     <?php endif; ?>
                   </div>
                   <!-- Phase 3.25: Two-factor authentication -->
                   <div class="card">

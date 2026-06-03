@@ -1,9 +1,27 @@
 <?php
    require_once(dirname(__FILE__) . '/manager/csrf.php');
+   require_once(dirname(__FILE__) . '/manager/authz.php'); // Phase 3.48: role-gated nav
    csrf_emit_script_tag();
    echo '<script>window.TAPHISH_MUST_CHANGE_PWD = '
       . (!empty($GLOBALS['TAPHISH_MUST_CHANGE_PWD']) ? 'true' : 'false')
       . ';</script>';
+   /*
+    * Phase 3.48 (RBAC): hide nav entries the current operator can't use. This
+    * is UX only — the dispatcher guard is the real boundary. Falls open (shows
+    * the entry) if authz/$conn aren't resolvable, so nav never breaks.
+    */
+   $nav_conn = $GLOBALS['conn'] ?? null;
+   // Resolve the operator's global role once, then decide nav purely (no extra
+   // queries per item). The gated entries are all global-role tiers — none need
+   // engagement context.
+   $nav_role = (function_exists('taphish_current_user_role') && ($nav_conn instanceof \mysqli))
+      ? taphish_current_user_role($nav_conn) : null;
+   $nav_can  = function (string $action) use ($nav_role): bool {
+      if ($nav_role === null || !function_exists('taphish_policy_allows')) {
+         return true; // fall open — the dispatcher guard is the real boundary
+      }
+      return taphish_policy_allows($action, $nav_role);
+   };
 ?>
 <header class="topbar" data-navbarbg="skin5">
    <nav class="navbar top-navbar navbar-expand-md navbar-dark">
@@ -52,12 +70,13 @@
          <ul class="navbar-nav float-left mr-auto">
             <li class="nav-item d-none d-md-block"><a class="nav-link sidebartoggler waves-effect waves-light" href="javascript:void(0)" data-sidebartype="mini-sidebar"><i class="mdi mdi-menu font-24"></i></a></li>
             <!-- ============================================================== -->
-            <!-- create new -->
+            <!-- create new (Phase 3.48: operator+ only — every item is a mutation) -->
             <!-- ============================================================== -->
+            <?php if ($nav_can('save_engagement')): ?>
             <li class="nav-item dropdown">
                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                <span class="d-none d-md-block">Create New <i class="fa fa-angle-down"></i></span>
-               <span class="d-block d-md-none"><i class="fa fa-plus"></i></span>   
+               <span class="d-block d-md-none"><i class="fa fa-plus"></i></span>
                </a>
                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                   <a class="dropdown-item" href="/spear/QuickTracker">Quick Tracker</a>
@@ -69,6 +88,7 @@
                   <a class="dropdown-item" href="/spear/MailSender?action=add&sender=new">Email Sender List</a>
                </div>
             </li>
+            <?php endif; ?>
          </ul>
          <!-- ============================================================== -->
          <!-- Right side toggle and nav items -->
@@ -170,8 +190,15 @@
                <ul aria-expanded="false" class="collapse  first-level">
                   <li class="sidebar-item"><a href="/spear/SettingsGeneral" class="sidebar-link"><i class="mdi mdi-settings"></i><span class="hide-menu"> General Settings </span></a></li>
                   <li class="sidebar-item"><a href="/spear/SettingsUser" class="sidebar-link"><i class="mdi mdi-account-settings-variant"></i><span class="hide-menu"> User Settings </span></a></li>
+                  <?php if ($nav_can('mint_api_token')): ?>
+                  <li class="sidebar-item"><a href="/spear/SettingsApiTokens" class="sidebar-link"><i class="mdi mdi-key-variant"></i><span class="hide-menu"> API Tokens </span></a></li>
+                  <?php endif; ?>
+                  <?php if ($nav_can('audit_log_query')): ?>
                   <li class="sidebar-item"><a href="/spear/SettingsAuditLog" class="sidebar-link"><i class="mdi mdi-clipboard-text-clock"></i><span class="hide-menu"> Audit Log </span></a></li>
+                  <?php endif; ?>
+                  <?php if ($nav_can('get_logs')): ?>
                   <li class="sidebar-item"><a href="/spear/SPLogs" class="sidebar-link"><i class="mdi mdi-note-text"></i><span class="hide-menu"> Logs </span></a></li>
+                  <?php endif; ?>
                   <li class="sidebar-item"><a href="/spear/SPAbout" class="sidebar-link"><i class="mdi mdi-information"></i><span class="hide-menu"> About </span></a></li>
                </ul>
             </li>
