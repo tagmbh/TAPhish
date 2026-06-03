@@ -52,9 +52,13 @@ if (!function_exists('audit_log_normalize_filters')) {
 
         $limit  = (int) ($in['limit']  ?? 100);
         $offset = (int) ($in['offset'] ?? 0);
-        if ($limit < 1)   $limit  = 1;
-        if ($limit > 500) $limit  = 500;
-        if ($offset < 0)  $offset = 0;
+        if ($limit < 1)     $limit  = 1;
+        // Phase 3.51 review fix: the export endpoint needs a higher
+        // ceiling than the interactive viewer. Cap at 10_000 (vs. the
+        // viewer's effective max of 500) so the CSV export doesn't
+        // silently truncate when a classifier filter is active.
+        if ($limit > 10000) $limit  = 10000;
+        if ($offset < 0)    $offset = 0;
 
         return [
             'kind'      => $kind,
@@ -166,9 +170,11 @@ if (!function_exists('audit_log_query')) {
         }
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        // Over-fetch when classifier filter is active.
+        // Over-fetch when classifier filter is active. Ceiling matches
+        // the normalize cap (10_000) so a high-limit export with a
+        // classifier filter genuinely gets all matching rows.
         $fetchLimit = ($f['kind'] !== null || $f['severity'] !== null)
-            ? min(500, $f['limit'] * 4)
+            ? min(10000, max($f['limit'] * 4, $f['limit']))
             : $f['limit'];
 
         $sql = "SELECT username, log, ip, date

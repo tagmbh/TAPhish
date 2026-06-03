@@ -110,13 +110,21 @@
         post(payload)
             .done(function (d) {
                 if (d && d.result === 'success') {
+                    // Phase 3.46 review fix: build the success message
+                    // with DOM APIs so a tampered/malformed d.path can
+                    // never break out of the href attribute.
                     var openUrl = location.origin + '/' + (d.path || '');
-                    $('#clone_result').html(
-                        '<div class="alert alert-success small">' +
-                        '<strong>Cloned.</strong> ' + d.files + ' file(s) written to <code>' + esc(d.path) + '</code>. ' +
-                        '<a href="' + openUrl + '" target="_blank" rel="noopener noreferrer">Open the landing page</a>' +
-                        ' &middot; <a href="SiteCloner">Manage clones</a>' +
-                        '</div>'
+                    var $a = $('<a target="_blank" rel="noopener noreferrer">Open the landing page</a>')
+                        .attr('href', openUrl);
+                    $('#clone_result').empty().append(
+                        $('<div class="alert alert-success small">')
+                            .append($('<strong>Cloned.</strong> '))
+                            .append(document.createTextNode((d.files | 0) + ' file(s) written to '))
+                            .append($('<code>').text(d.path || ''))
+                            .append(document.createTextNode('. '))
+                            .append($a)
+                            .append(document.createTextNode(' · '))
+                            .append($('<a href="SiteCloner">').text('Manage clones'))
                     );
                     if (window.toastr) toastr.success('Library entry cloned', d.slug);
                 } else {

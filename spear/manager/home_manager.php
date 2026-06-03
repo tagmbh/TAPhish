@@ -33,8 +33,19 @@ if (isset($_POST)) {
 		// the Home page widget. Returns degraded states (not_configured /
 		// unreachable / auth_failed) so the UI can give a useful chip
 		// rather than a red error.
+		//
+		// Phase 3.52 review fix: dedupe audit-log entries via $_SESSION
+		// cache so polling doesn't drown legitimate operator-visible
+		// events. Out-of-scope hooks log once per (hook_id, session);
+		// in-scope hooks never log (they're observable on the dashboard
+		// and the activity feed already carries them via the BEEF
+		// classifier kind). Renamed `err` -> `error` to match the
+		// {result, error} shape every other dispatcher uses.
 		if($POSTJ['action_type'] == "beef_list_hooks") {
 			require_once(dirname(__FILE__) . '/beef_integration.php');
+			if (!isset($_SESSION['beef_poll_log_seen']) || !is_array($_SESSION['beef_poll_log_seen'])) {
+				$_SESSION['beef_poll_log_seen'] = [];
+			}
 			$s = beef_settings_load($conn);
 			if ($s === null || $s['base_url'] === '') {
 				echo json_encode([
@@ -47,42 +58,51 @@ if (isset($_POST)) {
 				if (!$auth['ok']) {
 					$state = stripos($auth['err'], 'rejected') !== false
 						? 'auth_failed' : 'unreachable';
-					if (function_exists('logIt')) {
+					// Poll-failure logging is rate-limited per session
+					// to one entry per minute so a dead BeEF doesn't
+					// flood the audit log.
+					$now = time();
+					$last = (int) ($_SESSION['beef_poll_last_err_log'] ?? 0);
+					if (function_exists('logIt') && ($now - $last) > 60) {
 						logIt('BeEF poll failed: ' . $auth['err']);
+						$_SESSION['beef_poll_last_err_log'] = $now;
 					}
 					echo json_encode([
 						'result' => 'success',
 						'state'  => $state,
-						'err'    => $auth['err'],
+						'error'  => 'BeEF unavailable',
 						'hooks'  => [],
 					]);
 				} else {
 					$list = beef_list_hooked_browsers($s['base_url'], $auth['token']);
 					if (!$list['ok']) {
-						if (function_exists('logIt')) {
+						$now = time();
+						$last = (int) ($_SESSION['beef_poll_last_err_log'] ?? 0);
+						if (function_exists('logIt') && ($now - $last) > 60) {
 							logIt('BeEF poll failed: ' . $list['err']);
+							$_SESSION['beef_poll_last_err_log'] = $now;
 						}
 						echo json_encode([
 							'result' => 'success',
 							'state'  => 'unreachable',
-							'err'    => $list['err'],
+							'error'  => 'BeEF unavailable',
 							'hooks'  => [],
 						]);
 					} else {
 						$scope  = beef_collect_active_scope($conn);
 						$tagged = beef_tag_hooks_with_scope($list['hooks'], $scope);
-						// Audit-log out-of-scope hooks once per poll. Identity is
-						// (hook id) which BeEF reuses across polls, so a hook that's
-						// seen for 10 polls only logs once per session anyway because
-						// the activity feed is rate-limited downstream.
+						// Out-of-scope hooks log ONCE per (hook id, session) —
+						// in-scope hooks don't log routinely. The dashboard
+						// widget surfaces both; the audit log is reserved for
+						// security-interesting events.
 						if (function_exists('logIt')) {
 							foreach ($tagged as $t) {
-								if (!$t['in_scope']) {
+								if ($t['in_scope']) continue;
+								$key = 'oos:' . $t['id'];
+								if (!isset($_SESSION['beef_poll_log_seen'][$key])) {
 									logIt('BeEF hook out-of-scope: id=' . $t['id']
 										. ' on ' . $t['domain']);
-								} else {
-									logIt('BeEF hook observed: id=' . $t['id']
-										. ' on ' . $t['domain']);
+									$_SESSION['beef_poll_log_seen'][$key] = true;
 								}
 							}
 						}

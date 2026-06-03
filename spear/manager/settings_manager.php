@@ -90,7 +90,17 @@ if (isset($_POST)) {
 					$pass = $existing ? $existing['password'] : '';
 				}
 				$ok = beef_settings_save($conn, $base, $user, $pass);
-				echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Could not save credentials']);
+				if (!$ok) {
+					// beef_settings_save refuses to write plaintext when
+					// the at-rest envelope is unavailable. Tell the
+					// operator what to fix.
+					echo json_encode([
+						'result' => 'failed',
+						'error'  => 'Could not save credentials — at-rest encryption key not configured. Check spear/storage/at-rest-key.bin.',
+					]);
+				} else {
+					echo json_encode(['result' => 'success']);
+				}
 				if ($ok) logIt('BeEF integration credentials updated');
 			}
 		}

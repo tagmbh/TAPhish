@@ -61,16 +61,54 @@ if (!function_exists('landing_library_substitute_placeholders')) {
      */
     function landing_library_substitute_placeholders(string $html, string $postUrl, string $trackerUrl = ''): string
     {
-        $html = str_replace('{{POST_URL}}', htmlspecialchars($postUrl, ENT_QUOTES, 'UTF-8'), $html);
+        // Phase 3.46 review fix: two substitution contexts:
+        //
+        //   - HTML attribute (<script src="{{TRACKER_URL}}">): needs
+        //     htmlspecialchars so quotes / angle brackets can't break
+        //     out of the attribute.
+        //   - JS string literal (var POST_URL = "{{POST_URL}}"): needs
+        //     JSON-style backslash escapes; htmlspecialchars there
+        //     would turn "&" into "&amp;" inside the JS string, which
+        //     then becomes the wrong URL at runtime.
+        //
+        // We swap each placeholder twice — once for the HTML-attr form
+        // ({{POST_URL_ATTR}} / {{TRACKER_URL_ATTR}}), once for the JS
+        // form (default {{POST_URL}} / {{TRACKER_URL}}). Templates use
+        // whichever variant matches their context.
+        $postJs   = landing_library_js_string_escape($postUrl);
+        $postAttr = htmlspecialchars($postUrl, ENT_QUOTES, 'UTF-8');
+        $html = str_replace('{{POST_URL}}',      $postJs,   $html);
+        $html = str_replace('{{POST_URL_ATTR}}', $postAttr, $html);
+
         if ($trackerUrl === '') {
-            // Strip the entire wrapped tracker tag so we don't leave
-            // a dangling src="" that 404s in the browser console.
-            $html = preg_replace('#<script[^>]*data-tracker[^>]*src="\{\{TRACKER_URL\}\}"[^>]*></script>#i', '', $html) ?? $html;
-            $html = str_replace('{{TRACKER_URL}}', '', $html);
+            // Strip the entire wrapped tracker tag so we don't leave a
+            // dangling src="" that 404s in the browser console.
+            $html = preg_replace('#<script[^>]*data-tracker[^>]*src="\{\{TRACKER_URL(?:_ATTR)?\}\}"[^>]*></script>#i', '', $html) ?? $html;
+            $html = str_replace(['{{TRACKER_URL}}', '{{TRACKER_URL_ATTR}}'], '', $html);
         } else {
-            $html = str_replace('{{TRACKER_URL}}', htmlspecialchars($trackerUrl, ENT_QUOTES, 'UTF-8'), $html);
+            $trackJs   = landing_library_js_string_escape($trackerUrl);
+            $trackAttr = htmlspecialchars($trackerUrl, ENT_QUOTES, 'UTF-8');
+            $html = str_replace('{{TRACKER_URL}}',      $trackJs,   $html);
+            $html = str_replace('{{TRACKER_URL_ATTR}}', $trackAttr, $html);
         }
         return $html;
+    }
+}
+
+if (!function_exists('landing_library_js_string_escape')) {
+    /**
+     * Escape a value for use inside a JavaScript double-quoted string
+     * literal. Backslash + double-quote + line breaks + the < which
+     * could be the start of </script>.
+     */
+    function landing_library_js_string_escape(string $s): string
+    {
+        $s = str_replace('\\', '\\\\', $s);
+        $s = str_replace('"',  '\\"',  $s);
+        $s = str_replace("\r", '\\r',  $s);
+        $s = str_replace("\n", '\\n',  $s);
+        $s = str_replace('<',  '\\u003c', $s);  // defuse </script>
+        return $s;
     }
 }
 
@@ -164,6 +202,14 @@ if (!function_exists('landing_library_clone_to_path')) {
     ): array {
         $libraryRoot = $libraryRoot ?? landing_library_root();
         $clonesRoot  = $clonesRoot  ?? landing_library_clones_root();
+        // Phase 3.46 review fix: source_slug used to flow straight from
+        // $POSTJ into a filesystem path. Validate against the same
+        // allowlist as destSlug (a-z, 0-9, dash, max 61) so "../../etc"
+        // can't escape the library root.
+        $sourceSlug = trim($sourceSlug);
+        if (!preg_match('/^[a-z0-9][a-z0-9-]{0,60}$/', $sourceSlug)) {
+            return ['ok' => false, 'err' => 'Source slug must be a-z, 0-9, dash; max 61 chars'];
+        }
         $src = $libraryRoot . '/' . $sourceSlug;
         if (!is_dir($src) || !is_file($src . '/meta.json')) {
             return ['ok' => false, 'err' => 'Library entry not found'];

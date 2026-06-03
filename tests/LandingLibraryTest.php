@@ -84,10 +84,13 @@ final class LandingLibraryTest extends TestCase
         self::assertStringContainsString('<body>hi</body>', $out);
     }
 
-    public function testEscapesUrlsThatContainHtmlMetacharacters(): void
+    public function testEscapesUrlsThatContainHtmlMetacharactersInAttrContext(): void
     {
+        // {{POST_URL_ATTR}} is the attribute-context variant; HTML
+        // entity encoding applies there (the JS-context default does
+        // JS-string escaping instead — covered by separate tests).
         $out = landing_library_substitute_placeholders(
-            '<form action="{{POST_URL}}"></form>',
+            '<form action="{{POST_URL_ATTR}}"></form>',
             'https://op.example/?a=1&b="><x>'
         );
         self::assertStringNotContainsString('"><x>', $out);
@@ -222,5 +225,54 @@ final class LandingLibraryTest extends TestCase
         $r = landing_library_clone_to_path('nope', 'fresh', 'p', '', false, $this->root, $this->clones);
         self::assertFalse($r['ok']);
         self::assertStringContainsString('not found', $r['err']);
+    }
+
+    // ---- review sweep regression tests ----------------------------------
+
+    public function testCloneRejectsPathTraversalInSourceSlug(): void
+    {
+        $this->writeTemplate('legit', ['name' => 'x'], ['index.html' => '']);
+        foreach (['../etc', '../../usr', '/etc/passwd', 'foo/../bar'] as $bad) {
+            $r = landing_library_clone_to_path($bad, 'fresh', 'p', '', false, $this->root, $this->clones);
+            self::assertFalse($r['ok'], "expected reject for source: $bad");
+            self::assertStringContainsString('Source slug', $r['err']);
+        }
+    }
+
+    public function testSubstitutePostUrlDoesNotDoubleEncodeAmpersandForJsContext(): void
+    {
+        $html = 'var POST_URL = "{{POST_URL}}";';
+        $out = landing_library_substitute_placeholders($html, 'https://h/track?a=1&b=2');
+        self::assertStringContainsString('var POST_URL = "https://h/track?a=1&b=2";', $out);
+        self::assertStringNotContainsString('&amp;', $out);
+    }
+
+    public function testSubstitutePostUrlEscapesAttrContext(): void
+    {
+        $html = '<form action="{{POST_URL_ATTR}}">';
+        $out = landing_library_substitute_placeholders($html, 'a"><script>b');
+        self::assertStringNotContainsString('"><script>', $out);
+    }
+
+    public function testSubstituteJsEscapesClosingScriptTagInjection(): void
+    {
+        $html = 'var X = "{{POST_URL}}";';
+        $out = landing_library_substitute_placeholders($html, 'a</script>b');
+        self::assertStringNotContainsString('</script>', $out);
+    }
+
+    public function testSubstituteJsEscapesBackslashAndQuote(): void
+    {
+        $html = 'var X = "{{POST_URL}}";';
+        $out = landing_library_substitute_placeholders($html, 'a\\b"c');
+        self::assertStringContainsString('var X = "a\\\\b\\"c";', $out);
+    }
+
+    public function testSubstituteStripsTrackerTagForBothAttrAndJsPlaceholders(): void
+    {
+        $h1 = '<body><script data-tracker src="{{TRACKER_URL}}"></script>x</body>';
+        self::assertStringNotContainsString('data-tracker', landing_library_substitute_placeholders($h1, 'p'));
+        $h2 = '<body><script data-tracker src="{{TRACKER_URL_ATTR}}"></script>x</body>';
+        self::assertStringNotContainsString('data-tracker', landing_library_substitute_placeholders($h2, 'p'));
     }
 }

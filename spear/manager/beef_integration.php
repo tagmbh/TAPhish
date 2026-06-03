@@ -352,15 +352,26 @@ if (!function_exists('beef_settings_save')) {
      *
      * @return bool whether the row was successfully written
      */
-    function beef_settings_save(\mysqli $conn, string $baseUrl, string $username, string $password): bool
+    function beef_settings_save(\mysqli $conn, string $baseUrl, string $username, string $password, bool $allowPlaintext = false): bool
     {
-        $payload = beef_settings_serialize($baseUrl, $username, $password);
+        $payload   = beef_settings_serialize($baseUrl, $username, $password);
+        $encrypted = false;
         if (function_exists('secret_at_rest_get_key') && function_exists('secret_at_rest_encrypt')) {
             $key = secret_at_rest_get_key();
             if ($key !== null) {
                 $enc = secret_at_rest_encrypt($payload, $key);
-                if ($enc !== null) $payload = $enc;
+                if ($enc !== null) {
+                    $payload = $enc;
+                    $encrypted = true;
+                }
             }
+        }
+        // Phase 3.52 review fix: refuse the plaintext fallback unless
+        // the caller explicitly opted in. A misconfigured at-rest key
+        // used to silently write the BeEF password in plaintext into
+        // tb_store, which an SQL-read compromise would surface.
+        if (!$encrypted && !$allowPlaintext) {
+            return false;
         }
         $del = $conn->prepare("DELETE FROM tb_store WHERE type='beef_integration' AND name='credentials'");
         if ($del !== false) {
@@ -524,19 +535,36 @@ if (!function_exists('taphish_clone_meta_upsert')) {
     {
         $slug = trim($slug);
         if ($slug === '') return false;
-        $now    = (int) (microtime(true) * 1000);
-        $flag   = $beefHookEnabled ? 1 : 0;
-        $stmt = $conn->prepare(
-            "INSERT INTO tb_data_clone_meta
-               (slug, beef_hook_enabled, engagement_id, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-               beef_hook_enabled = VALUES(beef_hook_enabled),
-               engagement_id     = VALUES(engagement_id),
-               updated_at        = VALUES(updated_at)"
-        );
-        if ($stmt === false) return false;
-        $stmt->bind_param('siiii', $slug, $flag, $engagementId, $now, $now);
+        $now  = (int) (microtime(true) * 1000);
+        $flag = $beefHookEnabled ? 1 : 0;
+        // Phase 3.52 review fix: mysqli bind_param('i', null) sends 0 to
+        // the server, not SQL NULL — silent data corruption. Use a
+        // conditional prepare so the NULL path passes a literal NULL.
+        if ($engagementId === null) {
+            $stmt = $conn->prepare(
+                "INSERT INTO tb_data_clone_meta
+                   (slug, beef_hook_enabled, engagement_id, created_at, updated_at)
+                 VALUES (?, ?, NULL, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                   beef_hook_enabled = VALUES(beef_hook_enabled),
+                   engagement_id     = VALUES(engagement_id),
+                   updated_at        = VALUES(updated_at)"
+            );
+            if ($stmt === false) return false;
+            $stmt->bind_param('siii', $slug, $flag, $now, $now);
+        } else {
+            $stmt = $conn->prepare(
+                "INSERT INTO tb_data_clone_meta
+                   (slug, beef_hook_enabled, engagement_id, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                   beef_hook_enabled = VALUES(beef_hook_enabled),
+                   engagement_id     = VALUES(engagement_id),
+                   updated_at        = VALUES(updated_at)"
+            );
+            if ($stmt === false) return false;
+            $stmt->bind_param('siiii', $slug, $flag, $engagementId, $now, $now);
+        }
         $ok = $stmt->execute();
         $stmt->close();
         return (bool) $ok;
