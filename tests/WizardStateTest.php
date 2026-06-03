@@ -81,5 +81,31 @@ final class WizardStateTest extends TestCase
     {
         self::assertTrue(function_exists('taphish_engagement_ensure_wizard_columns'));
         self::assertTrue(function_exists('taphish_engagement_set_wizard_progress'));
+        self::assertTrue(function_exists('taphish_wizard_resume_payload'));
+    }
+
+    public function testResumePayloadFreshStartOnNullOrEmptyRow(): void
+    {
+        $fresh = ['id' => 0, 'step' => 1, 'state' => '{}'];
+        self::assertSame($fresh, taphish_wizard_resume_payload(null));
+        self::assertSame($fresh, taphish_wizard_resume_payload([]));
+    }
+
+    public function testResumePayloadReadsRowAndClampsStep(): void
+    {
+        $p = taphish_wizard_resume_payload(['id' => '42', 'wizard_step' => 4, 'wizard_state' => '{"step":4}']);
+        self::assertSame(42, $p['id']);
+        self::assertSame(4, $p['step']);
+        self::assertSame('{"step":4}', $p['state']);
+
+        self::assertSame(1, taphish_wizard_resume_payload(['id' => 1, 'wizard_step' => 0])['step']);
+        self::assertSame(7, taphish_wizard_resume_payload(['id' => 1, 'wizard_step' => 50])['step']);
+    }
+
+    public function testResumePayloadDefaultsBlankStateToEmptyObject(): void
+    {
+        self::assertSame('{}', taphish_wizard_resume_payload(['id' => 1, 'wizard_step' => 2])['state']);
+        self::assertSame('{}', taphish_wizard_resume_payload(['id' => 1, 'wizard_step' => 2, 'wizard_state' => ''])['state']);
+        self::assertSame('{}', taphish_wizard_resume_payload(['id' => 1, 'wizard_state' => null])['state']);
     }
 }

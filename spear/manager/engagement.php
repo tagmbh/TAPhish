@@ -597,3 +597,29 @@ if (!function_exists('taphish_engagement_set_wizard_progress')) {
         return $ok && $changed;
     }
 }
+
+if (!function_exists('taphish_wizard_resume_payload')) {
+    /**
+     * Phase 3.56: shape an engagement row into the small payload QuickStart
+     * needs to resume the wizard — id, clamped step (1..7), and the raw
+     * (already-normalized) state JSON. Pure; a null/empty row yields a
+     * fresh-start payload so the page renders Step 1.
+     *
+     * @return array{id:int, step:int, state:string}
+     */
+    function taphish_wizard_resume_payload(?array $eng): array
+    {
+        if (!$eng || !isset($eng['id'])) {
+            return ['id' => 0, 'step' => 1, 'state' => '{}'];
+        }
+        $step = (int) ($eng['wizard_step'] ?? 1);
+        if ($step < 1) $step = 1;
+        if ($step > 7) $step = 7;
+        $ws = $eng['wizard_state'] ?? '';
+        return [
+            'id'    => (int) $eng['id'],
+            'step'  => $step,
+            'state' => (is_string($ws) && $ws !== '') ? $ws : '{}',
+        ];
+    }
+}

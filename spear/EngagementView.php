@@ -57,6 +57,7 @@
                            </h5>
                            <div class="small text-muted" id="eng_meta">—</div>
                            <div class="small mt-2" id="eng_scope">—</div>
+                           <div class="mt-3" id="eng_continue_setup"></div>
                         </div>
                      </div>
                   </div>
