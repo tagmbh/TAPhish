@@ -1047,10 +1047,17 @@ a:focus-visible {
     z-index: 0;
 }
 .dim-panel .page-wrapper,
-.dim-panel .left-sidebar,
 .dim-panel .topbar {
     position: relative;
     z-index: 1;
+}
+/* The sidebar keeps the theme's position:absolute (z-index:10) — it's
+   already above the atmospheric ::before backdrop (z-index:0). Forcing
+   position:relative here (pre-fix) dropped it into normal document flow,
+   pushing every page's content down by the sidebar's full height. We
+   only bump its z-index, which works on the already-positioned element. */
+.dim-panel .left-sidebar {
+    z-index: 10;
 }
 
 /* Frosted glass on every surfaced card. */
