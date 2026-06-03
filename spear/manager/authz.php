@@ -228,7 +228,42 @@ if (!function_exists('taphish_authz_ensure_role_column')) {
             return;
         }
         @$conn->query("ALTER TABLE tb_main ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'operator'");
-        @$conn->query("UPDATE tb_main SET role = 'super-admin' WHERE username = 'admin'");
+        // Every account that existed before RBAC had full admin access, so
+        // promote ALL of them to super-admin — not just one named 'admin'.
+        // (An install whose operator is named e.g. 'TADD' would otherwise be
+        // silently demoted to operator and locked out of super-admin actions.)
+        @$conn->query("UPDATE tb_main SET role = 'super-admin'");
+    }
+}
+
+if (!function_exists('taphish_authz_ensure_initial_super_admins')) {
+    /**
+     * Phase 3.48 corrective (one-time, tb_store-gated): heals installs where an
+     * earlier build added the role column with an admin-ONLY promote, leaving
+     * pre-existing operators (not named 'admin') demoted to 'operator' and
+     * locked out of super-admin functions. Promotes every CURRENT account to
+     * super-admin once (they all had full access before RBAC); new accounts
+     * created afterward keep the 'operator' default. Runs once, then the flag
+     * row in tb_store stops it — so deliberately-demoted users stay demoted.
+     */
+    function taphish_authz_ensure_initial_super_admins(\mysqli $conn): void
+    {
+        if (!($conn instanceof \mysqli)) {
+            return;
+        }
+        $chk = @$conn->query("SELECT content FROM tb_store WHERE type='rbac' AND name='initial_promote' LIMIT 1");
+        if ($chk && $chk->fetch_row()) {
+            return; // already run
+        }
+        @$conn->query("UPDATE tb_main SET role = 'super-admin'");
+        $stmt = $conn->prepare(
+            "INSERT INTO tb_store (type, name, info, content)
+             VALUES ('rbac', 'initial_promote', 'Phase 3.48: one-time promote of pre-RBAC accounts to super-admin', '1')"
+        );
+        if ($stmt !== false) {
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 }
 
