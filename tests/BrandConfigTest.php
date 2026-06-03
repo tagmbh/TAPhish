@@ -28,6 +28,9 @@ final class BrandConfigTest extends TestCase
             ['BRAND_PRIMARY_COLOR'],
             ['BRAND_LOGO_ICON'],
             ['BRAND_LOGO_TEXT'],
+            ['BRAND_LOGO_TEXT_WHITE'],
+            ['BRAND_LOGO_FULL'],
+            ['BRAND_LOGO_MONO'],
             ['BRAND_FAVICON'],
         ];
     }

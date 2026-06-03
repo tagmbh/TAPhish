@@ -49,7 +49,7 @@
          <div class=" d-flex no-block justify-content-center align-items-center bg-dark">
             <div class="bg-dark border-top border-secondary">
                <div class="text-center p-t-20 p-b-20">
-                  <span class="db"><img src="images/brand/logo.svg" alt="TAPhish" style="max-width: 260px; height: auto;" /></span>
+                  <span class="db"><img src="images/brand/logo-text-white.svg" alt="TAPhish" style="max-width: 260px; height: auto;" /></span>
                </div>
             </div>
          </div>

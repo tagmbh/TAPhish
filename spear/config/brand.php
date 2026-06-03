@@ -7,9 +7,13 @@
  * without touching the rest of the codebase.
  *
  * Drop replacement logo files into spear/images/brand/ — keep the same
- * filenames (logo-icon.svg, logo-text.svg, logo.svg, favicon.png) and
- * they will be picked up automatically. SVG is preferred for crisp
- * rendering at any size; the favicon stays PNG for browser-old compat.
+ * filenames (logo-icon.svg, logo-text.svg, logo-text-white.svg, logo.svg,
+ * favicon.png) and they will be picked up automatically. SVG is preferred
+ * for crisp rendering at any size; the favicon stays PNG for browser-old compat.
+ *
+ * Dark "dim-panel" chrome (sidebar, login, change-password, about) uses the
+ * white wordmark (logo-text-white.svg); the blue wordmark (logo-text.svg) and
+ * the framed primary (logo.svg) are reserved for light/print surfaces.
  */
 
 if (!defined('BRAND_PRODUCT_NAME')) {
@@ -28,7 +32,9 @@ if (!defined('BRAND_PRODUCT_NAME')) {
     define('BRAND_LOGO_ICON',       'images/brand/logo-icon.svg');
     define('BRAND_LOGO_ICON_2X',    'images/brand/logo-icon.svg');
     define('BRAND_LOGO_TEXT',       'images/brand/logo-text.svg');
+    define('BRAND_LOGO_TEXT_WHITE', 'images/brand/logo-text-white.svg');
     define('BRAND_LOGO_FULL',       'images/brand/logo.svg');
+    define('BRAND_LOGO_MONO',       'images/brand/logo-mono.svg');
     define('BRAND_FAVICON',         'images/brand/favicon.png');
 }
 
