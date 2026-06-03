@@ -347,6 +347,11 @@ a:focus-visible {
 
 .dim-panel .topbar .navbar-brand img {
     filter: none;
+    /* The brand SVGs are viewBox-only (no intrinsic width/height), so an
+       <img> with no CSS size collapses to 0x0 inside the flex navbar-brand.
+       Pin the height and let width follow the viewBox aspect ratio. */
+    height: 36px;
+    width: auto;
 }
 
 .dim-panel .topbar .nav-link {
