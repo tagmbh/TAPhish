@@ -444,6 +444,30 @@ if (!function_exists('taphish_authorize')) {
     }
 }
 
+if (!function_exists('taphish_current_user_role')) {
+    /** Global role of the logged-in operator ('disabled' if no session). */
+    function taphish_current_user_role($conn): string
+    {
+        $u = (string) ($_SESSION['username'] ?? '');
+        return $u === '' ? 'disabled' : taphish_user_role($conn, $u);
+    }
+}
+
+if (!function_exists('taphish_can')) {
+    /**
+     * UI-side permission check: same decision as the guard but returns a bool
+     * instead of dying, so pages can hide controls the operator can't use.
+     * The guard remains the security boundary; this is UX only.
+     */
+    function taphish_can($conn, string $action, array $context = []): bool
+    {
+        if (!isset($context['username']) && isset($_SESSION['username'])) {
+            $context['username'] = $_SESSION['username'];
+        }
+        return taphish_authorize($conn, $action, $context);
+    }
+}
+
 if (!function_exists('taphish_require_authorize_or_die')) {
     /**
      * Dispatcher guard: allow → return; deny → audit-log + 403 +
