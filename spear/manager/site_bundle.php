@@ -42,6 +42,32 @@ if (!function_exists('site_bundle_is_substitutable')) {
     }
 }
 
+if (!function_exists('lookalike_list_clones')) {
+    /**
+     * Phase 3.55: available cloned landing pages — the immediate sub-directory
+     * names under the clones root (valid vanity slugs only), sorted. $clonesRoot
+     * is an injection seam for tests.
+     */
+    function lookalike_list_clones(?string $clonesRoot = null): array
+    {
+        $root = $clonesRoot !== null ? rtrim($clonesRoot, '/') : landing_library_clones_root();
+        if (!is_dir($root)) {
+            return [];
+        }
+        $out = [];
+        foreach (scandir($root) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            if (is_dir($root . '/' . $entry) && lookalike_validate_vanity_slug($entry)) {
+                $out[] = $entry;
+            }
+        }
+        sort($out);
+        return $out;
+    }
+}
+
 if (!function_exists('site_bundle_build')) {
     /**
      * Phase 3.55: build a downloadable zip of cloned/<slug>/ with POST/tracker

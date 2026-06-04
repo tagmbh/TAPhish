@@ -70,4 +70,13 @@ final class SiteBundleTest extends TestCase
         self::assertNull(site_bundle_build('Bad Slug', 'x', '', $this->clones));
         self::assertNull(site_bundle_build('does-not-exist', 'x', '', $this->clones));
     }
+
+    public function testListClones(): void
+    {
+        // A bare file + an invalid-slug dir must be ignored; only valid clone dirs listed.
+        mkdir($this->clones . '/vpn-portal', 0775, true);
+        mkdir($this->clones . '/Bad Dir', 0775, true);
+        file_put_contents($this->clones . '/loose.txt', 'x');
+        self::assertSame(['m365-login', 'vpn-portal'], lookalike_list_clones($this->clones));
+    }
 }
