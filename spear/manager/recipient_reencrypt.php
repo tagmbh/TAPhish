@@ -49,3 +49,80 @@ if (!function_exists('taphish_reencrypt_plan_user_data')) {
         ];
     }
 }
+
+if (!function_exists('taphish_reencrypt_run')) {
+    /**
+     * Walk rows, plan each, apply seals (unless dry-run), accumulate a summary.
+     *
+     * @param iterable $rows         each: ['user_group_id'=>mixed, 'user_data'=>?string]
+     * @param callable $applyUpdate  fn(mixed $id, string $sealed): bool
+     * @param array    $crypto       ['seal'=>callable,'unseal'=>callable,'isEnc'=>callable]
+     * @param bool     $dryRun
+     * @return array{scanned:int,skipped_empty:int,skipped_sealed:int,sealed:int,
+     *               suspect:int,errors:int,write_failures:int,
+     *               suspect_ids:array,error_ids:array,sealed_ids:array}
+     */
+    function taphish_reencrypt_run(iterable $rows, callable $applyUpdate, array $crypto, bool $dryRun): array
+    {
+        $cap = 50; // cap id lists for readable output; counts stay exact
+        $c   = [
+            'scanned'        => 0,
+            'skipped_empty'  => 0,
+            'skipped_sealed' => 0,
+            'sealed'         => 0,
+            'suspect'        => 0,
+            'errors'         => 0,
+            'write_failures' => 0,
+            'suspect_ids'    => [],
+            'error_ids'      => [],
+            'sealed_ids'     => [],
+        ];
+
+        $record = static function (array &$bucket, $id) use ($cap): void {
+            if (count($bucket) < $cap) {
+                $bucket[] = $id;
+            }
+        };
+
+        foreach ($rows as $row) {
+            $c['scanned']++;
+            $id   = $row['user_group_id'] ?? null;
+            $plan = taphish_reencrypt_plan_user_data(
+                $row['user_data'] ?? null,
+                $crypto['seal'],
+                $crypto['unseal'],
+                $crypto['isEnc']
+            );
+
+            switch ($plan['action']) {
+                case 'skip-empty':
+                    $c['skipped_empty']++;
+                    break;
+                case 'skip-sealed':
+                    $c['skipped_sealed']++;
+                    break;
+                case 'error':
+                    $c['errors']++;
+                    $record($c['error_ids'], $id);
+                    break;
+                case 'seal':
+                    if (!$dryRun) {
+                        if (!$applyUpdate($id, (string) $plan['sealed'])) {
+                            $c['write_failures']++;
+                            $record($c['error_ids'], $id);
+                            break;
+                        }
+                    }
+                    $c['sealed']++;
+                    $record($c['sealed_ids'], $id);
+                    if ($plan['suspect']) {
+                        $c['suspect']++;
+                        $record($c['suspect_ids'], $id);
+                    }
+                    break;
+            }
+        }
+
+        return $c;
+    }
+}

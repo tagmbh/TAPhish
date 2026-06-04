@@ -90,4 +90,83 @@ final class RecipientReencryptTest extends TestCase
         self::assertSame('error', $p['action']);
         self::assertNull($p['sealed']);
     }
+
+    public function testRunTalliesMixedBatch(): void
+    {
+        $c        = $this->crypto();
+        $existing = ($c['seal'])('[{"email":"x@y.com"}]');
+        $rows = [
+            ['user_group_id' => 1, 'user_data' => null],                       // skip-empty
+            ['user_group_id' => 2, 'user_data' => ''],                         // skip-empty
+            ['user_group_id' => 3, 'user_data' => $existing],                  // skip-sealed
+            ['user_group_id' => 4, 'user_data' => '[{"email":"a@b.com"}]'],    // seal
+            ['user_group_id' => 5, 'user_data' => 'garbage'],                  // seal + suspect
+        ];
+        $applied = [];
+        $apply   = function ($id, string $sealed) use (&$applied): bool {
+            $applied[$id] = $sealed;
+            return true;
+        };
+
+        $out = taphish_reencrypt_run($rows, $apply, $c, false);
+
+        self::assertSame(5, $out['scanned']);
+        self::assertSame(2, $out['skipped_empty']);
+        self::assertSame(1, $out['skipped_sealed']);
+        self::assertSame(2, $out['sealed']);
+        self::assertSame(1, $out['suspect']);
+        self::assertSame(0, $out['errors']);
+        self::assertSame(0, $out['write_failures']);
+        self::assertArrayHasKey(4, $applied);
+        self::assertArrayHasKey(5, $applied);
+        self::assertStringStartsWith('enc1:', $applied[4]);
+        self::assertContains(5, $out['suspect_ids']);
+    }
+
+    public function testDryRunWritesNothingButCounts(): void
+    {
+        $c       = $this->crypto();
+        $rows    = [['user_group_id' => 4, 'user_data' => '[{"email":"a@b.com"}]']];
+        $applied = [];
+        $apply   = function ($id, string $sealed) use (&$applied): bool {
+            $applied[$id] = $sealed;
+            return true;
+        };
+
+        $out = taphish_reencrypt_run($rows, $apply, $c, true);
+
+        self::assertSame(1, $out['sealed']);
+        self::assertSame([], $applied);
+    }
+
+    public function testWriteFailureCountedNotSealed(): void
+    {
+        $c     = $this->crypto();
+        $rows  = [['user_group_id' => 4, 'user_data' => '[{"email":"a@b.com"}]']];
+        $apply = static fn ($id, string $sealed): bool => false;
+
+        $out = taphish_reencrypt_run($rows, $apply, $c, false);
+
+        self::assertSame(0, $out['sealed']);
+        self::assertSame(1, $out['write_failures']);
+    }
+
+    public function testErrorRowDoesNotWrite(): void
+    {
+        $c         = $this->crypto();
+        $badCrypto = ['seal' => static fn (string $pt): string => $pt, 'unseal' => $c['unseal'], 'isEnc' => $c['isEnc']];
+        $rows      = [['user_group_id' => 9, 'user_data' => '[{"email":"a@b.com"}]']];
+        $applied   = [];
+        $apply     = function ($id, string $sealed) use (&$applied): bool {
+            $applied[$id] = $sealed;
+            return true;
+        };
+
+        $out = taphish_reencrypt_run($rows, $apply, $badCrypto, false);
+
+        self::assertSame(1, $out['errors']);
+        self::assertSame(0, $out['sealed']);
+        self::assertSame([], $applied);
+        self::assertContains(9, $out['error_ids']);
+    }
 }
