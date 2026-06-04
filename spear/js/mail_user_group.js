@@ -258,10 +258,11 @@ function saveUserGroup(e) {
     $.post({
         url: "manager/userlist_campaignlist_mailtemplate_manager",
         contentType: 'application/json; charset=utf-8',
-        data: JSON.stringify({ 
+        data: JSON.stringify({
             action_type: "save_user_group",
             user_group_id: nextRandomId,
-            user_group_name: $('#user_group_name').val().trim()
+            user_group_name: $('#user_group_name').val().trim(),
+            engagement_id: parseInt($('#ug_engagement').val(), 10) || 0
         })
     }).done(function (response) {
         if(response.result == "success"){
@@ -270,10 +271,31 @@ function saveUserGroup(e) {
             g_deny_navigation = null;
         }
         else
-            toastr.error('', 'Error saving data!');
+            toastr.error('', response.error || 'Error saving data!');
         enableDisableMe(e);
-    }); 
+    });
 }
+
+// Phase 3.48b: fill the engagement selector on the create form with the
+// engagements the operator can see (super-admin sees all). Recipient lists must
+// be scoped to one.
+function loadEngagementOptions() {
+    if ($('#ug_engagement').length === 0) return;
+    $.post({
+        url: "manager/userlist_campaignlist_mailtemplate_manager",
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({ action_type: "list_engagements" })
+    }).done(function (response) {
+        if (response && response.result === "success" && response.engagements) {
+            var $sel = $('#ug_engagement');
+            $.each(response.engagements, function (i, eng) {
+                $sel.append($('<option>').val(eng.id).text(eng.name || ('Engagement #' + eng.id)));
+            });
+        }
+    });
+}
+
+$(function () { loadEngagementOptions(); });
 
 function getUserGroupFromGroupId(id) {
     if (id == "new") {

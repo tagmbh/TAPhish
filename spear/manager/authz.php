@@ -29,12 +29,13 @@ if (!defined('TAPHISH_POLICY')) {
      *   engagement_member/owner  engagement-level actions that carry engagement_id
      * Default-deny: anything not listed is forbidden.
      *
-     * NOTE (requirement #4, partial): per-engagement PII isolation is enforced
-     * for engagement-level actions that carry engagement_id; recipient/user-
-     * group actions are limited to operator+ (not read-only) but are NOT yet
-     * per-engagement scoped because tb_core_mailcamp_user_group has no
-     * engagement_id column. Closing that fully needs a follow-up migration —
-     * tracked as deferred PII-isolation hardening.
+     * NOTE (requirement #4, DONE in Phase 3.48b): per-engagement PII isolation
+     * now covers recipient lists too. tb_core_mailcamp_user_group carries an
+     * engagement_id; these operator+ actions additionally enforce ROW-LEVEL
+     * scoping inside their handlers (taphish_user_group_scope_where for lists,
+     * taphish_user_group_guard_or_die for single-row ops, taphish_user_group_
+     * can_stamp on create) since they don't carry an engagement_id in the
+     * request. NULL engagement_id = legacy/unscoped = visible to all operators.
      */
     define('TAPHISH_POLICY', [
         // --- abstract actions used by the future super-admin pages (task 6) ---
@@ -159,7 +160,8 @@ if (!defined('TAPHISH_POLICY')) {
         'osint_shodan_host'            => ['super-admin', 'operator'],
         'web_fingerprint'              => ['super-admin', 'operator'],
         'run_toolset_checks'           => ['super-admin', 'operator'],
-        // recipient / user-group (PII — operator+; see requirement #4 note)
+        // recipient / user-group (PII — operator+, additionally row-scoped per
+        // engagement inside the handlers; see requirement #4 note above)
         'get_user_group_list'                => ['super-admin', 'operator'],
         'get_user_group_from_group_Id_table' => ['super-admin', 'operator'],
         'save_user_group'                    => ['super-admin', 'operator'],
@@ -668,5 +670,139 @@ if (!function_exists('taphish_require_authorize_or_die')) {
             'error'  => 'You do not have permission to perform this action.',
         ]);
         exit;
+    }
+}
+
+if (!function_exists('taphish_user_group_visible')) {
+    /**
+     * Phase 3.48b (per-engagement PII isolation). Pure: may a user with this
+     * global role + engagement memberships see/act on a recipient user-group
+     * carrying this engagement_id? super-admin sees all; disabled sees nothing;
+     * a NULL engagement_id is a legacy/unscoped group visible to any operator
+     * (decision #1 — no lockout on deploy); a scoped group is visible only to
+     * members of that engagement.
+     */
+    function taphish_user_group_visible(?int $groupEngagementId, string $role, array $memberIds): bool
+    {
+        if ($role === 'disabled') {
+            return false;
+        }
+        if ($role === 'super-admin') {
+            return true;
+        }
+        if ($groupEngagementId === null) {
+            return true;
+        }
+        return in_array((int) $groupEngagementId, array_map('intval', $memberIds), true);
+    }
+}
+
+if (!function_exists('taphish_user_engagement_ids')) {
+    /** Phase 3.48b: engagement ids the user belongs to (tb_core_engagement_member ⋈ tb_main). */
+    function taphish_user_engagement_ids(\mysqli $conn, string $username): array
+    {
+        if (!($conn instanceof \mysqli) || $username === '') {
+            return [];
+        }
+        $stmt = $conn->prepare(
+            "SELECT m.engagement_id FROM tb_core_engagement_member m
+             JOIN tb_main u ON u.id = m.user_id WHERE u.username = ?"
+        );
+        if ($stmt === false) {
+            return [];
+        }
+        $stmt->bind_param('s', $username);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $ids = [];
+        while ($r = $res->fetch_assoc()) {
+            $ids[] = (int) $r['engagement_id'];
+        }
+        $stmt->close();
+        return $ids;
+    }
+}
+
+if (!function_exists('taphish_user_group_guard_or_die')) {
+    /**
+     * Phase 3.48b: dispatcher guard for single-row user-group ops. Resolves the
+     * group's engagement_id, applies taphish_user_group_visible; on deny emits
+     * 403 + {result:'forbidden'} + audit log + exit — the same no-soft-200 shape
+     * as taphish_require_authorize_or_die. A missing group falls through to the
+     * visibility check with engagement_id NULL (visible), so the handler's own
+     * not-found path still runs.
+     */
+    function taphish_user_group_guard_or_die($conn, string $group_id): void
+    {
+        $username = (string) ($_SESSION['username'] ?? '');
+        $role = taphish_user_role($conn, $username);
+        $eid = null;
+        if (($conn instanceof \mysqli) && $group_id !== '') {
+            $stmt = $conn->prepare("SELECT engagement_id FROM tb_core_mailcamp_user_group WHERE user_group_id = ?");
+            if ($stmt !== false) {
+                $stmt->bind_param('s', $group_id);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                $eid = (isset($row['engagement_id']) && $row['engagement_id'] !== null) ? (int) $row['engagement_id'] : null;
+            }
+        }
+        if (taphish_user_group_visible($eid, $role, taphish_user_engagement_ids($conn, $username))) {
+            return;
+        }
+        if (function_exists('logIt')) {
+            logIt('Forbidden user-group ' . $group_id . ' attempted by ' . $username);
+        }
+        if (!headers_sent()) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode([
+            'result' => 'forbidden',
+            'error'  => 'You do not have access to this recipient list.',
+        ]);
+        exit;
+    }
+}
+
+if (!function_exists('taphish_user_group_scope_where')) {
+    /**
+     * Phase 3.48b: a SQL WHERE suffix that limits tb_core_mailcamp_user_group to
+     * the rows the current operator may see — '' for super-admin (unfiltered),
+     * otherwise " WHERE (engagement_id IS NULL OR engagement_id IN (...))". The
+     * id list is int-cast so the inlined IN(...) is injection-safe. Intended for
+     * the bare list SELECTs that have no other WHERE clause.
+     */
+    function taphish_user_group_scope_where($conn): string
+    {
+        $username = (string) ($_SESSION['username'] ?? '');
+        $role = taphish_user_role($conn, $username);
+        if ($role === 'super-admin') {
+            return '';
+        }
+        $ids = taphish_user_engagement_ids($conn, $username);
+        $inList = $ids ? implode(',', array_map('intval', $ids)) : '0';
+        return " WHERE (engagement_id IS NULL OR engagement_id IN ($inList))";
+    }
+}
+
+if (!function_exists('taphish_user_group_can_stamp')) {
+    /**
+     * Phase 3.48b: may the current operator stamp a recipient list onto this
+     * engagement? engagement_id <= 0 means "leave unscoped" (always allowed);
+     * otherwise super-admin always may, and an operator only if they are a
+     * member of that engagement — so PII can't be filed into an engagement the
+     * operator can't see.
+     */
+    function taphish_user_group_can_stamp($conn, int $engagement_id): bool
+    {
+        if ($engagement_id <= 0) {
+            return true;
+        }
+        $username = (string) ($_SESSION['username'] ?? '');
+        if (taphish_user_role($conn, $username) === 'super-admin') {
+            return true;
+        }
+        return taphish_engagement_role($conn, $engagement_id, $username) !== null;
     }
 }

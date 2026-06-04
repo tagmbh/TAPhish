@@ -367,6 +367,95 @@ if (!function_exists('taphish_engagement_ensure_campaign_fk_column')) {
     }
 }
 
+if (!function_exists('taphish_user_group_backfill_engagement')) {
+    /**
+     * Phase 3.48b: pure backfill decision. Given the engagement_ids of every
+     * campaign that references a user-group, return the single engagement to
+     * stamp it with, or null when there are zero references or they span more
+     * than one engagement (ambiguous → leave unscoped, decision #1).
+     */
+    function taphish_user_group_backfill_engagement(array $campaignRefs): ?int
+    {
+        $ids = [];
+        foreach ($campaignRefs as $r) {
+            $eid = $r['engagement_id'] ?? null;
+            if ($eid !== null && (int) $eid > 0) {
+                $ids[(int) $eid] = true;
+            }
+        }
+        return count($ids) === 1 ? (int) array_key_first($ids) : null;
+    }
+}
+
+if (!function_exists('taphish_user_group_ensure_engagement_column')) {
+    /**
+     * Phase 3.48b: add a nullable `engagement_id` column to
+     * `tb_core_mailcamp_user_group` so a recipient list can be scoped to an
+     * engagement (mirrors the 3.45b campaign-FK migration). On first add, run a
+     * one-time backfill: stamp each group whose referencing campaigns resolve to
+     * exactly one engagement; leave the rest NULL (visible to all operators).
+     */
+    function taphish_user_group_ensure_engagement_column(\mysqli $conn): void
+    {
+        if (!($conn instanceof \mysqli)) {
+            return;
+        }
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'tb_core_mailcamp_user_group'
+               AND COLUMN_NAME = 'engagement_id'"
+        );
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->execute();
+        $present = (int) $stmt->get_result()->fetch_row()[0];
+        $stmt->close();
+        if ($present > 0) {
+            return;
+        }
+        @$conn->query("ALTER TABLE tb_core_mailcamp_user_group ADD COLUMN engagement_id INT UNSIGNED NULL DEFAULT NULL");
+        @$conn->query("CREATE INDEX idx_user_group_engagement ON tb_core_mailcamp_user_group(engagement_id)");
+
+        // One-time backfill — read every campaign once, group its engagement by
+        // the user-group id embedded in campaign_data JSON, then stamp the
+        // unambiguous ones.
+        $refs = [];
+        $res = @$conn->query("SELECT engagement_id, campaign_data FROM tb_core_mailcamp_list");
+        if ($res instanceof \mysqli_result) {
+            while ($row = $res->fetch_assoc()) {
+                $data = json_decode((string) ($row['campaign_data'] ?? ''), true);
+                $gid  = is_array($data) ? ($data['user_group']['id'] ?? null) : null;
+                if ($gid === null || $gid === '') {
+                    continue;
+                }
+                $refs[(string) $gid][] = ['engagement_id' => $row['engagement_id'] ?? null];
+            }
+            $res->free();
+        }
+        if (!$refs) {
+            return;
+        }
+        $upd = $conn->prepare(
+            "UPDATE tb_core_mailcamp_user_group SET engagement_id = ? WHERE user_group_id = ? AND engagement_id IS NULL"
+        );
+        if ($upd === false) {
+            return;
+        }
+        foreach ($refs as $gid => $campaignRefs) {
+            $eid = taphish_user_group_backfill_engagement($campaignRefs);
+            if ($eid === null) {
+                continue;
+            }
+            $gidStr = (string) $gid;
+            $upd->bind_param('is', $eid, $gidStr);
+            $upd->execute();
+        }
+        $upd->close();
+    }
+}
+
 if (!function_exists('taphish_engagement_validate_transition')) {
     /**
      * Phase 3.45b: pure-side validator for engagement status changes.

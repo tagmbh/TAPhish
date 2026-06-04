@@ -121,10 +121,18 @@
                         <div class="col-md-12">
                            <div class="row">       
                               <div class="col-md-6">
-                                 <div class="form-group row">                                        
+                                 <div class="form-group row">
                                     <label for="user_group_name" class="col-md-3 text-left control-label col-form-label">User Group Name: </label>
-                                    <div class="col-md-9">              
+                                    <div class="col-md-9">
                                        <input type="text" class="form-control" id="user_group_name">
+                                    </div>
+                                 </div>
+                                 <!-- Phase 3.48b: recipient lists are scoped to an engagement (required for new lists). -->
+                                 <div class="form-group row">
+                                    <label for="ug_engagement" class="col-md-3 text-left control-label col-form-label">Engagement: </label>
+                                    <div class="col-md-9">
+                                       <select class="form-control" id="ug_engagement"><option value="">— select an engagement —</option></select>
+                                       <small class="form-text text-muted">Only members of this engagement (and super-admins) can see this recipient list.</small>
                                     </div>
                                  </div>
                               </div>

@@ -226,7 +226,9 @@ function makeCopyMailCampaignList($conn, $old_campaign_id, $new_campaign_id, $ne
 
 function pullMailCampaignFieldData($conn){
 	$resp;
-	$result = mysqli_query($conn, "SELECT user_group_id,user_group_name FROM tb_core_mailcamp_user_group");
+	// Phase 3.48b: only offer recipient lists the operator can see (super-admin unfiltered).
+	$ug_scope = function_exists('taphish_user_group_scope_where') ? taphish_user_group_scope_where($conn) : '';
+	$result = mysqli_query($conn, "SELECT user_group_id,user_group_name FROM tb_core_mailcamp_user_group" . $ug_scope);
 	if(mysqli_num_rows($result) > 0){
 		$resp['user_group'] = mysqli_fetch_all($result, MYSQLI_ASSOC);
 	}

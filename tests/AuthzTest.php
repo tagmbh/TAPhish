@@ -278,4 +278,28 @@ final class AuthzTest extends TestCase
             self::assertTrue(function_exists($fn), "missing helper: {$fn}");
         }
     }
+
+    /**
+     * Phase 3.48b — per-engagement PII isolation. A user-group's visibility is
+     * decided by its engagement_id vs the operator's memberships: super-admin
+     * sees all, disabled sees nothing, a NULL (legacy/unscoped) group is visible
+     * to any operator (decision #1, no lockout), and a scoped group only to
+     * members of that engagement.
+     */
+    public function testUserGroupVisibility(): void
+    {
+        self::assertTrue(taphish_user_group_visible(5, 'super-admin', []));
+        self::assertFalse(taphish_user_group_visible(null, 'disabled', [5]));
+        self::assertTrue(taphish_user_group_visible(null, 'operator', []));
+        self::assertTrue(taphish_user_group_visible(5, 'operator', [3, 5, 9]));
+        self::assertFalse(taphish_user_group_visible(5, 'operator', [3, 9]));
+        self::assertFalse(taphish_user_group_visible(5, 'operator', []));
+    }
+
+    public function testUserGroupHelpersDefined(): void
+    {
+        foreach (['taphish_user_group_visible', 'taphish_user_engagement_ids', 'taphish_user_group_guard_or_die'] as $fn) {
+            self::assertTrue(function_exists($fn), "missing helper: {$fn}");
+        }
+    }
 }
