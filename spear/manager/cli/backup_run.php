@@ -20,6 +20,7 @@ if (php_sapi_name() !== 'cli') {
 $keep      = 7;
 $dryRun    = false;
 $withState = false;
+$push      = false;
 $outDir    = dirname(__FILE__, 3) . '/uploads/backups';
 for ($i = 1; $i < $argc; $i++) {
     $a = $argv[$i];
@@ -27,12 +28,14 @@ for ($i = 1; $i < $argc; $i++) {
         $dryRun = true;
     } elseif ($a === '--with-state') {
         $withState = true;
+    } elseif ($a === '--push') {
+        $push = true;
     } elseif (str_starts_with($a, '--keep=')) {
         $keep = max(0, (int) substr($a, 7));
     } elseif (str_starts_with($a, '--out=')) {
         $outDir = substr($a, 6);
     } else {
-        fwrite(STDERR, "Usage: php backup_run.php [--keep=N] [--with-state] [--dry-run] [--out=DIR]\n");
+        fwrite(STDERR, "Usage: php backup_run.php [--keep=N] [--with-state] [--push] [--dry-run] [--out=DIR]\n");
         exit(2);
     }
 }
@@ -52,6 +55,7 @@ require_once(dirname(__FILE__, 2) . '/secret_at_rest.php');
 require_once(dirname(__FILE__, 2) . '/backup_helper.php');
 require_once(dirname(__FILE__, 2) . '/backup_archive.php');
 require_once(dirname(__FILE__, 2) . '/backup_state.php');
+require_once(dirname(__FILE__, 2) . '/backup_push.php');
 @require_once(dirname(__FILE__, 2) . '/common_functions.php'); // best-effort, for logIt()
 
 // state dirs swept when --with-state is set (config/ + backups/ deliberately excluded)
@@ -130,6 +134,13 @@ if ($dryRun) {
     if ($withState) {
         $sf = count(taphish_backup_state_manifest($stateRoots, $stateLister));
         echo "  with-state: yes ({$sf} state files from cloned/attachments/timages)\n";
+    }
+    if ($push) {
+        $pc = taphish_push_get_config($conn);
+        echo $pc === null
+            ? "  push: requested, but NO destination configured\n"
+            : "  push: would upload to " . ($pc['type'] ?? '?') . " ("
+                . (($pc['type'] ?? '') === 's3' ? ('s3://' . ($pc['bucket'] ?? '?')) : rtrim((string) ($pc['url'] ?? ''), '/')) . ")\n";
     }
     echo "  would write: " . rtrim($outDir, '/') . '/' . taphish_backup_filename($stamp) . "\n  keep: {$keep}\n";
     exit(0);
@@ -307,4 +318,43 @@ if (function_exists('logIt')) {
     ), 'cli');
 }
 
-exit(0);
+// ---- optional off-host push (Phase 3.50c) ----
+$pushFailed = false;
+if ($push) {
+    $cfg = taphish_push_get_config($conn);
+    if ($cfg === null) {
+        fwrite(STDERR, "  push: no destination configured (run backup_push_config.php) — skipped\n");
+        $pushFailed = true;
+    } else {
+        $v = taphish_push_config_validate($cfg);
+        if (!$v['ok']) {
+            fwrite(STDERR, "  push: stored config invalid (" . implode('; ', $v['errors']) . ") — skipped\n");
+            $pushFailed = true;
+        } else {
+            $amzDate = gmdate("Ymd\THis\Z");
+            if (($cfg['type'] ?? '') === 's3') {
+                $sha     = hash_file('sha256', $finalPath);
+                $request = taphish_push_s3_request($cfg, $finalName, (string) $sha, $amzDate);
+                $dest    = 's3://' . $cfg['bucket'];
+            } else {
+                $request = taphish_push_webdav_request($cfg, $finalName);
+                $dest    = rtrim((string) $cfg['url'], '/');
+            }
+            $r = taphish_push_send($request, $finalPath);
+            if ($r['ok']) {
+                echo "  push: uploaded to {$dest} (HTTP {$r['status']})\n";
+                if (function_exists('logIt')) {
+                    logIt("off-host backup push OK: {$finalName} -> {$cfg['type']}", 'cli');
+                }
+            } else {
+                $pushFailed = true;
+                fwrite(STDERR, "  push: FAILED to {$dest} — {$r['error']} (local backup is intact)\n");
+                if (function_exists('logIt')) {
+                    logIt("off-host backup push FAILED: {$finalName} -> {$cfg['type']} ({$r['error']})", 'cli');
+                }
+            }
+        }
+    }
+}
+
+exit($pushFailed ? 4 : 0);
