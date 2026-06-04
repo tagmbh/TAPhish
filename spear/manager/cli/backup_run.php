@@ -17,19 +17,22 @@ if (php_sapi_name() !== 'cli') {
 }
 
 // ---- argv ----
-$keep   = 7;
-$dryRun = false;
-$outDir = dirname(__FILE__, 3) . '/uploads/backups';
+$keep      = 7;
+$dryRun    = false;
+$withState = false;
+$outDir    = dirname(__FILE__, 3) . '/uploads/backups';
 for ($i = 1; $i < $argc; $i++) {
     $a = $argv[$i];
     if ($a === '--dry-run') {
         $dryRun = true;
+    } elseif ($a === '--with-state') {
+        $withState = true;
     } elseif (str_starts_with($a, '--keep=')) {
         $keep = max(0, (int) substr($a, 7));
     } elseif (str_starts_with($a, '--out=')) {
         $outDir = substr($a, 6);
     } else {
-        fwrite(STDERR, "Usage: php backup_run.php [--keep=N] [--dry-run] [--out=DIR]\n");
+        fwrite(STDERR, "Usage: php backup_run.php [--keep=N] [--with-state] [--dry-run] [--out=DIR]\n");
         exit(2);
     }
 }
@@ -48,7 +51,32 @@ if (!isset($conn) || !($conn instanceof mysqli)) {
 require_once(dirname(__FILE__, 2) . '/secret_at_rest.php');
 require_once(dirname(__FILE__, 2) . '/backup_helper.php');
 require_once(dirname(__FILE__, 2) . '/backup_archive.php');
+require_once(dirname(__FILE__, 2) . '/backup_state.php');
 @require_once(dirname(__FILE__, 2) . '/common_functions.php'); // best-effort, for logIt()
+
+// state dirs swept when --with-state is set (config/ + backups/ deliberately excluded)
+$spearRoot  = dirname(__FILE__, 2);
+$stateRoots = [
+    'state/cloned'      => $spearRoot . '/sniperhost/cloned',
+    'state/attachments' => $spearRoot . '/uploads/attachments',
+    'state/timages'     => $spearRoot . '/uploads/timages',
+];
+$stateLister = static function (string $dir): array {
+    if (!is_dir($dir)) {
+        return [];
+    }
+    $files = [];
+    $base  = rtrim($dir, '/');
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($it as $f) {
+        if ($f->isFile()) {
+            $files[] = substr($f->getPathname(), strlen($base) + 1);
+        }
+    }
+    return $files;
+};
 
 // ---- key gate ----
 $key = secret_at_rest_get_key();
@@ -99,6 +127,10 @@ if ($dryRun) {
         }
         echo "    - {$t}: {$cnt} rows\n";
     }
+    if ($withState) {
+        $sf = count(taphish_backup_state_manifest($stateRoots, $stateLister));
+        echo "  with-state: yes ({$sf} state files from cloned/attachments/timages)\n";
+    }
     echo "  would write: " . rtrim($outDir, '/') . '/' . taphish_backup_filename($stamp) . "\n  keep: {$keep}\n";
     exit(0);
 }
@@ -106,9 +138,10 @@ if ($dryRun) {
 // ---- temp files + cleanup ----
 $sqlTmp = tempnam(sys_get_temp_dir(), 'tapbak_sql_');
 $gzTmp  = tempnam(sys_get_temp_dir(), 'tapbak_gz_');
+$zipTmp = tempnam(sys_get_temp_dir(), 'tapbak_zip_');
 $encTmp = tempnam(sys_get_temp_dir(), 'tapbak_enc_');
-$cleanup = static function () use ($sqlTmp, $gzTmp, $encTmp): void {
-    foreach ([$sqlTmp, $gzTmp, $encTmp] as $f) {
+$cleanup = static function () use ($sqlTmp, $gzTmp, $zipTmp, $encTmp): void {
+    foreach ([$sqlTmp, $gzTmp, $zipTmp, $encTmp] as $f) {
         if (is_string($f) && is_file($f)) {
             @unlink($f);
         }
@@ -167,26 +200,57 @@ if ($failed) {
     exit(3);
 }
 
-// ---- gzip the .sql ----
-$src = fopen($sqlTmp, 'rb');
-$gz  = gzopen($gzTmp, 'wb9');
-if ($src === false || $gz === false) {
-    $cleanup();
-    fwrite(STDERR, "Compression open failed.\n");
-    exit(3);
-}
-while (!feof($src)) {
-    $buf = fread($src, 262144);
-    if ($buf === false) {
-        break;
+// ---- build the inner payload ----
+// DB-only: gzip(sql). --with-state: zip(db.sql + state/<files>) — zip is already
+// compressed, so it is not additionally gzipped. The .tapbak container is agnostic.
+$innerTmp   = $gzTmp;
+$stateFiles = 0;
+if ($withState) {
+    if (!class_exists('ZipArchive')) {
+        $cleanup();
+        fwrite(STDERR, "--with-state needs the PHP zip extension (ZipArchive).\n");
+        exit(3);
     }
-    gzwrite($gz, $buf);
+    $zip = new ZipArchive();
+    if ($zip->open($zipTmp, ZipArchive::OVERWRITE) !== true) {
+        $cleanup();
+        fwrite(STDERR, "Cannot create state archive.\n");
+        exit(3);
+    }
+    $zip->addFile($sqlTmp, 'db.sql');
+    foreach (taphish_backup_state_manifest($stateRoots, $stateLister) as $m) {
+        if (is_file($m['src'])) {
+            $zip->addFile($m['src'], $m['dest']);
+            $stateFiles++;
+        }
+    }
+    if (!$zip->close()) {
+        $cleanup();
+        fwrite(STDERR, "Failed to finalize state archive.\n");
+        exit(3);
+    }
+    $innerTmp = $zipTmp;
+} else {
+    $src = fopen($sqlTmp, 'rb');
+    $gz  = gzopen($gzTmp, 'wb9');
+    if ($src === false || $gz === false) {
+        $cleanup();
+        fwrite(STDERR, "Compression open failed.\n");
+        exit(3);
+    }
+    while (!feof($src)) {
+        $buf = fread($src, 262144);
+        if ($buf === false) {
+            break;
+        }
+        gzwrite($gz, $buf);
+    }
+    fclose($src);
+    gzclose($gz);
 }
-fclose($src);
-gzclose($gz);
 
-// ---- encrypt-stream the .gz into .tapbak ----
-$in  = fopen($gzTmp, 'rb');
+// ---- encrypt-stream the inner payload into .tapbak ----
+$in  = fopen($innerTmp, 'rb');
 $out = fopen($encTmp, 'wb');
 if ($in === false || $out === false) {
     $cleanup();
@@ -216,6 +280,7 @@ if (!@rename($encTmp, $finalPath)) {
 @chmod($finalPath, 0600);
 @unlink($sqlTmp);
 @unlink($gzTmp);
+@unlink($zipTmp);
 
 // ---- rotate ----
 $existing = [];
@@ -229,11 +294,17 @@ foreach (taphish_backup_rotation_plan($existing, $keep) as $old) {
     }
 }
 
-$size = is_file($finalPath) ? filesize($finalPath) : 0;
-echo "Backup written: {$finalPath}\n  tables: " . count($tables) . "  rows: {$totalRows}  size: {$size} bytes  pruned: {$deleted}\n";
+$size      = is_file($finalPath) ? filesize($finalPath) : 0;
+$stateNote = $withState ? "  state files: {$stateFiles}" : '';
+echo "Backup written: {$finalPath}\n  tables: " . count($tables) . "  rows: {$totalRows}{$stateNote}  size: {$size} bytes  pruned: {$deleted}\n";
 
 if (function_exists('logIt')) {
-    logIt(sprintf('DB backup written: %s (%d tables, %d rows, %d bytes); pruned %d old', $finalName, count($tables), $totalRows, $size, $deleted), 'cli');
+    logIt(sprintf(
+        'DB backup written: %s (%d tables, %d rows%s, %d bytes); pruned %d old',
+        $finalName, count($tables), $totalRows,
+        $withState ? sprintf(', %d state files', $stateFiles) : '',
+        $size, $deleted
+    ), 'cli');
 }
 
 exit(0);

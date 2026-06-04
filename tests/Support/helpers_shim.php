@@ -47,3 +47,4 @@ require_once __DIR__ . '/../../spear/manager/site_bundle.php';
 require_once __DIR__ . '/../../spear/manager/recipient_reencrypt.php';
 require_once __DIR__ . '/../../spear/manager/backup_helper.php';
 require_once __DIR__ . '/../../spear/manager/backup_archive.php';
+require_once __DIR__ . '/../../spear/manager/backup_state.php';
