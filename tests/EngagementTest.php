@@ -229,4 +229,23 @@ final class EngagementTest extends TestCase
         self::assertSame('conn', $ref->getParameters()[0]->getName());
         self::assertSame('id', $ref->getParameters()[1]->getName());
     }
+
+    /**
+     * Phase 3.48b — pure backfill reducer. A user-group is stamped with an
+     * engagement only when the campaigns referencing it resolve to exactly one
+     * engagement; zero references or an ambiguous spread leave it NULL.
+     */
+    public function testUserGroupBackfillEngagement(): void
+    {
+        self::assertNull(taphish_user_group_backfill_engagement([]));
+        self::assertSame(5, taphish_user_group_backfill_engagement([['engagement_id' => 5]]));
+        self::assertSame(5, taphish_user_group_backfill_engagement([['engagement_id' => 5], ['engagement_id' => 5]]));
+        self::assertNull(taphish_user_group_backfill_engagement([['engagement_id' => 5], ['engagement_id' => 7]]));
+        self::assertNull(taphish_user_group_backfill_engagement([['engagement_id' => null], ['engagement_id' => 0]]));
+    }
+
+    public function testUserGroupEngagementColumnMigrationDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_user_group_ensure_engagement_column'));
+    }
 }

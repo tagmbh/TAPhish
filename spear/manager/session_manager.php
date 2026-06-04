@@ -48,6 +48,9 @@ if (isset($conn) && $conn instanceof mysqli) {
 		taphish_engagement_ensure_campaign_fk_column($conn);
 		// Phase 3.56: wizard_step + wizard_state for a resumable wizard.
 		taphish_engagement_ensure_wizard_columns($conn);
+		// Phase 3.48b: engagement_id on tb_core_mailcamp_user_group + one-time
+		// backfill, so recipient PII can be scoped per engagement.
+		taphish_user_group_ensure_engagement_column($conn);
 	}
 	// Phase 3.48: RBAC - tb_main.role (+ admin auto-promote) and the
 	// engagement-membership join table. Idempotent; safe every boot.
