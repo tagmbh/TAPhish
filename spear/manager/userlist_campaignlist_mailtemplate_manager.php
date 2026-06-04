@@ -739,7 +739,8 @@ function getUserGroupList($conn){
 	// Phase 3.38: SELECT user_data instead of JSON_LENGTH(user_data) —
 	// once the column holds an enc1: envelope, server-side JSON parsing
 	// is impossible. Compute count client-side after recipient_data_unseal().
-	$result = mysqli_query($conn, "SELECT user_group_id,user_group_name,user_data,date FROM tb_core_mailcamp_user_group");
+	// Phase 3.48b: scope the list to the operator's engagements (super-admin unfiltered).
+	$result = mysqli_query($conn, "SELECT user_group_id,user_group_name,user_data,date,engagement_id FROM tb_core_mailcamp_user_group" . taphish_user_group_scope_where($conn));
 	if(mysqli_num_rows($result) > 0){
 		foreach (mysqli_fetch_all($result, MYSQLI_ASSOC) as $row){
 			$plain = recipient_data_unseal($row["user_data"]);

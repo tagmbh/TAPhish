@@ -762,3 +762,24 @@ if (!function_exists('taphish_user_group_guard_or_die')) {
         exit;
     }
 }
+
+if (!function_exists('taphish_user_group_scope_where')) {
+    /**
+     * Phase 3.48b: a SQL WHERE suffix that limits tb_core_mailcamp_user_group to
+     * the rows the current operator may see — '' for super-admin (unfiltered),
+     * otherwise " WHERE (engagement_id IS NULL OR engagement_id IN (...))". The
+     * id list is int-cast so the inlined IN(...) is injection-safe. Intended for
+     * the bare list SELECTs that have no other WHERE clause.
+     */
+    function taphish_user_group_scope_where($conn): string
+    {
+        $username = (string) ($_SESSION['username'] ?? '');
+        $role = taphish_user_role($conn, $username);
+        if ($role === 'super-admin') {
+            return '';
+        }
+        $ids = taphish_user_engagement_ids($conn, $username);
+        $inList = $ids ? implode(',', array_map('intval', $ids)) : '0';
+        return " WHERE (engagement_id IS NULL OR engagement_id IN ($inList))";
+    }
+}
