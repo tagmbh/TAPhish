@@ -670,3 +670,95 @@ if (!function_exists('taphish_require_authorize_or_die')) {
         exit;
     }
 }
+
+if (!function_exists('taphish_user_group_visible')) {
+    /**
+     * Phase 3.48b (per-engagement PII isolation). Pure: may a user with this
+     * global role + engagement memberships see/act on a recipient user-group
+     * carrying this engagement_id? super-admin sees all; disabled sees nothing;
+     * a NULL engagement_id is a legacy/unscoped group visible to any operator
+     * (decision #1 — no lockout on deploy); a scoped group is visible only to
+     * members of that engagement.
+     */
+    function taphish_user_group_visible(?int $groupEngagementId, string $role, array $memberIds): bool
+    {
+        if ($role === 'disabled') {
+            return false;
+        }
+        if ($role === 'super-admin') {
+            return true;
+        }
+        if ($groupEngagementId === null) {
+            return true;
+        }
+        return in_array((int) $groupEngagementId, array_map('intval', $memberIds), true);
+    }
+}
+
+if (!function_exists('taphish_user_engagement_ids')) {
+    /** Phase 3.48b: engagement ids the user belongs to (tb_core_engagement_member ⋈ tb_main). */
+    function taphish_user_engagement_ids(\mysqli $conn, string $username): array
+    {
+        if (!($conn instanceof \mysqli) || $username === '') {
+            return [];
+        }
+        $stmt = $conn->prepare(
+            "SELECT m.engagement_id FROM tb_core_engagement_member m
+             JOIN tb_main u ON u.id = m.user_id WHERE u.username = ?"
+        );
+        if ($stmt === false) {
+            return [];
+        }
+        $stmt->bind_param('s', $username);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $ids = [];
+        while ($r = $res->fetch_assoc()) {
+            $ids[] = (int) $r['engagement_id'];
+        }
+        $stmt->close();
+        return $ids;
+    }
+}
+
+if (!function_exists('taphish_user_group_guard_or_die')) {
+    /**
+     * Phase 3.48b: dispatcher guard for single-row user-group ops. Resolves the
+     * group's engagement_id, applies taphish_user_group_visible; on deny emits
+     * 403 + {result:'forbidden'} + audit log + exit — the same no-soft-200 shape
+     * as taphish_require_authorize_or_die. A missing group falls through to the
+     * visibility check with engagement_id NULL (visible), so the handler's own
+     * not-found path still runs.
+     */
+    function taphish_user_group_guard_or_die($conn, string $group_id): void
+    {
+        $username = (string) ($_SESSION['username'] ?? '');
+        $role = taphish_user_role($conn, $username);
+        $eid = null;
+        if (($conn instanceof \mysqli) && $group_id !== '') {
+            $stmt = $conn->prepare("SELECT engagement_id FROM tb_core_mailcamp_user_group WHERE user_group_id = ?");
+            if ($stmt !== false) {
+                $stmt->bind_param('s', $group_id);
+                $stmt->execute();
+                $row = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                $eid = (isset($row['engagement_id']) && $row['engagement_id'] !== null) ? (int) $row['engagement_id'] : null;
+            }
+        }
+        if (taphish_user_group_visible($eid, $role, taphish_user_engagement_ids($conn, $username))) {
+            return;
+        }
+        if (function_exists('logIt')) {
+            logIt('Forbidden user-group ' . $group_id . ' attempted by ' . $username);
+        }
+        if (!headers_sent()) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode([
+            'result' => 'forbidden',
+            'error'  => 'You do not have access to this recipient list.',
+        ]);
+        exit;
+    }
+}
