@@ -1,5 +1,11 @@
 Options -Indexes
 RewriteEngine On
+
+# Phase 3.55: TAPhish-hosted look-alike vanity paths.
+# /p/<slug>/ serves the cloned landing page at spear/sniperhost/cloned/<slug>/
+# (slug = lower alnum/hyphen, max 41). Must precede the generic clean-URL rule.
+RewriteRule ^p/([a-z0-9][a-z0-9-]{0,40})/?$ spear/sniperhost/cloned/$1/ [NC,L]
+
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^([^\.]+)$ $1.php [NC,L]

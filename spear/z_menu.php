@@ -183,6 +183,9 @@
                   <li class="sidebar-item"><a href="/spear/sniperhost/LandingPage" class="sidebar-link"><i class="mdi mdi-google-pages"></i><span class="hide-menu"> Landing Page </span></a></li>
                   <li class="sidebar-item"><a href="/spear/SiteCloner" class="sidebar-link"><i class="mdi mdi-content-copy"></i><span class="hide-menu"> Site Cloner </span></a></li>
                   <li class="sidebar-item"><a href="/spear/LandingLibrary" class="sidebar-link"><i class="mdi mdi-library-books"></i><span class="hide-menu"> Landing Library </span></a></li>
+                  <?php if ($nav_can('lookalike_dns_records')): ?>
+                  <li class="sidebar-item"><a href="/spear/LookalikeDeploy" class="sidebar-link"><i class="mdi mdi-rocket-launch-outline"></i><span class="hide-menu"> Deploy Landing Page </span></a></li>
+                  <?php endif; ?>
                </ul>
             </li>
             <li class="sidebar-item">

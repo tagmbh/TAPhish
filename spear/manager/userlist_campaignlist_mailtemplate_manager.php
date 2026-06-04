@@ -18,6 +18,8 @@ require_once(dirname(__FILE__) . '/recipient_import.php');
 require_once(dirname(__FILE__) . '/preflight_checks.php');
 require_once(dirname(__FILE__) . '/beef_integration.php');
 require_once(dirname(__FILE__) . '/landing_library.php');
+require_once(dirname(__FILE__) . '/lookalike_deploy.php'); // Phase 3.55
+require_once(dirname(__FILE__) . '/site_bundle.php');       // Phase 3.55
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -372,6 +374,41 @@ if (isset($_POST)) {
 				echo json_encode(['result' => 'success'] + $r);
 			} else {
 				echo json_encode(['result' => 'failed', 'error' => $r['err']]);
+			}
+		}
+		// Phase 3.55: look-alike domain deployment (DNS helper + hosted publish).
+		if($POSTJ['action_type'] == "lookalike_list_clones") {
+			echo json_encode(['result' => 'success', 'clones' => lookalike_list_clones()]);
+		}
+		if($POSTJ['action_type'] == "lookalike_dns_records") {
+			$domain = (string)($POSTJ['domain'] ?? '');
+			if ($domain === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'A look-alike domain is required.']);
+			} else {
+				$opts = [
+					'mode'         => (string)($POSTJ['mode'] ?? 'operator'),
+					'subdomain'    => (string)($POSTJ['subdomain'] ?? ''),
+					'a_record'     => (string)($POSTJ['a_record'] ?? ''),
+					'cname_target' => (string)($POSTJ['cname_target'] ?? ''),
+					'selector'     => (string)($POSTJ['selector'] ?? 's1'),
+					'dkim_pubkey'  => (string)($POSTJ['dkim_pubkey'] ?? ''),
+					'dmarc_rua'    => (string)($POSTJ['dmarc_rua'] ?? ''),
+				];
+				echo json_encode(['result' => 'success', 'records' => lookalike_build_dns_records($domain, $opts)]);
+			}
+		}
+		if($POSTJ['action_type'] == "lookalike_publish_hosted") {
+			$slug   = (string)($POSTJ['slug'] ?? '');
+			$domain = (string)($POSTJ['domain'] ?? '');
+			if (!lookalike_validate_vanity_slug($slug)) {
+				echo json_encode(['result' => 'failed', 'error' => 'Invalid vanity slug.']);
+			} elseif (!is_dir(landing_library_clones_root() . '/' . $slug)) {
+				echo json_encode(['result' => 'failed', 'error' => 'No cloned page with that slug — clone one first via Site Cloner or Landing Library.']);
+			} else {
+				$host = (string)($_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? ''));
+				$url  = lookalike_hosted_url($host, $slug);
+				logIt('Look-alike page published (hosted): /p/' . $slug . '/' . ($domain !== '' ? ' for ' . $domain : ''));
+				echo json_encode(['result' => 'success', 'url' => $url]);
 			}
 		}
 		// Phase 3.45d: Launch orchestrator. CAS-protected status

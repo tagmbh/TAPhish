@@ -186,6 +186,11 @@ if (!defined('TAPHISH_POLICY')) {
         'clone_pretext_to_my_templates'      => ['super-admin', 'operator'],
         'library_clone_to_my_sites'          => ['super-admin', 'operator'],
         'site_clone'                         => ['super-admin', 'operator'],
+        // Phase 3.55: look-alike domain deployment (DNS helper + bundle/publish).
+        'lookalike_list_clones'              => ['super-admin', 'operator'],
+        'lookalike_dns_records'              => ['super-admin', 'operator'],
+        'lookalike_publish_hosted'           => ['super-admin', 'operator'],
+        'lookalike_build_bundle'             => ['super-admin', 'operator'],
         // user administration (super-admin only)
         'add_user_to_table'                  => ['super-admin'],
         'update_user'                        => ['super-admin'],
