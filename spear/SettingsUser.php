@@ -1,6 +1,11 @@
 <?php
    require_once(dirname(__FILE__) . '/manager/session_manager.php');
    isSessionValid(true);
+   require_once(dirname(__FILE__) . '/manager/authz.php'); // Phase 3.48: gate the user-admin block
+   // Fail closed: only a confirmed super-admin sees the account-management UI.
+   // (Profile + 2FA below stay visible to every operator — those are self-service.)
+   $canManageUsers = (function_exists('taphish_can') && isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof \mysqli)
+      ? taphish_can($GLOBALS['conn'], 'manage_users') : false;
 ?>
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
@@ -92,6 +97,7 @@
                              </div>
                           </div>
                      </div>
+                     <?php if ($canManageUsers): ?>
                      <hr/>
 
                      <div class="row">
@@ -118,6 +124,7 @@
                                           <th>Name</th>
                                           <th>Username</th>
                                           <th>Email</th>
+                                          <th>Role</th>
                                           <th>Date Created</th>
                                           <th>Last Login</th>
                                           <th>Actions</th>
@@ -130,6 +137,7 @@
                            </div>
                         </div>
                      </div>
+                     <?php endif; ?>
                   </div>
                   <!-- Phase 3.25: Two-factor authentication -->
                   <div class="card">
@@ -353,6 +361,17 @@
                            <label for="tb_add_mail" class="col-sm-3 text-left control-label col-form-label">Email:</label>
                            <div class="col-sm-9">
                               <input type="text" class="form-control" id="tb_add_mail">
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="tb_add_role" class="col-sm-3 text-left control-label col-form-label">Role:</label>
+                           <div class="col-sm-9">
+                              <select class="form-control" id="tb_add_role">
+                                 <option value="operator" selected>Operator — run engagements (recon + mutations)</option>
+                                 <option value="super-admin">Super Admin — full access incl. users, settings, audit</option>
+                                 <option value="read-only">Read-only — view dashboards, no changes</option>
+                                 <option value="disabled">Disabled — cannot sign in</option>
+                              </select>
                            </div>
                         </div>
                         <div class="form-group row">

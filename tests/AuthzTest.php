@@ -233,4 +233,49 @@ final class AuthzTest extends TestCase
         self::assertSame('AUTH', $c['kind']);
         self::assertSame('warn', $c['severity']);
     }
+
+    /**
+     * Phase 3.48 tasks 5/6 — admin-UI dispatcher actions. Assigning a global
+     * role is super-admin only; per-operator API tokens are self-service for
+     * operator+ (a read-only token would be pointless and just sprawls
+     * credentials); engagement-member management is owner-or-super-admin while
+     * merely viewing the roster only needs membership.
+     */
+    public function testAdminUiActionPolicies(): void
+    {
+        // global role assignment — super-admin only
+        self::assertTrue(taphish_policy_allows('set_user_role', 'super-admin'));
+        self::assertFalse(taphish_policy_allows('set_user_role', 'operator'));
+        self::assertFalse(taphish_policy_allows('set_user_role', 'read-only'));
+
+        // API tokens — self-service for operator+, denied for read-only/disabled
+        foreach (['list_api_tokens', 'mint_api_token', 'revoke_api_token'] as $a) {
+            self::assertTrue(taphish_policy_allows($a, 'super-admin'), "$a super-admin");
+            self::assertTrue(taphish_policy_allows($a, 'operator'), "$a operator");
+            self::assertFalse(taphish_policy_allows($a, 'read-only'), "$a read-only");
+            self::assertFalse(taphish_policy_allows($a, 'disabled'), "$a disabled");
+        }
+
+        // engagement membership mutations — owner or super-admin, NOT a plain member
+        foreach (['add_engagement_member', 'remove_engagement_member', 'set_engagement_member_role'] as $a) {
+            self::assertTrue(taphish_policy_allows($a, 'operator', ['engagement_role' => 'owner']), "$a owner");
+            self::assertFalse(taphish_policy_allows($a, 'operator', ['engagement_role' => 'member']), "$a member");
+            self::assertTrue(taphish_policy_allows($a, 'super-admin', []), "$a super-admin");
+        }
+
+        // viewing the roster only needs membership
+        self::assertTrue(taphish_policy_allows('list_engagement_members', 'operator', ['engagement_role' => 'member']));
+        self::assertFalse(taphish_policy_allows('list_engagement_members', 'operator', []));
+    }
+
+    public function testAdminUiMembershipHelpersDefined(): void
+    {
+        foreach ([
+            'taphish_engagement_members',
+            'taphish_engagement_remove_member',
+            'taphish_engagement_set_member_role',
+        ] as $fn) {
+            self::assertTrue(function_exists($fn), "missing helper: {$fn}");
+        }
+    }
 }

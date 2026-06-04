@@ -35,6 +35,7 @@ function addUserAction(e){
     var confirm_pwd = $("#tb_add_confirm_pwd").val().trim();
     var dp_name =$('input[name="rb_add_dp"]:checked').val();
     var current_pwd = $("#tb_add_current_pwd").val().trim();
+    var role = $("#tb_add_role").val();
 
     if(name == ''){
         $("#tb_add_name").addClass("is-invalid");
@@ -80,10 +81,11 @@ function addUserAction(e){
             dp_name: dp_name,
             new_pwd: new_pwd,
             current_pwd: current_pwd,
+            role: role,
         }),
     }).done(function (response) {
-        if(response.result == "success"){ 
-            toastr.success('', 'Information updated successfully!');   
+        if(response.result == "success"){
+            toastr.success('', 'Information updated successfully!');
             $("#tb_add_new_pwd").val('');
             $("#tb_add_confirm_pwd").val('');
             $('#ModalAddUser').modal('toggle');
@@ -211,7 +213,7 @@ function loadTableUserList() {
                 else
                     var action_items = `<button type="button" class="btn btn-info btn-sm" data-toggle="tooltip" data-placement="top" onclick="prompModifyUser('`+value.id+`','`+value.name+`','`+value.username+`','`+value.contact_mail+`','`+value.dp_name+`')" title="View/Edit"><i class="mdi mdi-pencil"></i></button><button type="button" class="btn btn-danger btn-sm" data-toggle="tooltip" data-placement="top" title="Delete" onclick="promptDeleteAccount('` + value.id + `')"><i class="mdi mdi-delete-variant"></i></button>`;
 
-                $("#table_user_list tbody").append("<tr><td></td><td>" + value.name + "</td><td>" + value.username + "</td><td>" + value.contact_mail + "</td><td data-order=\"" + getTimestamp(value.date) + "\">" + value.date + "</td><td data-order=\"" + getTimestamp(value.last_login) + "\">" + value.last_login + "</td><<td>" + action_items + "</td></tr>");
+                $("#table_user_list tbody").append("<tr><td></td><td>" + value.name + "</td><td>" + value.username + "</td><td>" + value.contact_mail + "</td><td>" + roleSelectHtml(value.id, value.role) + "</td><td data-order=\"" + getTimestamp(value.date) + "\">" + value.date + "</td><td data-order=\"" + getTimestamp(value.last_login) + "\">" + value.last_login + "</td><td>" + action_items + "</td></tr>");
             });
         }
         
@@ -239,6 +241,45 @@ function loadTableUserList() {
             });
         }).draw();
     });   
+}
+
+// Phase 3.48 (RBAC): per-row global-role selector. The bootstrap admin (id 1)
+// is pinned to super-admin server-side, so we disable its control to match.
+function roleSelectHtml(id, role){
+    var roles = [
+        ['super-admin', 'Super Admin'],
+        ['operator',    'Operator'],
+        ['read-only',   'Read-only'],
+        ['disabled',    'Disabled'],
+    ];
+    if(!role) role = 'operator';
+    var locked = (id == 1) ? ' disabled title="The bootstrap admin must remain super-admin"' : '';
+    var opts = '';
+    for(var i = 0; i < roles.length; i++){
+        var sel = (roles[i][0] === role) ? ' selected' : '';
+        opts += '<option value="' + roles[i][0] + '"' + sel + '>' + roles[i][1] + '</option>';
+    }
+    return '<select class="form-control form-control-sm role-select" data-id="' + id + '"' + locked + ' onchange="setUserRoleAction(this)">' + opts + '</select>';
+}
+
+function setUserRoleAction(el){
+    var id   = $(el).data('id');
+    var role = $(el).val();
+    $.post({
+        url: "manager/settings_manager",
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({ action_type: "set_user_role", id: id, role: role })
+    }).done(function (response) {
+        if(response.result == "success")
+            toastr.success('', 'Role updated.');
+        else {
+            toastr.error('', response.error || 'Role update failed.');
+            loadTableUserList(); // snap the control back to the server's truth
+        }
+    }).fail(function () {
+        toastr.error('', 'Role update request failed.');
+        loadTableUserList();
+    });
 }
 
 function isPwdSecure(new_pwd, confirm_pwd, new_pwd_field, confirm_pwd_field){
