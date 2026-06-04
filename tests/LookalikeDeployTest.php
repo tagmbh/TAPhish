@@ -94,6 +94,20 @@ final class LookalikeDeployTest extends TestCase
         self::assertStringContainsString('<public-key>', $dkim['value']);
     }
 
+    public function testHostedUrl(): void
+    {
+        self::assertSame(
+            'https://ptbe.autodiscover.li/p/texti1color-login/',
+            lookalike_hosted_url('ptbe.autodiscover.li', 'texti1color-login')
+        );
+        self::assertSame(
+            'https://ptbe.autodiscover.li/p/m365/',
+            lookalike_hosted_url('ptbe.autodiscover.li/', 'm365')
+        );
+        self::assertNull(lookalike_hosted_url('ptbe.autodiscover.li', 'Bad Slug'));
+        self::assertNull(lookalike_hosted_url('', 'm365'));
+    }
+
     public function testIdnDomainHostsArePunycoded(): void
     {
         if (!function_exists('idn_to_ascii')) {

@@ -19,6 +19,22 @@ if (!function_exists('lookalike_validate_vanity_slug')) {
     }
 }
 
+if (!function_exists('lookalike_hosted_url')) {
+    /**
+     * Phase 3.55: the public TAPhish-hosted URL for a vanity slug
+     * (https://<host>/p/<slug>/), or null if the slug is invalid. Pairs with
+     * the /p/<slug>/ rewrite in the root .htaccess.
+     */
+    function lookalike_hosted_url(string $host, string $slug): ?string
+    {
+        $host = rtrim(trim($host), '/');
+        if ($host === '' || !lookalike_validate_vanity_slug($slug)) {
+            return null;
+        }
+        return 'https://' . $host . '/p/' . $slug . '/';
+    }
+}
+
 if (!function_exists('lookalike_build_dns_records')) {
     /**
      * Phase 3.55: build the advisory DNS record set for a look-alike domain.
