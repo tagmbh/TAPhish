@@ -29,12 +29,13 @@ if (!defined('TAPHISH_POLICY')) {
      *   engagement_member/owner  engagement-level actions that carry engagement_id
      * Default-deny: anything not listed is forbidden.
      *
-     * NOTE (requirement #4, partial): per-engagement PII isolation is enforced
-     * for engagement-level actions that carry engagement_id; recipient/user-
-     * group actions are limited to operator+ (not read-only) but are NOT yet
-     * per-engagement scoped because tb_core_mailcamp_user_group has no
-     * engagement_id column. Closing that fully needs a follow-up migration —
-     * tracked as deferred PII-isolation hardening.
+     * NOTE (requirement #4, DONE in Phase 3.48b): per-engagement PII isolation
+     * now covers recipient lists too. tb_core_mailcamp_user_group carries an
+     * engagement_id; these operator+ actions additionally enforce ROW-LEVEL
+     * scoping inside their handlers (taphish_user_group_scope_where for lists,
+     * taphish_user_group_guard_or_die for single-row ops, taphish_user_group_
+     * can_stamp on create) since they don't carry an engagement_id in the
+     * request. NULL engagement_id = legacy/unscoped = visible to all operators.
      */
     define('TAPHISH_POLICY', [
         // --- abstract actions used by the future super-admin pages (task 6) ---
@@ -159,7 +160,8 @@ if (!defined('TAPHISH_POLICY')) {
         'osint_shodan_host'            => ['super-admin', 'operator'],
         'web_fingerprint'              => ['super-admin', 'operator'],
         'run_toolset_checks'           => ['super-admin', 'operator'],
-        // recipient / user-group (PII — operator+; see requirement #4 note)
+        // recipient / user-group (PII — operator+, additionally row-scoped per
+        // engagement inside the handlers; see requirement #4 note above)
         'get_user_group_list'                => ['super-admin', 'operator'],
         'get_user_group_from_group_Id_table' => ['super-admin', 'operator'],
         'save_user_group'                    => ['super-admin', 'operator'],
