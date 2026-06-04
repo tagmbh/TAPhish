@@ -783,3 +783,24 @@ if (!function_exists('taphish_user_group_scope_where')) {
         return " WHERE (engagement_id IS NULL OR engagement_id IN ($inList))";
     }
 }
+
+if (!function_exists('taphish_user_group_can_stamp')) {
+    /**
+     * Phase 3.48b: may the current operator stamp a recipient list onto this
+     * engagement? engagement_id <= 0 means "leave unscoped" (always allowed);
+     * otherwise super-admin always may, and an operator only if they are a
+     * member of that engagement — so PII can't be filed into an engagement the
+     * operator can't see.
+     */
+    function taphish_user_group_can_stamp($conn, int $engagement_id): bool
+    {
+        if ($engagement_id <= 0) {
+            return true;
+        }
+        $username = (string) ($_SESSION['username'] ?? '');
+        if (taphish_user_role($conn, $username) === 'super-admin') {
+            return true;
+        }
+        return taphish_engagement_role($conn, $engagement_id, $username) !== null;
+    }
+}

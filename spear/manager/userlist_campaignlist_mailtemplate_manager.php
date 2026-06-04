@@ -40,10 +40,17 @@ if (isset($_POST)) {
 		// dispatcher - unknown/unauthorised actions get 403 + {result:'forbidden'} + audit log.
 		require_once(dirname(__FILE__) . '/authz.php');
 		taphish_require_authorize_or_die($conn, (string)$POSTJ['action_type'], ['engagement_id' => isset($POSTJ['engagement_id']) ? (int)$POSTJ['engagement_id'] : null]);
+		// Phase 3.48b: per-engagement PII scoping. Actions on an EXISTING
+		// recipient list are gated by that list's engagement (a new group
+		// resolves to engagement_id NULL → passes, then the handler validates +
+		// stamps the chosen engagement). make_copy guards its source group.
+		$ug_scoped_actions = ['add_user_to_table','save_user_group','update_user','delete_user','download_user','upload_user','get_user_group_from_group_Id_table','delete_user_group_from_group_id','make_copy_user_group'];
+		if(in_array($POSTJ['action_type'], $ug_scoped_actions, true) && isset($POSTJ['user_group_id']))
+			taphish_user_group_guard_or_die($conn, (string)$POSTJ['user_group_id']);
 		if($POSTJ['action_type'] == "add_user_to_table")
 			addUserToTable($conn, $POSTJ);
 		if($POSTJ['action_type'] == "save_user_group")
-			saveUserGroup($conn, $POSTJ['user_group_id'], $POSTJ['user_group_name']);
+			saveUserGroup($conn, $POSTJ['user_group_id'], $POSTJ['user_group_name'], isset($POSTJ['engagement_id']) ? (int)$POSTJ['engagement_id'] : 0);
 		if($POSTJ['action_type'] == "update_user")
 			updateUser($conn,$POSTJ);
 		if($POSTJ['action_type'] == "delete_user")
@@ -590,6 +597,14 @@ if (isset($_POST)) {
 function addUserToTable($conn, &$POSTJ){
 	$user_group_id = $POSTJ['user_group_id'];
 	$user_group_name = $POSTJ['user_group_name'];
+	// Phase 3.48b: scope a (possibly new) list to its engagement; COALESCE on
+	// update preserves an existing scope. Membership validated when > 0.
+	$eid = !empty($POSTJ['engagement_id']) ? (int)$POSTJ['engagement_id'] : 0;
+	if(!taphish_user_group_can_stamp($conn, $eid)){
+		echo json_encode(['result' => 'failed', 'error' => 'You are not a member of that engagement.']);
+		return;
+	}
+	$eidParam = $eid > 0 ? $eid : null;
 	if(empty($user_group_name))
 		die(json_encode(['result' => 'failed', 'error' => 'Error adding user!']));			
 
@@ -609,12 +624,12 @@ function addUserToTable($conn, &$POSTJ){
 	$user_data_sealed = recipient_data_seal(json_encode(array_unique($user_data, SORT_REGULAR)));
 
 	if(checkAnIDExist($conn,$user_group_id,'user_group_id','tb_core_mailcamp_user_group')){
-		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=?, user_data=? WHERE user_group_id=?");
-		$stmt->bind_param('sss', $user_group_name,$user_data_sealed,$user_group_id);
+		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=?, user_data=?, engagement_id=COALESCE(engagement_id, ?) WHERE user_group_id=?");
+		$stmt->bind_param('ssis', $user_group_name,$user_data_sealed,$eidParam,$user_group_id);
 	}
 	else{
-		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,user_data,date) VALUES(?,?,?,?)");
-		$stmt->bind_param('ssss', $user_group_id,$user_group_name,$user_data_sealed,$GLOBALS['entry_time']);
+		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,user_data,date,engagement_id) VALUES(?,?,?,?,?)");
+		$stmt->bind_param('ssssi', $user_group_id,$user_group_name,$user_data_sealed,$GLOBALS['entry_time'],$eidParam);
 	}
 
 	if($stmt->execute() === TRUE){
@@ -624,17 +639,30 @@ function addUserToTable($conn, &$POSTJ){
 		echo(json_encode(['result' => 'failed', 'error' => 'Error adding user!']));			
 }
 
-function saveUserGroup($conn, $user_group_id, $user_group_name){
+function saveUserGroup($conn, $user_group_id, $user_group_name, $engagement_id = 0){
 	// Phase 3.35: capture existence before write so create/update verb
 	// is accurate in the audit-log entry.
 	$is_update = checkAnIDExist($conn,$user_group_id,'user_group_id','tb_core_mailcamp_user_group');
 	if($is_update){
+		// Rename only — engagement scope is unchanged (the dispatcher guard
+		// already enforced the operator's access to this existing list).
 		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=? WHERE user_group_id=?");
 		$stmt->bind_param('ss', $user_group_name,$user_group_id);
 	}
 	else{
-		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,date) VALUES(?,?,?)");
-		$stmt->bind_param('sss', $user_group_id,$user_group_name,$GLOBALS['entry_time']);
+		// Phase 3.48b: a NEW recipient list must be scoped to an engagement the
+		// operator belongs to (decision #3 — no unscoped standalone creation).
+		$engagement_id = (int)$engagement_id;
+		if($engagement_id <= 0){
+			echo(json_encode(['result' => 'failed', 'error' => 'Select an engagement for this recipient list.']));
+			return;
+		}
+		if(!taphish_user_group_can_stamp($conn, $engagement_id)){
+			echo(json_encode(['result' => 'failed', 'error' => 'You are not a member of that engagement.']));
+			return;
+		}
+		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,date,engagement_id) VALUES(?,?,?,?)");
+		$stmt->bind_param('sssi', $user_group_id,$user_group_name,$GLOBALS['entry_time'],$engagement_id);
 	}
 
 	if ($stmt->execute() === TRUE) {
@@ -764,6 +792,16 @@ function uploadUserCVS($conn, &$POSTJ){
 	$user_group_id = $POSTJ['user_group_id'];
 	$user_group_name = $POSTJ['user_group_name'];
 
+	// Phase 3.48b: scope the list to its engagement. >0 must be one the operator
+	// belongs to; 0/absent leaves it unscoped (NULL). COALESCE on update so a
+	// re-import never clears an existing scope.
+	$eid = !empty($POSTJ['engagement_id']) ? (int)$POSTJ['engagement_id'] : 0;
+	if(!taphish_user_group_can_stamp($conn, $eid)){
+		echo json_encode(['result' => 'failed', 'error' => 'You are not a member of that engagement.']);
+		return;
+	}
+	$eidParam = $eid > 0 ? $eid : null;
+
 	// Phase 3.45c: parse + scope-check via pure helpers; partial-import
 	// rather than die()-ing on the first bad row. If the operator passed
 	// an engagement_id, use its scope_allowlist to drop out-of-scope
@@ -815,12 +853,12 @@ function uploadUserCVS($conn, &$POSTJ){
 	$user_data_sealed = recipient_data_seal(json_encode($user_data));
 
 	if(checkAnIDExist($conn,$user_group_id,'user_group_id','tb_core_mailcamp_user_group')){
-		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=?, user_data=? WHERE user_group_id=?");
-		$stmt->bind_param('sss', $user_group_name,$user_data_sealed,$user_group_id);
+		$stmt = $conn->prepare("UPDATE tb_core_mailcamp_user_group SET user_group_name=?, user_data=?, engagement_id=COALESCE(engagement_id, ?) WHERE user_group_id=?");
+		$stmt->bind_param('ssis', $user_group_name,$user_data_sealed,$eidParam,$user_group_id);
 	}
 	else{
-		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,user_data,date) VALUES(?,?,?,?)");
-		$stmt->bind_param('ssss', $user_group_id,$user_group_name,$user_data_sealed,$GLOBALS['entry_time']);
+		$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,user_data,date,engagement_id) VALUES(?,?,?,?,?)");
+		$stmt->bind_param('ssssi', $user_group_id,$user_group_name,$user_data_sealed,$GLOBALS['entry_time'],$eidParam);
 	}
 
 	if($stmt->execute() === TRUE){
@@ -899,7 +937,8 @@ function deleteUserGroupFromGroupId($conn,$user_group_id){
 }
 
 function makeCopyUserGroup($conn, $old_user_group_id, $new_user_group_id, $new_user_group_name){
-	$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group (user_group_id,user_group_name,user_data,date) SELECT ?, ?,user_data,? FROM tb_core_mailcamp_user_group WHERE user_group_id=?");
+	// Phase 3.48b: the copy inherits the source list's engagement scope.
+	$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group (user_group_id,user_group_name,user_data,date,engagement_id) SELECT ?, ?,user_data,?,engagement_id FROM tb_core_mailcamp_user_group WHERE user_group_id=?");
 	$stmt->bind_param("ssss", $new_user_group_id, $new_user_group_name, $GLOBALS['entry_time'], $old_user_group_id);
 
 	if($stmt->execute() === TRUE){
