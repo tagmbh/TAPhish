@@ -169,4 +169,30 @@ final class RecipientReencryptTest extends TestCase
         self::assertSame([], $applied);
         self::assertContains(9, $out['error_ids']);
     }
+
+    public function testFormatSummaryIncludesCountsAndDryRunBanner(): void
+    {
+        $counts = [
+            'scanned' => 42, 'skipped_sealed' => 38, 'skipped_empty' => 1,
+            'sealed' => 3, 'suspect' => 1, 'errors' => 0, 'write_failures' => 0,
+            'suspect_ids' => [17], 'error_ids' => [], 'sealed_ids' => [4, 5, 17],
+        ];
+        $out = taphish_reencrypt_format_summary($counts, true);
+        self::assertStringContainsString('Recipient PII re-encrypt sweep', $out);
+        self::assertStringContainsString('scanned:', $out);
+        self::assertStringContainsString('38 (skipped)', $out);
+        self::assertStringContainsString('17', $out);
+        self::assertStringContainsString('[DRY RUN', $out);
+    }
+
+    public function testFormatSummaryNoDryRunBannerWhenLive(): void
+    {
+        $counts = [
+            'scanned' => 1, 'skipped_sealed' => 0, 'skipped_empty' => 0,
+            'sealed' => 1, 'suspect' => 0, 'errors' => 0, 'write_failures' => 0,
+            'suspect_ids' => [], 'error_ids' => [], 'sealed_ids' => [1],
+        ];
+        $out = taphish_reencrypt_format_summary($counts, false);
+        self::assertStringNotContainsString('DRY RUN', $out);
+    }
 }

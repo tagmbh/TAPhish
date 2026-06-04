@@ -126,3 +126,36 @@ if (!function_exists('taphish_reencrypt_run')) {
         return $c;
     }
 }
+
+if (!function_exists('taphish_reencrypt_format_summary')) {
+    /**
+     * Render a human-readable report from a taphish_reencrypt_run() result.
+     */
+    function taphish_reencrypt_format_summary(array $c, bool $dryRun): string
+    {
+        $g   = static fn (string $k): int => (int) ($c[$k] ?? 0);
+        $ids = static function (string $k) use ($c): string {
+            $list = $c[$k] ?? [];
+            if (!is_array($list) || $list === []) {
+                return '';
+            }
+            return ' — group_id ' . implode(', ', array_map('strval', $list));
+        };
+
+        $rows = [
+            'Recipient PII re-encrypt sweep',
+            sprintf('  scanned:         %d', $g('scanned')),
+            sprintf('  already sealed:  %d (skipped)', $g('skipped_sealed')),
+            sprintf('  empty:           %d (skipped)', $g('skipped_empty')),
+            sprintf('  sealed:          %d', $g('sealed')),
+            sprintf('  suspect:         %d%s', $g('suspect'), $g('suspect') ? ' (sealed, not a recipient array' . $ids('suspect_ids') . ')' : ''),
+            sprintf('  errors:          %d%s', $g('errors'), $g('errors') ? $ids('error_ids') : ''),
+            sprintf('  write failures:  %d', $g('write_failures')),
+        ];
+        if ($dryRun) {
+            $rows[] = '[DRY RUN — no rows written]';
+        }
+
+        return implode("\n", $rows) . "\n";
+    }
+}
