@@ -43,3 +43,4 @@ require_once __DIR__ . '/../../spear/manager/telegram_alerting.php';
 require_once __DIR__ . '/../../spear/manager/authz.php';
 require_once __DIR__ . '/../../spear/manager/api_token.php';
 require_once __DIR__ . '/../../spear/manager/lookalike_deploy.php';
+require_once __DIR__ . '/../../spear/manager/site_bundle.php';
