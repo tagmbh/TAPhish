@@ -1286,6 +1286,23 @@ a:focus-visible {
     background: linear-gradient(90deg, rgba(33,191,115,0.5), var(--t-border));
 }
 
+/* Phones: the 7 labels ("Engagement"…"Launch") make the stepper wider than a
+   ~375px screen, so it clipped. Keep the labels (useful context) but let the row
+   scroll horizontally instead of clipping — each step keeps a consistent tap width
+   so the circles + connectors stay evenly spaced regardless of the container width. */
+@media (max-width: 575px) {
+    .t-stepper {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    .t-stepper > li {
+        flex: 0 0 auto;
+        min-width: 72px;
+    }
+}
+
 /* Loading skeletons — Phase 3.43 OSINT lanes etc. */
 .t-skel {
     display: block;

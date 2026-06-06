@@ -29,6 +29,23 @@ if (typeof $ !== 'undefined' && $.ajaxSetup) {
     location.href = '/spear/SettingsUser?must_change=1';
 })();
 
+// Modal stacking fix (Quick Tracker "New …" and every other modal).
+// Bootstrap appends .modal-backdrop (z-index 1040) to <body>, but every page
+// nests its modals inside .page-wrapper, which the Phase 3.44 visual refresh
+// turned into a stacking context (`position: relative; z-index: 1`). That trapped
+// the modal BELOW the body-level backdrop, so a black overlay covered the dialog
+// and swallowed every click/tap — most reproducibly in Safari. Reparent each modal
+// to <body> right before it shows so the modal (1050) and its backdrop (1040) are
+// siblings at the document root and stack correctly. Delegated on document, so it
+// also covers modals injected later.
+if (typeof $ !== 'undefined') {
+    $(document).on('show.bs.modal', '.modal', function () {
+        if (this.parentNode && this.parentNode !== document.body) {
+            document.body.appendChild(this);
+        }
+    });
+}
+
 $(function() {
     checkSniperPhishProcess();
     $('[data-toggle="tooltip"]').tooltip({
