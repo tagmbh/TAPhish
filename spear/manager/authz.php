@@ -78,6 +78,7 @@ if (!defined('TAPHISH_POLICY')) {
         'beef_settings_*'              => ['super-admin'],
         'beef_test_connection'         => ['super-admin'],
         'telegram_*'                   => ['super-admin'],
+        'push_settings_*'              => ['super-admin'], // Phase 3.57: off-host backup push destination
         // own-account 2FA — every authenticated user manages their own.
         'totp_begin_enrollment'        => ['*'],
         'totp_confirm_enrollment'      => ['*'],
