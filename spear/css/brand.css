@@ -578,6 +578,29 @@ a:focus-visible {
 .dim-panel .t-activity-sev.is-warn  { color: var(--t-warn); }
 .dim-panel .t-activity-sev.is-error { color: var(--t-danger); }
 
+/* Phase 3.59: on phones the 90/60/1fr/60 grid squeezes the message column to
+   ~4 chars ("Acco…"). Reflow to a meta line (time · kind · severity) plus a
+   full-width, wrapping message line so the activity feed stays readable. */
+@media (max-width: 575px) {
+    .dim-panel .t-activity-row {
+        grid-template-columns: auto 1fr auto;
+        grid-template-areas:
+            "time kind sev"
+            "msg  msg  msg";
+        gap: 2px 8px;
+    }
+    .dim-panel .t-activity-time { grid-area: time; }
+    .dim-panel .t-activity-kind { grid-area: kind; justify-self: start; }
+    .dim-panel .t-activity-sev  { grid-area: sev; }
+    .dim-panel .t-activity-msg  {
+        grid-area: msg;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        word-break: break-word;
+    }
+}
+
 .dim-panel .t-activity-empty {
     color: var(--t-text-dim);
     font-family: var(--t-mono);
