@@ -38,10 +38,12 @@
                         <div class="card-body">
                            <h5 class="card-title">Pick an engagement</h5>
                            <p class="text-muted small">No engagement was specified in the URL. Pick one below to view its campaigns and status.</p>
-                           <table class="table table-sm table-striped" id="eng_picker_table">
-                              <thead><tr><th>Slug</th><th>Window</th><th>Scope</th><th>Status</th><th></th></tr></thead>
-                              <tbody></tbody>
-                           </table>
+                           <div class="table-responsive">
+                              <table class="table table-sm table-striped" id="eng_picker_table">
+                                 <thead><tr><th>Slug</th><th>Window</th><th>Scope</th><th>Status</th><th></th></tr></thead>
+                                 <tbody></tbody>
+                              </table>
+                           </div>
                         </div>
                      </div>
                   </div>
@@ -104,10 +106,12 @@
                                  </button>
                               </div>
                            </h5>
-                           <table class="table table-sm table-striped" id="eng_campaigns_table">
-                              <thead><tr><th>Campaign</th><th>Scheduled</th><th>Status</th><th></th></tr></thead>
-                              <tbody></tbody>
-                           </table>
+                           <div class="table-responsive">
+                              <table class="table table-sm table-striped" id="eng_campaigns_table">
+                                 <thead><tr><th>Campaign</th><th>Scheduled</th><th>Status</th><th></th></tr></thead>
+                                 <tbody></tbody>
+                              </table>
+                           </div>
                         </div>
                      </div>
                   </div>

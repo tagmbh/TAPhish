@@ -109,10 +109,12 @@
                                  <i class="fa fa-sync"></i>
                               </button>
                            </h5>
-                           <table class="table table-sm table-striped" id="tb_engagements">
-                              <thead><tr><th>Slug</th><th>Window</th><th>Scope</th><th>Status</th><th></th></tr></thead>
-                              <tbody></tbody>
-                           </table>
+                           <div class="table-responsive">
+                              <table class="table table-sm table-striped" id="tb_engagements">
+                                 <thead><tr><th>Slug</th><th>Window</th><th>Scope</th><th>Status</th><th></th></tr></thead>
+                                 <tbody></tbody>
+                              </table>
+                           </div>
                         </div>
                      </div>
                      <div class="card mt-3">

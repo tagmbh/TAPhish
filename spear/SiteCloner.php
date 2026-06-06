@@ -120,12 +120,14 @@
                                  <i class="fa fa-sync"></i>
                               </button>
                            </h5>
-                           <table class="table table-sm table-striped" id="tb_clones">
-                              <thead>
-                                 <tr><th>Slug</th><th>Source</th><th>Assets</th><th>Created</th><th></th></tr>
-                              </thead>
-                              <tbody></tbody>
-                           </table>
+                           <div class="table-responsive">
+                              <table class="table table-sm table-striped" id="tb_clones">
+                                 <thead>
+                                    <tr><th>Slug</th><th>Source</th><th>Assets</th><th>Created</th><th></th></tr>
+                                 </thead>
+                                 <tbody></tbody>
+                              </table>
+                           </div>
                         </div>
                      </div>
                   </div>
