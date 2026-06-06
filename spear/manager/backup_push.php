@@ -71,6 +71,64 @@ if (!function_exists('taphish_push_config_mask')) {
     }
 }
 
+if (!function_exists('taphish_push_config_from_request')) {
+    /**
+     * Phase 3.57 — normalize a web-form / POST payload into a push-config array
+     * for taphish_push_config_validate(). Trims scalar fields; includes only the
+     * fields relevant to the chosen type; coerces path_style to a real bool; drops
+     * a blank optional endpoint. An empty/unknown type yields just ['type'=>…] so
+     * the caller can treat a blank type as "clear the destination".
+     */
+    function taphish_push_config_from_request(array $req): array
+    {
+        $type = strtolower(trim((string) ($req['type'] ?? '')));
+        $cfg = ['type' => $type];
+        if ($type === 'webdav') {
+            $cfg['url']  = trim((string) ($req['url'] ?? ''));
+            $cfg['user'] = trim((string) ($req['user'] ?? ''));
+            $cfg['pass'] = (string) ($req['pass'] ?? '');
+        } elseif ($type === 's3') {
+            $cfg['bucket']     = trim((string) ($req['bucket'] ?? ''));
+            $cfg['region']     = trim((string) ($req['region'] ?? ''));
+            $cfg['access_key'] = trim((string) ($req['access_key'] ?? ''));
+            $cfg['secret_key'] = (string) ($req['secret_key'] ?? '');
+            $endpoint = trim((string) ($req['endpoint'] ?? ''));
+            if ($endpoint !== '') {
+                $cfg['endpoint'] = $endpoint;
+            }
+            $ps = $req['path_style'] ?? false;
+            if ($ps === true || $ps === 1 || $ps === '1' || $ps === 'true' || $ps === 'on') {
+                $cfg['path_style'] = true;
+            }
+        }
+        return $cfg;
+    }
+}
+
+if (!function_exists('taphish_push_merge_secret')) {
+    /**
+     * Phase 3.57 — carry the stored secret forward when the operator left the
+     * secret field blank (editing only non-secret fields). The plaintext secret is
+     * never sent back to the browser, so a blank secret on save means "keep the
+     * existing one". A cross-type edit (webdav<->s3) never inherits a secret.
+     */
+    function taphish_push_merge_secret(array $cfg, ?array $existing): array
+    {
+        $type  = (string) ($cfg['type'] ?? '');
+        $field = $type === 's3' ? 'secret_key' : ($type === 'webdav' ? 'pass' : '');
+        if ($field === '' || $existing === null) {
+            return $cfg;
+        }
+        if ((string) ($existing['type'] ?? '') !== $type) {
+            return $cfg;
+        }
+        if ((string) ($cfg[$field] ?? '') === '' && (string) ($existing[$field] ?? '') !== '') {
+            $cfg[$field] = (string) $existing[$field];
+        }
+        return $cfg;
+    }
+}
+
 if (!function_exists('taphish_push_uri_encode')) {
     /** RFC-3986 per-segment encoding, slashes preserved (S3 canonical URI). */
     function taphish_push_uri_encode(string $key): string

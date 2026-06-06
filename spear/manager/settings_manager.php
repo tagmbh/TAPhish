@@ -187,6 +187,83 @@ if (isset($_POST)) {
 			}
 		}
 
+		// ---- Phase 3.57: off-host backup push destination (S3 / WebDAV) ----
+		// Closes the 3.50c deferred item — configure the DR push target from the
+		// panel instead of the backup_push_config.php CLI. The secret is stored
+		// encrypted at-rest in tb_store; the plaintext secret is never returned to
+		// the page (masked on load; a blank secret on save keeps the existing one).
+		// super-admin only (authz: push_settings_*).
+		if($POSTJ['action_type'] == "push_settings_load") {
+			require_once(dirname(__FILE__) . '/backup_push.php');
+			$cfg = taphish_push_get_config($conn);
+			if ($cfg === null) {
+				echo json_encode(['result' => 'success', 'configured' => false]);
+			} else {
+				echo json_encode(['result' => 'success', 'configured' => true, 'cfg' => taphish_push_config_mask($cfg)]);
+			}
+		}
+		if($POSTJ['action_type'] == "push_settings_save") {
+			require_once(dirname(__FILE__) . '/backup_push.php');
+			require_once(dirname(__FILE__) . '/secret_at_rest.php');
+			$cfg = taphish_push_config_from_request([
+				'type'       => $POSTJ['type']       ?? '',
+				'url'        => $POSTJ['url']        ?? '',
+				'user'       => $POSTJ['user']       ?? '',
+				'pass'       => $POSTJ['pass']       ?? '',
+				'bucket'     => $POSTJ['bucket']     ?? '',
+				'region'     => $POSTJ['region']     ?? '',
+				'access_key' => $POSTJ['access_key'] ?? '',
+				'secret_key' => $POSTJ['secret_key'] ?? '',
+				'endpoint'   => $POSTJ['endpoint']   ?? '',
+				'path_style' => $POSTJ['path_style'] ?? false,
+			]);
+			if (($cfg['type'] ?? '') === '') {
+				taphish_push_clear_config($conn);
+				echo json_encode(['result' => 'success', 'cleared' => true]);
+				logIt('off-host backup push destination cleared');
+			} else {
+				$cfg = taphish_push_merge_secret($cfg, taphish_push_get_config($conn));
+				$v = taphish_push_config_validate($cfg);
+				if (!$v['ok']) {
+					echo json_encode(['result' => 'failed', 'error' => implode('; ', $v['errors'])]);
+				} elseif (secret_at_rest_get_key() === null) {
+					echo json_encode(['result' => 'failed', 'error' => 'At-rest encryption key unavailable — refusing to store a destination secret in plaintext.']);
+				} else {
+					$ok = taphish_push_set_config($conn, $v['cfg']);
+					echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Could not store config.']);
+					if ($ok) logIt('off-host backup push destination configured (' . $v['cfg']['type'] . ')');
+				}
+			}
+		}
+		if($POSTJ['action_type'] == "push_settings_test") {
+			require_once(dirname(__FILE__) . '/backup_push.php');
+			$cfg = taphish_push_get_config($conn);
+			if ($cfg === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'No destination configured — save one first.']);
+			} else {
+				$tmp = tempnam(sys_get_temp_dir(), 'tappush_');
+				@file_put_contents($tmp, 'TAPhish off-host push connectivity probe');
+				$name = 'taphish-connectivity-test-' . gmdate('Ymd-His') . '.txt';
+				if (($cfg['type'] ?? '') === 'webdav') {
+					$req = taphish_push_webdav_request($cfg, $name);
+				} else {
+					$now = time();
+					$amzDate = gmdate('Ymd', $now) . 'T' . gmdate('His', $now) . 'Z';
+					$sha = hash('sha256', (string) file_get_contents($tmp));
+					$req = taphish_push_s3_request($cfg, $name, $sha, $amzDate);
+				}
+				$res = taphish_push_send($req, $tmp);
+				@unlink($tmp);
+				echo json_encode([
+					'result' => 'success',
+					'ok'     => (bool) ($res['ok'] ?? false),
+					'status' => $res['status'] ?? null,
+					'error'  => ($res['ok'] ?? false) ? null : ($res['error'] ?? 'upload failed'),
+					'object' => $name,
+				]);
+			}
+		}
+
 		if($POSTJ['action_type'] == "modify_timestamp_settings")
 			modifyTimestampSettings($conn, json_encode($POSTJ['time_zone']), json_encode($POSTJ['time_format']));
 		if($POSTJ['action_type'] == "get_timestamp_settings")

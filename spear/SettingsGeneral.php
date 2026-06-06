@@ -251,6 +251,96 @@
                         </div>
                      </div>
                      <hr/>
+                     <!-- Phase 3.57: off-host backup push destination (disaster recovery).
+                          Web UI for the backup_push_config.php CLI — the secret is stored
+                          encrypted at-rest in tb_store and never returned to the page. -->
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">Off-host backup push (disaster recovery) <span class="badge badge-secondary ml-2">3.57</span></h6>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <i class="small">
+                              Where <code>backup_run.php --push</code> uploads each encrypted <code>.tapbak</code> for
+                              off-site DR. Stored encrypted at-rest; the secret is never shown again after saving —
+                              leave it blank to keep the existing one. Choose <strong>None</strong> and save to forget
+                              the destination. Equivalent to the <code>backup_push_config.php</code> CLI.
+                           </i>
+                        </div>
+                        <label for="push_type" class="col-md-2 text-left control-label col-form-label">Destination:</label>
+                        <div class="col-md-7">
+                           <select class="form-control" id="push_type">
+                              <option value="">None (disabled)</option>
+                              <option value="s3">S3 / S3-compatible</option>
+                              <option value="webdav">WebDAV</option>
+                           </select>
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-info" id="btn_save_push_settings"><i class="fa fas fa-save"></i> Save</button>
+                        </div>
+                     </div>
+                     <div id="push_s3_fields" style="display:none;">
+                        <div class="form-group row">
+                           <label for="push_bucket" class="col-md-2 text-left control-label col-form-label">Bucket:</label>
+                           <div class="col-md-4">
+                              <input type="text" class="form-control" id="push_bucket" placeholder="my-dr-bucket" autocomplete="off">
+                           </div>
+                           <label for="push_region" class="col-md-2 text-left control-label col-form-label">Region:</label>
+                           <div class="col-md-4">
+                              <input type="text" class="form-control" id="push_region" placeholder="eu-central-1" autocomplete="off">
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="push_access_key" class="col-md-2 text-left control-label col-form-label">Access key:</label>
+                           <div class="col-md-4">
+                              <input type="text" class="form-control" id="push_access_key" placeholder="AKIA…" autocomplete="off">
+                           </div>
+                           <label for="push_secret_key" class="col-md-2 text-left control-label col-form-label">Secret key:</label>
+                           <div class="col-md-4">
+                              <input type="password" class="form-control" id="push_secret_key" placeholder="leave blank to keep existing" autocomplete="new-password">
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="push_endpoint" class="col-md-2 text-left control-label col-form-label">Endpoint:</label>
+                           <div class="col-md-7">
+                              <input type="url" class="form-control" id="push_endpoint" placeholder="(optional) https://minio.example — S3-compatible store">
+                           </div>
+                           <div class="col-md-3">
+                              <div class="custom-control custom-checkbox mt-2">
+                                 <input type="checkbox" class="custom-control-input" id="push_path_style">
+                                 <label class="custom-control-label" for="push_path_style">Path-style URLs</label>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                     <div id="push_webdav_fields" style="display:none;">
+                        <div class="form-group row">
+                           <label for="push_url" class="col-md-2 text-left control-label col-form-label">URL:</label>
+                           <div class="col-md-7">
+                              <input type="url" class="form-control" id="push_url" placeholder="https://dav.example/backups">
+                           </div>
+                        </div>
+                        <div class="form-group row">
+                           <label for="push_user" class="col-md-2 text-left control-label col-form-label">Username:</label>
+                           <div class="col-md-4">
+                              <input type="text" class="form-control" id="push_user" placeholder="backup" autocomplete="off">
+                           </div>
+                           <label for="push_pass" class="col-md-2 text-left control-label col-form-label">Password:</label>
+                           <div class="col-md-4">
+                              <input type="password" class="form-control" id="push_pass" placeholder="leave blank to keep existing" autocomplete="new-password">
+                           </div>
+                        </div>
+                     </div>
+                     <div class="form-group row" id="push_actions_row" style="display:none;">
+                        <div class="col-md-9">
+                           <div id="push_test_result" class="small mt-1"></div>
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-outline-secondary" id="btn_test_push_settings"><i class="fa fas fa-bolt"></i> Test upload</button>
+                        </div>
+                     </div>
+                     <hr/>
                      <!-- OSINT API keys. Stored in the browser's localStorage
                           (never sent to the TAPhish server except inline on the
                           OSINT request itself). One discoverable place to set

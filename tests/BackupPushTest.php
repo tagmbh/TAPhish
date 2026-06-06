@@ -86,6 +86,68 @@ final class BackupPushTest extends TestCase
         self::assertSame('https://s3.eu-central-1.amazonaws.com/my-bucket/f.tapbak', $ps['url']);
     }
 
+    // ---- Phase 3.57: web-form parsing helpers for the SettingsGeneral card ----
+
+    public function testConfigFromRequestWebdavTrimsAndKeepsPass(): void
+    {
+        $cfg = taphish_push_config_from_request([
+            'type' => ' WebDAV ', 'url' => '  https://dav.example/b  ', 'user' => ' alice ', 'pass' => '  pw with spaces  ',
+            // s3 fields present in the payload must be ignored for a webdav type
+            'bucket' => 'ignored', 'secret_key' => 'ignored',
+        ]);
+        self::assertSame(['type' => 'webdav', 'url' => 'https://dav.example/b', 'user' => 'alice', 'pass' => '  pw with spaces  '], $cfg);
+    }
+
+    public function testConfigFromRequestS3WithOptionalsAndBoolCoercion(): void
+    {
+        $cfg = taphish_push_config_from_request([
+            'type' => 's3', 'bucket' => ' b ', 'region' => ' eu-central-1 ', 'access_key' => ' AKIA ',
+            'secret_key' => ' sk ', 'endpoint' => ' https://minio.example ', 'path_style' => 'on',
+        ]);
+        self::assertSame([
+            'type' => 's3', 'bucket' => 'b', 'region' => 'eu-central-1', 'access_key' => 'AKIA',
+            'secret_key' => ' sk ', 'endpoint' => 'https://minio.example', 'path_style' => true,
+        ], $cfg);
+
+        // blank endpoint dropped; path_style falsey omitted
+        $cfg2 = taphish_push_config_from_request(['type' => 's3', 'bucket' => 'b', 'region' => 'r', 'access_key' => 'k', 'secret_key' => 's', 'endpoint' => '', 'path_style' => '0']);
+        self::assertArrayNotHasKey('endpoint', $cfg2);
+        self::assertArrayNotHasKey('path_style', $cfg2);
+    }
+
+    public function testConfigFromRequestBlankTypeYieldsBareTypeForClear(): void
+    {
+        self::assertSame(['type' => ''], taphish_push_config_from_request([]));
+        self::assertSame(['type' => ''], taphish_push_config_from_request(['type' => '  ']));
+        // an unknown type passes through (so validate() can reject it) with no fields
+        self::assertSame(['type' => 'ftp'], taphish_push_config_from_request(['type' => 'ftp', 'url' => 'x']));
+    }
+
+    public function testMergeSecretKeepsExistingWhenBlank(): void
+    {
+        $existing = ['type' => 's3', 'bucket' => 'b', 'region' => 'r', 'access_key' => 'k', 'secret_key' => 'STORED'];
+        $incoming = ['type' => 's3', 'bucket' => 'b2', 'region' => 'r', 'access_key' => 'k', 'secret_key' => ''];
+        $merged = taphish_push_merge_secret($incoming, $existing);
+        self::assertSame('STORED', $merged['secret_key']);
+        self::assertSame('b2', $merged['bucket']); // non-secret edits preserved
+
+        $wd = taphish_push_merge_secret(['type' => 'webdav', 'url' => 'https://h', 'user' => 'u', 'pass' => ''], ['type' => 'webdav', 'url' => 'https://h', 'user' => 'u', 'pass' => 'OLDPW']);
+        self::assertSame('OLDPW', $wd['pass']);
+    }
+
+    public function testMergeSecretUsesNewSecretAndNeverCrossesTypes(): void
+    {
+        // provided secret wins
+        $merged = taphish_push_merge_secret(['type' => 's3', 'secret_key' => 'NEW'], ['type' => 's3', 'secret_key' => 'OLD']);
+        self::assertSame('NEW', $merged['secret_key']);
+        // type changed (existing webdav, now s3) -> do NOT inherit a secret even if blank
+        $crossed = taphish_push_merge_secret(['type' => 's3', 'secret_key' => ''], ['type' => 'webdav', 'pass' => 'OLDPW']);
+        self::assertSame('', $crossed['secret_key']);
+        // no existing config -> unchanged
+        $none = taphish_push_merge_secret(['type' => 's3', 'secret_key' => ''], null);
+        self::assertSame('', $none['secret_key']);
+    }
+
     public function testPushSendUsesInjectedHttp(): void
     {
         $tmp = tempnam(sys_get_temp_dir(), 'push_');

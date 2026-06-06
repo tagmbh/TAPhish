@@ -580,5 +580,78 @@ function clearJunkSPData(e){
                 })
                 .fail(function (xhr) { $('#telegram_test_result').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
         });
+
+        // ---- Phase 3.57: off-host backup push destination (S3 / WebDAV) ----
+        function togglePushFields() {
+            var t = $('#push_type').val();
+            $('#push_s3_fields').toggle(t === 's3');
+            $('#push_webdav_fields').toggle(t === 'webdav');
+            $('#push_actions_row').toggle(t === 's3' || t === 'webdav');
+        }
+        function loadPushSettings() {
+            postSettings({ action_type: 'push_settings_load' }).done(function (d) {
+                if (!d || d.result !== 'success') return;
+                if (!d.configured || !d.cfg) { $('#push_type').val(''); togglePushFields(); return; }
+                var c = d.cfg;
+                $('#push_type').val(c.type || '');
+                if (c.type === 's3') {
+                    $('#push_bucket').val(c.bucket || '');
+                    $('#push_region').val(c.region || '');
+                    $('#push_access_key').val(c.access_key || '');
+                    $('#push_secret_key').val('');            // never prefilled — blank on save keeps existing
+                    $('#push_endpoint').val(c.endpoint || '');
+                    $('#push_path_style').prop('checked', !!c.path_style);
+                } else if (c.type === 'webdav') {
+                    $('#push_url').val(c.url || '');
+                    $('#push_user').val(c.user || '');
+                    $('#push_pass').val('');                  // never prefilled
+                }
+                togglePushFields();
+            });
+        }
+        $('#push_type').on('change', togglePushFields);
+        loadPushSettings();
+        $('#btn_save_push_settings').on('click', function () {
+            var t = $('#push_type').val();
+            var payload = { action_type: 'push_settings_save', type: t };
+            if (t === 's3') {
+                payload.bucket = $('#push_bucket').val();
+                payload.region = $('#push_region').val();
+                payload.access_key = $('#push_access_key').val();
+                payload.secret_key = $('#push_secret_key').val();
+                payload.endpoint = $('#push_endpoint').val();
+                payload.path_style = $('#push_path_style').is(':checked');
+            } else if (t === 'webdav') {
+                payload.url = $('#push_url').val();
+                payload.user = $('#push_user').val();
+                payload.pass = $('#push_pass').val();
+            }
+            postSettings(payload)
+                .done(function (d) {
+                    if (d && d.result === 'success') {
+                        toastr.success('', d.cleared ? 'Backup push destination cleared.' : 'Backup push destination saved.');
+                        $('#push_secret_key').val('');
+                        $('#push_pass').val('');
+                        $('#push_test_result').empty();
+                        loadPushSettings();
+                    } else {
+                        toastr.error('', (d && d.error) || 'Save failed.');
+                    }
+                })
+                .fail(function (xhr) { toastr.error('', 'Request failed (HTTP ' + xhr.status + ').'); });
+        });
+        $('#btn_test_push_settings').on('click', function () {
+            $('#push_test_result').html('<span class="text-muted">uploading test object…</span>');
+            postSettings({ action_type: 'push_settings_test' })
+                .done(function (d) {
+                    if (d && d.result === 'success' && d.ok) {
+                        $('#push_test_result').html('<span class="text-success"><i class="fa fa-check"></i> Uploaded ' + $('<div>').text(d.object || 'test object').html() + ' — destination reachable.</span>');
+                    } else {
+                        var err = (d && d.error) || 'Test failed.';
+                        $('#push_test_result').html('<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> ' + $('<div>').text(err).html() + '</span>');
+                    }
+                })
+                .fail(function (xhr) { $('#push_test_result').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
+        });
     });
 })();
