@@ -79,11 +79,8 @@ Living document. Updated when phases ship.
 
 ## Known follow-ups (not blockers)
 
-- `actions/checkout@v4` Node-20 deprecation (cosmetic CI warning; fix by bumping to v5 when convenient)
-- Spec drift: the Phase 3.33 design doc describes `check_process` response shape that was adjusted at implementation time — JS is canonical
-- `.is-error` Trend-Klasse in CSS definiert, JS schreibt sie nicht
-- Open / Click rate tiles render `—` because the metrics blob isn't yet wired server-side (the JS already handles real numbers as soon as `home_manager.getHomeGraphsData` exposes them)
 - Phase 3.38 integration tests (full encrypt round-trip with on-disk key) — pure-helper passthrough tier ships; integration tier deferred
+- (Resolved 2026-06-06: `actions/checkout` bumped v4→v5; Open/Capture rate tiles wired (3.58/3.58b); dead `.t-metric-trend.is-error` rule removed; stale 3.33 `check_process` drift note dropped — JS is canonical.)
 
 ## Roadmap — next phases
 
