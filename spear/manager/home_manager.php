@@ -194,7 +194,16 @@ function getHomeGraphsData($conn){
 	else
 		$campaign_info['quicktracker'] = [];
 
-	echo json_encode(['campaign_info'=>$campaign_info, 'timestamp_conv'=>$timestamp_conv, 'timezone'=>$DTime_info['time_zone']['timezone']], JSON_INVALID_UTF8_IGNORE);
+	$payload = ['campaign_info'=>$campaign_info, 'timestamp_conv'=>$timestamp_conv, 'timezone'=>$DTime_info['time_zone']['timezone']];
+	// Phase 3.58: headline open-rate for the dashboard metric strip. Defensive —
+	// any failure just omits the key, so the rate tiles fall back to "—" (no regression).
+	try {
+		require_once(dirname(__FILE__) . '/dashboard_metrics.php');
+		$payload['metrics'] = taphish_home_metrics($conn);
+	} catch (\Throwable $e) {
+		// leave metrics out — dashboard.js renders "—"
+	}
+	echo json_encode($payload, JSON_INVALID_UTF8_IGNORE);
 }
 
 //-------------SniperPhish Process----------
