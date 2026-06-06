@@ -76,9 +76,11 @@ if (!function_exists('taphish_home_metrics')) {
         // taking down the (working) open rate.
         $captured = null;
         try {
+            // tb_data_webform_submit stores the campaign id in `tracker_id`
+            // (see taphish_is_first_capture / taphish_capture_summary_for_campaign).
             $captured = $count(
                 $conn,
-                "SELECT COUNT(DISTINCT campaign_id, rid) AS c FROM tb_data_webform_submit
+                "SELECT COUNT(DISTINCT tracker_id, rid) AS c FROM tb_data_webform_submit
                  WHERE COALESCE(is_scanner, 0) = 0"
             );
         } catch (\Throwable $e) {
