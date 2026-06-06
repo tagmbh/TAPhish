@@ -7,8 +7,9 @@
  * em-dash placeholder when they're absent. Until now nothing computed them, so
  * the rate tiles always showed "—". This file computes the open rate from
  * tb_data_mailcamp_live (scanner traffic excluded, matching the Phase 3.45a
- * customer-report KPI), and is forward-compatible with a click/capture rate
- * (pass $captured once its definition is pinned down).
+ * customer-report KPI) and the capture / "compromise" rate from
+ * tb_data_webform_submit (Phase 3.58b — distinct recipients who submitted the
+ * phishing form, scanner-excluded, over the same sent denominator).
  *
  * The pure reducer (taphish_home_metrics_rates) is side-effect-free and
  * unit-tested. The DB facade (taphish_home_metrics) throws on query failure so
@@ -68,6 +69,22 @@ if (!function_exists('taphish_home_metrics')) {
                AND mail_open_times <> '[]'"
         );
 
-        return taphish_home_metrics_rates($sent, $opened);
+        // Phase 3.58b: capture ("compromise") rate — distinct recipients who
+        // submitted the phishing form (a credential / 2FA capture), scanner
+        // traffic excluded, over the same sent denominator. Isolated in its own
+        // try so a capture-query failure degrades to open-rate-only instead of
+        // taking down the (working) open rate.
+        $captured = null;
+        try {
+            $captured = $count(
+                $conn,
+                "SELECT COUNT(DISTINCT campaign_id, rid) AS c FROM tb_data_webform_submit
+                 WHERE COALESCE(is_scanner, 0) = 0"
+            );
+        } catch (\Throwable $e) {
+            $captured = null; // capture rate unavailable → click_rate stays out
+        }
+
+        return taphish_home_metrics_rates($sent, $opened, $captured);
     }
 }

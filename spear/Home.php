@@ -98,7 +98,7 @@
                      <div class="t-metric-trend" id="m_open_rate_trend">&nbsp;</div>
                   </div>
                   <div class="t-metric">
-                     <div class="t-metric-label">Click rate</div>
+                     <div class="t-metric-label">Capture rate</div>
                      <div class="t-metric-num" id="m_click_rate">&mdash;</div>
                      <div class="t-metric-trend" id="m_click_rate_trend">&nbsp;</div>
                   </div>
