@@ -525,7 +525,6 @@ a:focus-visible {
 
 .dim-panel .t-metric-trend.is-up    { color: var(--t-success); }
 .dim-panel .t-metric-trend.is-down  { color: var(--t-warn); }
-.dim-panel .t-metric-trend.is-error { color: var(--t-danger); }
 
 .dim-panel .t-activity {
     margin-top: 18px;
@@ -723,6 +722,16 @@ a:focus-visible {
 .dim-panel .table-bordered th,
 .dim-panel .table-bordered td {
     border-color: var(--t-border) !important;
+}
+
+/* Phase 3.59c: the hand-built (non-DataTables) tables fit a phone by wrapping
+   hyphenated slugs char-by-char ("t-/alp/ha-…"). Keep their cells on one line so
+   the .table-responsive wrapper scrolls instead — matching the DataTables tables. */
+#eng_picker_table th, #eng_picker_table td,
+#eng_campaigns_table th, #eng_campaigns_table td,
+#tb_engagements th, #tb_engagements td,
+#tb_clones th, #tb_clones td {
+    white-space: nowrap;
 }
 
 /* Dropdown menus (user dropdown, action menus). */
