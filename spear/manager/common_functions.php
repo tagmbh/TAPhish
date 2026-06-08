@@ -165,9 +165,13 @@ function getMailerDSN($dsn_type, $sender_username, $sender_pwd, $smtp_server, $v
 
 //----------------------------------------------------
 function getQueryValsFromURL($url){
-    $parts =parse_url(html_entity_decode($url), PHP_URL_QUERY);
-    parse_str($parts, $query);
-    return $query;
+    // 2026-06-08: parse logic extracted to spear/manager/url_query_parse.php
+    // (pure, unit-tested in tests/UrlQueryParseTest.php). Wrapper preserves
+    // the original global signature; the pure helper also tolerates URLs
+    // without a query string by returning [] instead of PHP 8.5 warning +
+    // null (the original called parse_str(null) which warns in 8.5+).
+    require_once(__DIR__ . '/url_query_parse.php');
+    return taphish_url_query_parse((string) $url);
 }
 
 //---------------------------------------------------------------------------------------

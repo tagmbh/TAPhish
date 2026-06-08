@@ -55,3 +55,4 @@ require_once __DIR__ . '/../../spear/manager/mail_dsn.php';
 require_once __DIR__ . '/../../spear/manager/keyword_filter.php';
 require_once __DIR__ . '/../../spear/manager/mail_client_detect.php';
 require_once __DIR__ . '/../../spear/manager/ip_info_projection.php';
+require_once __DIR__ . '/../../spear/manager/url_query_parse.php';
