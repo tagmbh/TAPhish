@@ -37,6 +37,14 @@ if (isset($conn) && $conn instanceof mysqli) {
 		// once healed, the LIKE/equality filter matches nothing.
 		taphish_heal_pretext_clone_bugs($conn);
 	}
+	// 2026-06-09 one-time heal: existing m365-login-* clones have a literal
+	// `[Microsoft 365]` placeholder where the new library template now has
+	// the real M365 grid + wordmark SVG. Idempotent (placeholder is the
+	// filter); silent on touchless re-runs.
+	if (is_file(dirname(__FILE__) . '/landing_library.php')) {
+		require_once(dirname(__FILE__) . '/landing_library.php');
+		landing_library_heal_m365_logo();
+	}
 	// Phase 3.42: add tb_data_webform_submit.code_2fa if missing.
 	if (is_file(dirname(__FILE__) . '/capture_alerting.php')) {
 		require_once(dirname(__FILE__) . '/capture_alerting.php');
