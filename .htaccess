@@ -4,7 +4,15 @@ RewriteEngine On
 # Phase 3.55: TAPhish-hosted look-alike vanity paths.
 # /p/<slug>/ serves the cloned landing page at spear/sniperhost/cloned/<slug>/
 # (slug = lower alnum/hyphen, max 41). Must precede the generic clean-URL rule.
+# 2026-06-08: the original single-rule version matched ONLY the bare slug —
+# any sub-path (e.g. /p/<slug>/assets/style.css) fell through to the generic
+# `^([^\.]+)$ $1.php` rule below, which 404'd because there was no such .php.
+# Result: a cloned landing's <link href="assets/style.css"> never resolved,
+# and the operator saw an unstyled white page. The bare-slug match stays
+# first (preserves /p/foo and /p/foo/ shape); the sub-path rule below catches
+# everything under the slug — .css, .js, images, manifests, anything.
 RewriteRule ^p/([a-z0-9][a-z0-9-]{0,40})/?$ spear/sniperhost/cloned/$1/ [NC,L]
+RewriteRule ^p/([a-z0-9][a-z0-9-]{0,40})/(.+)$ spear/sniperhost/cloned/$1/$2 [NC,L]
 
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
