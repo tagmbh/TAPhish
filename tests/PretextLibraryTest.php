@@ -87,17 +87,40 @@ final class PretextLibraryTest extends TestCase
         }
     }
 
-    public function testEverySeedReservesATrackerSlot(): void
+    public function testEverySeedUsesTheTrackingUrlMergeToken(): void
     {
-        // Each body must include the REPLACE-WITH-TRACKER-URL marker so
-        // the operator knows exactly where to drop the campaign URL.
+        // Each body must use {{TRACKINGURL}} — the actual token the send-time
+        // substitution in common_functions.php / filterKeywords recognises. A
+        // literal placeholder URL (the previous "REPLACE-WITH-TRACKER-URL"
+        // shape) would land in the recipient's inbox UNCHANGED, breaking the
+        // tracker + landing redirect flow entirely. Regression: 2026-06-08.
         foreach (taphish_pretext_seeds() as $s) {
             self::assertStringContainsString(
+                '{{TRACKINGURL}}',
+                $s['body'],
+                "Seed '{$s['name']}' is missing the {{TRACKINGURL}} merge token."
+            );
+            // and the body must NOT carry the old literal placeholder
+            self::assertStringNotContainsString(
                 'REPLACE-WITH-TRACKER-URL',
                 $s['body'],
-                "Seed '{$s['name']}' is missing the tracker-URL placeholder."
+                "Seed '{$s['name']}' still carries the old literal placeholder."
+            );
+            self::assertStringNotContainsString(
+                'example.com',
+                $s['body'],
+                "Seed '{$s['name']}' still points at example.com instead of the merge token."
             );
         }
+    }
+
+    public function testPretextCloneContentTypeIsTextHtml(): void
+    {
+        // shootMail() in common_functions.php sends HTML only when
+        // mail_content_type === 'text/html' (full MIME string). The pretext
+        // clone wrote 'html' (short form), which fell through to text() and
+        // delivered the body as raw HTML markup. Regression: 2026-06-08.
+        self::assertSame('text/html', taphish_pretext_clone_content_type());
     }
 
     // Phase 3.43c: ranking by preferred category.
