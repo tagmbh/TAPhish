@@ -283,34 +283,13 @@ function craftIPInfoArr($output){
 }
 
 function getMailClient($user_agent) {
-    $browser        = "unknown";
-
-    $browser_array = array(
-            '/msie|trident/i'      => 'Internet Explorer',
-            '/firefox/i'   => 'Firefox',
-            '/safari/i'    => 'Safari',
-            '/Macintosh.*AppleWebKit/i'   => 'Apple Mail',
-            '/chrome/i'    => 'Chrome',
-            '/edge/i'      => 'Edge',
-            '/opera/i'     => 'Opera',
-            '/netscape/i'  => 'Netscape',
-            '/maxthon/i'   => 'Maxthon',
-            '/konqueror/i' => 'Konqueror',
-            '/mobile/i'    => 'Handheld Browser',
-            '/Microsoft Outlook|MSOffice/i'      => 'Microsoft Outlook',
-            '/GoogleImageProxy/i'   => 'Gmail',
-            '/Thunderbird/i'   => 'Thunderbird',
-            '/YahooMobile/i'   => 'Yahoo Mobile Mail',
-            '/Lotus-Notes/i'   => 'IBM Lotus Notes',
-            '/Roundcube/i'   => 'Roundcube',
-            '/Horde/i'   => 'Horde'
-        );
-
-    foreach ($browser_array as $regex => $value)
-        if (preg_match($regex, $user_agent))
-            $browser = $value;
-
-    return $browser;
+    // 2026-06-08: pattern matching extracted to spear/manager/mail_client_detect.php
+    // (pure, unit-tested in tests/MailClientDetectTest.php). Wrapper preserves
+    // the original global signature; behaviour is byte-identical (the file
+    // header in mail_client_detect.php documents two known ordering quirks
+    // that the tests now pin).
+    require_once(__DIR__ . '/mail_client_detect.php');
+    return taphish_mail_client_from_ua((string) $user_agent);
 }
 
 function getPublicIP(){
