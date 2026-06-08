@@ -51,3 +51,4 @@ require_once __DIR__ . '/../../spear/manager/backup_state.php';
 require_once __DIR__ . '/../../spear/manager/backup_push.php';
 require_once __DIR__ . '/../../spear/manager/dashboard_metrics.php';
 require_once __DIR__ . '/../../spear/manager/security_headers.php';
+require_once __DIR__ . '/../../spear/manager/mail_dsn.php';
