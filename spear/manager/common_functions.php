@@ -155,19 +155,11 @@ function shootMail(&$message,$smtp_server,$sender_username,$sender_pwd,$sender_f
 }
 
 function getMailerDSN($dsn_type, $sender_username, $sender_pwd, $smtp_server, $verify_peer=0){
-    $dsn_type=strtolower($dsn_type);
-    switch($dsn_type){
-        case 'amazon_ses'           : return 'ses+smtp://'.$sender_username.':'.$sender_pwd.'@default?verify_peer='.$verify_peer;
-        case 'gmail'                : return 'gmail+smtp://'.$sender_username.':'.$sender_pwd.'@default?verify_peer='.$verify_peer;
-        case 'mailchimp_mandrill'   : return 'mandrill+smtp://'.$sender_username.':'.$sender_pwd.'@default?verify_peer='.$verify_peer;
-        case 'mailgun'              : return 'mailgun+smtp://'.$sender_username.':'.$sender_pwd.'@default?verify_peer='.$verify_peer;
-        case 'mailjet'              : return 'mailjet+smtp://'.$sender_username.':'.$sender_pwd.'@default?verify_peer='.$verify_peer;   //mailjet+smtp://ACCESS_KEY:SECRET_KEY@default
-        case 'postmark'             : return 'postmark+smtp://'.$sender_pwd.'@default?verify_peer='.$verify_peer;   //postmark+smtp://ID@default
-        case 'sendgrid'             : return 'sendgrid+smtp://'.$sender_pwd.'@default?verify_peer='.$verify_peer;  //sendgrid+smtp://KEY@default
-        case 'sendinblue'           : return 'sendinblue+smtp://'.$sender_username.':'.$sender_pwd.'@default?verify_peer='.$verify_peer;
-        case 'mailpace'             : return 'mailpace+api://'.$sender_pwd.'@default?verify_peer='.$verify_peer;    //mailpace+api://API_TOKEN@default
-        default                     : return 'smtp://'.$sender_username.':'.$sender_pwd.'@'.$smtp_server.'?verify_peer='.$verify_peer;
-    }
+    // 2026-06-08: per-provider DSN shapes extracted to spear/manager/mail_dsn.php
+    // and pinned by tests/MailDsnTest.php. This wrapper preserves the original
+    // global function signature for every existing call site.
+    require_once(__DIR__ . '/mail_dsn.php');
+    return taphish_mailer_dsn((string)$dsn_type, (string)$sender_username, (string)$sender_pwd, (string)$smtp_server, (int)$verify_peer);
 }
 
 
