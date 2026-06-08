@@ -4,6 +4,24 @@ require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/log_classifier.php');
 if(isSessionValid() == false)
 	die("Access denied");
+
+// 2026-06-09: CSRF-exempt stale-token recovery. If the client's
+// window.TAPHISH_CSRF has gone stale (multi-tab login, session token rotation)
+// every subsequent dispatcher call would 403 → JS retry-loop → Safari freeze.
+// This branch — gated by a valid session, so an unauthenticated attacker can
+// never reach it — returns the CURRENT session token so the client can replay
+// the original request once. Must fire BEFORE csrf_require() below.
+$_taphish_csrf_peek = (string) file_get_contents('php://input');
+if ($_taphish_csrf_peek !== '') {
+	$_taphish_csrf_peeked = json_decode($_taphish_csrf_peek, true);
+	if (is_array($_taphish_csrf_peeked) && (($_taphish_csrf_peeked['action_type'] ?? '') === 'csrf_refresh')) {
+		require_once(dirname(__FILE__) . '/csrf.php');
+		header('Content-Type: application/json');
+		echo json_encode(['result' => 'success', '_csrf' => csrf_token()]);
+		exit;
+	}
+}
+
 csrf_require();
 //-------------------------------------------------------
 header('Content-Type: application/json');
