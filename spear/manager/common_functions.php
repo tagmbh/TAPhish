@@ -271,15 +271,11 @@ function getIPInfo($conn, $public_ip) {
 }
 
 function craftIPInfoArr($output){
-    $ip_info = [];
-    $ip_info['country'] = empty($output['country_name'])?null:$output['country_name'];
-    $ip_info['city'] = empty($output['city'])?null:$output['city'];
-    $ip_info['zip'] = empty($output['postal'])?null:$output['postal'];
-    $ip_info['isp'] = empty($output['org'])?null:$output['org'];
-    $ip_info['timezone'] = (empty($output['timezone'])||empty($output['utc_offset']))?null:$output['timezone'].' ('.$output['utc_offset'].')';
-    $ip_info['coordinates'] = (empty($output['latitude'])||empty($output['longitude']))?null:$output['latitude'].'(lat)/'.$output['longitude'].'(long)';
-
-    return $ip_info;
+    // 2026-06-08: projection extracted to spear/manager/ip_info_projection.php
+    // (pure, unit-tested in tests/IpInfoProjectionTest.php). Wrapper preserves
+    // the original global signature.
+    require_once(__DIR__ . '/ip_info_projection.php');
+    return taphish_ip_info_projection((array) $output);
 }
 
 function getMailClient($user_agent) {
