@@ -48,6 +48,65 @@ if (!function_exists('landing_library_clones_root')) {
     }
 }
 
+if (!function_exists('landing_library_heal_m365_logo')) {
+    /**
+     * 2026-06-09 one-time heal — operators had cloned the m365-login library
+     * template while it still contained the literal "[Microsoft 365]"
+     * placeholder text. The library now ships a real M365 grid + wordmark
+     * SVG; this pass walks every existing m365-login-* clone and replaces
+     * the placeholder with the same SVG so already-launched landings stop
+     * showing the literal bracket text to recipients.
+     *
+     * Idempotent: each clone is touched at most once (the literal text is
+     * the filter pattern). Touch-not-found clones are skipped. Returns the
+     * count of files updated so the caller can log a one-time line.
+     */
+    function landing_library_heal_m365_logo(?string $clonesRoot = null, ?string $libraryRoot = null): int
+    {
+        $clonesRoot  = $clonesRoot  ?? landing_library_clones_root();
+        $libraryRoot = $libraryRoot ?? landing_library_root();
+        if (!is_dir($clonesRoot)) return 0;
+
+        // Pull the canonical SVG snippet straight from the library m365-login
+        // index — keeps the heal and the library template byte-identical.
+        $template = @file_get_contents($libraryRoot . '/m365-login/index.html');
+        if ($template === false) return 0;
+        if (!preg_match('#<div class="signin-logo">(.*?)</div>#s', $template, $m)) return 0;
+        $newLogoInner = $m[1];
+        if (str_contains($newLogoInner, '[Microsoft 365]')) return 0; // library still on placeholder
+
+        $touched = 0;
+        $iter = new \DirectoryIterator($clonesRoot);
+        foreach ($iter as $entry) {
+            if ($entry->isDot() || !$entry->isDir()) continue;
+            $slug = $entry->getFilename();
+            // Heal m365-login* slugs only (other clones may legitimately use
+            // a [...] string literal as a placeholder for their own brand).
+            if (strpos($slug, 'm365-login') !== 0) continue;
+            $path = $clonesRoot . '/' . $slug . '/index.html';
+            if (!is_file($path)) continue;
+            $html = (string) @file_get_contents($path);
+            if ($html === '' || strpos($html, '[Microsoft 365]') === false) continue;
+            $patched = (string) preg_replace(
+                '#<div class="signin-logo">\[Microsoft 365\]</div>#',
+                '<div class="signin-logo">' . $newLogoInner . '</div>',
+                $html,
+                1
+            );
+            if ($patched !== '' && $patched !== $html) {
+                if (@file_put_contents($path, $patched) !== false) {
+                    $touched++;
+                }
+            }
+        }
+
+        if ($touched > 0 && function_exists('logIt')) {
+            logIt('Landing-library M365 logo heal: updated ' . $touched . ' clone(s).');
+        }
+        return $touched;
+    }
+}
+
 if (!function_exists('landing_library_substitute_placeholders')) {
     /**
      * Replace {{POST_URL}} and {{TRACKER_URL}} placeholders in HTML
