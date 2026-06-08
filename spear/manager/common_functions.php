@@ -189,22 +189,11 @@ function setServerVariables($conn){
 }
 
 function filterKeywords($content,$keyword_vals){
-    $keywords = array("{{RID}}", "{{MID}}", "{{NAME}}", "{{FNAME}}", "{{LNAME}}", "{{NOTES}}", "{{EMAIL}}", "{{FROM}}", "{{TRACKINGURL}}", "{{TRACKER}}", "{{BASEURL}}", "{{MUSERNAME}}", "{{MDOMAIN}}");
-
-    foreach($keywords as $keword) 
-        $content = str_ireplace($keword,$keyword_vals[$keword],$content);
-
-    preg_match_all('/{{RND\d*}}/i', $content, $matches);
-    $matches = array_unique($matches[0]);
-
-    foreach($matches as $keword){
-        $length = preg_replace('/\D+/', '', $keword);   //get int. eg: {{RND34}} => 34
-        if(!$length)
-            $length=5;  //default length 5
-        $content = str_ireplace($keword,getRandomStr($length),$content);
-    }
-
-    return $content;
+    // 2026-06-08: substitution logic extracted to spear/manager/keyword_filter.php
+    // (pure, unit-tested in tests/KeywordFilterTest.php). This wrapper
+    // preserves the original global signature for every existing call site.
+    require_once(__DIR__ . '/keyword_filter.php');
+    return taphish_filter_keywords((string)$content, (array)$keyword_vals);
 }
 
 function filterQRBarCode($content,$keyword_vals,&$message){
