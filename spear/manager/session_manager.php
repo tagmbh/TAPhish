@@ -32,6 +32,10 @@ if (isset($conn) && $conn instanceof mysqli) {
 		require_once(dirname(__FILE__) . '/pretext_library.php');
 		taphish_ensure_pretext_schema($conn);
 		taphish_ensure_pretext_seeds($conn);
+		// 2026-06-08 one-time heal: literal `https://example.com/REPLACE-WITH-TRACKER-URL`
+		// in seed/cloned bodies + short-form 'html' mail_content_type. Idempotent;
+		// once healed, the LIKE/equality filter matches nothing.
+		taphish_heal_pretext_clone_bugs($conn);
 	}
 	// Phase 3.42: add tb_data_webform_submit.code_2fa if missing.
 	if (is_file(dirname(__FILE__) . '/capture_alerting.php')) {
