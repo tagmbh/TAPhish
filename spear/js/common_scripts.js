@@ -15,6 +15,39 @@ if (typeof $ !== 'undefined' && $.ajaxSetup) {
             }
         }
     });
+
+    // 2026-06-09: stale CSRF auto-recovery. If a dispatcher returns 403
+    // (token rotated under us — typical in multi-tab sessions or after a
+    // session-renewal pass), fetch a fresh token via csrf_refresh and replay
+    // the original request exactly once. Hard cap at 1 retry so a truly
+    // forbidden response surfaces and the page doesn't loop. Without this,
+    // dashboards on Safari poll every few seconds, fail every call, retry,
+    // and the tab freezes under the console-error load.
+    $(document).ajaxError(function (event, jqXHR, settings) {
+        if (!jqXHR || jqXHR.status !== 403) return;
+        if (settings._taphishCsrfRetried) return;
+        // Skip the refresh endpoint itself to prevent loops.
+        if (settings.data && typeof settings.data === 'string'
+            && settings.data.indexOf('"csrf_refresh"') !== -1) return;
+        // Skip non-dispatcher URLs (e.g. /spear/ login redirect chains).
+        if (!settings.url || settings.url.indexOf('manager/') === -1) return;
+
+        settings._taphishCsrfRetried = true;
+
+        $.ajax({
+            url: 'manager/home_manager',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify({ action_type: 'csrf_refresh' }),
+            headers: { 'X-CSRF-Token': window.TAPHISH_CSRF || '' }
+        }).done(function (r) {
+            if (!r || !r._csrf) return;
+            window.TAPHISH_CSRF = r._csrf;
+            settings.headers = settings.headers || {};
+            settings.headers['X-CSRF-Token'] = window.TAPHISH_CSRF;
+            $.ajax(settings);
+        });
+    });
 }
 
 // Phase 3.9: force the operator off any other page if they're still using
