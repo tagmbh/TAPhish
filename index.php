@@ -23,6 +23,18 @@
 header('Content-Type: text/html; charset=UTF-8');
 header('Cache-Control: public, max-age=300');
 header('X-Robots-Tag: index, follow');
+
+// Resolve the public origin from the current request so canonical + JSON-LD
+// stay accurate after the operator migrates to a different subdomain (e.g.
+// `training.t-alpha.ch`) — see docs/INFRASTRUCTURE-DNS-BYPASS.md. The host
+// header is validated against a conservative pattern (alnum, dot, dash) to
+// keep the value safe to interpolate into HTML attributes.
+$_origin_host = (string) ($_SERVER['HTTP_HOST'] ?? 'ptbe.autodiscover.li');
+if (!preg_match('/^[A-Za-z0-9.\-]{1,253}(:\d{1,5})?$/', $_origin_host)) {
+   $_origin_host = 'ptbe.autodiscover.li';
+}
+$_origin_scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$origin = $_origin_scheme . '://' . $_origin_host . '/';
 ?><!doctype html>
 <html lang="en">
 <head>
@@ -33,7 +45,7 @@ header('X-Robots-Tag: index, follow');
    <meta name="robots" content="index, follow">
    <meta name="author" content="T-Alpha GmbH">
    <meta name="keywords" content="security awareness, cybersecurity training, phishing simulation, employee education, Switzerland, t-alpha">
-   <link rel="canonical" href="https://ptbe.autodiscover.li/">
+   <link rel="canonical" href="<?= htmlspecialchars($origin, ENT_QUOTES) ?>">
    <link rel="icon" type="image/png" href="spear/images/brand/favicon.png">
 
    <style>
@@ -62,7 +74,7 @@ header('X-Robots-Tag: index, follow');
          "@context": "https://schema.org",
          "@type": "ProfessionalService",
          "name": "T-Alpha GmbH — Security Awareness Training",
-         "url": "https://ptbe.autodiscover.li/",
+         "url": "<?= json_encode($origin, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) === false ? 'https://invalid/' : trim(json_encode($origin, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), '"') ?>",
          "description": "Cybersecurity awareness training and phishing simulation platform operated by T-Alpha GmbH for the educational training of our customers' employees.",
          "serviceType": "Cybersecurity Awareness Training",
          "areaServed": "CH",

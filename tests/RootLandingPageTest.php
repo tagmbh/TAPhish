@@ -128,4 +128,62 @@ final class RootLandingPageTest extends TestCase
             self::$rendered
         );
     }
+
+    /** @return string */
+    private static function renderWith(string $host, string $https = 'on'): string
+    {
+        $prevHost  = $_SERVER['HTTP_HOST']  ?? null;
+        $prevHttps = $_SERVER['HTTPS']      ?? null;
+        $_SERVER['HTTP_HOST'] = $host;
+        $_SERVER['HTTPS']     = $https;
+        ob_start();
+        include __DIR__ . '/../index.php';
+        $out = (string) ob_get_clean();
+        if ($prevHost  === null) { unset($_SERVER['HTTP_HOST']);  } else { $_SERVER['HTTP_HOST']  = $prevHost;  }
+        if ($prevHttps === null) { unset($_SERVER['HTTPS']);      } else { $_SERVER['HTTPS']      = $prevHttps; }
+        return $out;
+    }
+
+    public function testCanonicalAdaptsToCurrentHostForSubdomainMigration(): void
+    {
+        // Issue #2 — the operator can flip a subdomain (e.g. when one gets
+        // DNS-blocked) and the public landing must report the new origin
+        // in canonical + JSON-LD, NOT a stale hard-coded host. Validates
+        // docs/INFRASTRUCTURE-DNS-BYPASS.md's premise.
+        $out = self::renderWith('training.t-alpha.ch');
+        self::assertStringContainsString(
+            'rel="canonical" href="https://training.t-alpha.ch/"',
+            $out
+        );
+        // and the Schema.org URL field reflects the same origin
+        self::assertStringContainsString(
+            '"url": "https://training.t-alpha.ch/"',
+            $out
+        );
+    }
+
+    public function testMaliciousHostFallsBackToSafeDefault(): void
+    {
+        // HTTP_HOST is attacker-controlled. The validator pattern must
+        // reject anything that could break out of the HTML attribute or
+        // JSON string context.
+        foreach (['<script>alert(1)</script>', 'evil.example/path', 'host"></a><x>', "host\nInjected: 1"] as $bad) {
+            $out = self::renderWith($bad);
+            self::assertStringContainsString(
+                'rel="canonical" href="https://ptbe.autodiscover.li/"',
+                $out,
+                "bad host '{$bad}' should have fallen back to safe default"
+            );
+            self::assertStringNotContainsString('<script>alert', $out);
+        }
+    }
+
+    public function testHttpFallsBackToHttpInOrigin(): void
+    {
+        $out = self::renderWith('localhost', '');
+        self::assertStringContainsString(
+            'rel="canonical" href="http://localhost/"',
+            $out
+        );
+    }
 }
