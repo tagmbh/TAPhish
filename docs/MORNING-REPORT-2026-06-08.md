@@ -38,6 +38,29 @@ Every seed body carried a literal `https://example.com/REPLACE-WITH-TRACKER-URL`
 - Audit log entry: `08-06-2026 18:14 UTC · SYS · ok · "Pretext-clone bug heal: updated 18 row(s)."`
 - Spot-checked the M365 template (`8pzuo9c1tj`) via the editor — `mail_content_type = text/html`, body contains `{{TRACKINGURL}}`, no legacy `REPLACE-WITH-TRACKER-URL` anywhere. Both bugs fixed in the live data.
 
+### ⚠️ Post-fix retest revealed an architectural issue — PR #120's Bug 2 part was *over-fixed*
+
+You ran a second test mail at ~21:12 local. **Bug 1 stays fixed** — the mail rendered as proper HTML (button visible, bold tags rendered, no raw markup). **Bug 2 is technically "fixed"** — the link now goes to the platform's tracker URL (`ptbe.autodiscover.li/tmail?…`) instead of `example.com`. But clicking it produces an empty white page.
+
+Root cause (which I missed in PR #120):
+- [`tmail.php`](tmail.php) is the **open-tracking pixel** endpoint — it records the open event in `tb_data_mailcamp_live` and serves a 1×1 image. **It does NOT redirect to a landing page.**
+- The dispatcher (`userlist_campaignlist_mailtemplate_manager.php:1339-1340`) defines `{{TRACKINGURL}}` as the open-pixel URL and `{{TRACKER}}` as the `<img>` tag wrapping it. Both go to `tmail.php`.
+- The original pretext-library placeholder `https://example.com/REPLACE-WITH-TRACKER-URL` was a deliberate **"operator must edit this manually"** marker, intended to be replaced with the operator's real cloned-landing URL (e.g. `https://ptbe.autodiscover.li/p/m365-login-6mmo/`) at template-customisation time. Calling it a "bug" was wrong.
+
+**Net effect:** my "fix" silently made the clickable CTA navigate to the open-tracker image instead of a real landing page. The click still records correctly (as an open event), but the operator's recipient sees a blank tab — worse UX than the original literal-URL placeholder (which at least visibly looked wrong, prompting a manual edit).
+
+**Proposed remediation** (your call which to pursue):
+
+| Option | What it does |
+|---|---|
+| **A — Manual workaround for tonight's test** | Edit the M365 template body in the panel, replace `{{TRACKINGURL}}` href with `https://ptbe.autodiscover.li/p/m365-login-6mmo/` (the actual cloned M365 landing). Sends another test; click goes to real M365 phishing page. |
+| **B1 — Revert PR #120 Bug 2** | New PR: change every seed body back to `REPLACE-WITH-LANDING-URL` (cleaner placeholder name reflecting intent); also update the heal to undo the bad substitution on existing rows; the existing test gets re-rewritten to assert the placeholder marker again. Bug 1 (mail_content_type) stays fixed — that one was a real bug. |
+| **B2 — Introduce a proper `{{LANDINGURL}}` token** | Add `{{LANDINGURL}}` to the token list in `common_functions.php:200`. Configure per-campaign in `MailConfig` or similar UI. Seed bodies use `<a href="{{LANDINGURL}}">`. Cleaner long-term, more work. |
+
+**My recommendation:** B1 tonight (small revert PR, doesn't expand surface), then B2 as a properly-scoped slice tomorrow if you want the cleaner UX.
+
+The lesson for me: end-to-end testing isn't done when the mail "arrives correctly" — it's done when the recipient reaches the intended landing page. I conflated "the placeholder substitutes" with "the substitution is correct," and the deeper test revealed I had picked the wrong token. Test plan templates updated to reflect this.
+
 ---
 
 ## Pure-helper extraction wave (PRs #121–#124)
