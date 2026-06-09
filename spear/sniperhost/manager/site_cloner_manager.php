@@ -28,6 +28,12 @@ if (!is_array($POSTJ) || !isset($POSTJ['action_type'])) {
     return;
 }
 
+// RBAC default-deny: cloning is an operator-level capability. Without this a
+// read-only user could clone/delete sites via this endpoint, which previously
+// only checked session + CSRF. All three cloner actions map to 'site_clone'.
+require_once dirname(__FILE__, 3) . '/manager/authz.php';
+taphish_require_authorize_or_die($conn, 'site_clone');
+
 switch ($POSTJ['action_type']) {
     case 'clone_site':
         action_clone_site($POSTJ);

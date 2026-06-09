@@ -20,6 +20,7 @@ require_once(dirname(__FILE__) . '/beef_integration.php');
 require_once(dirname(__FILE__) . '/landing_library.php');
 require_once(dirname(__FILE__) . '/lookalike_deploy.php'); // Phase 3.55
 require_once(dirname(__FILE__) . '/site_bundle.php');       // Phase 3.55
+require_once(dirname(__FILE__) . '/wizard_tracker_builder.php'); // Phase 3.57
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -424,61 +425,136 @@ if (isset($_POST)) {
 			$engagement_id = (int)($POSTJ['engagement_id'] ?? 0);
 			$ctx = is_array($POSTJ['context'] ?? null) ? $POSTJ['context'] : [];
 
+			// Phase 3.57: the linked IDs now drive a real, wired campaign.
+			$user_group_id    = (string)($POSTJ['user_group_id']    ?? '');
+			$mail_template_id = (string)($POSTJ['mail_template_id'] ?? '');
+			$sender_list_id   = (string)($POSTJ['sender_list_id']   ?? '');
+			$tracker_id       = (string)($POSTJ['tracker_id']       ?? '');
+			$landing_url      = (string)($POSTJ['landing_url']      ?? '');
+
 			if ($engagement_id <= 0) {
 				echo json_encode(['result' => 'failed', 'error' => 'engagement_id is required']);
+			} elseif ($user_group_id === '' || $mail_template_id === '' || $sender_list_id === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'user_group_id, mail_template_id and sender_list_id are required']);
+			} elseif (!checkAnIDExist($conn, $user_group_id, 'user_group_id', 'tb_core_mailcamp_user_group')) {
+				echo json_encode(['result' => 'failed', 'error' => 'Recipient group not found']);
+			} elseif (!checkAnIDExist($conn, $mail_template_id, 'mail_template_id', 'tb_core_mailcamp_template_list')) {
+				echo json_encode(['result' => 'failed', 'error' => 'Mail template not found']);
+			} elseif (!checkAnIDExist($conn, $sender_list_id, 'sender_list_id', 'tb_core_mailcamp_sender_list')) {
+				echo json_encode(['result' => 'failed', 'error' => 'Sender profile not found']);
+			} elseif ($tracker_id !== '' && !checkAnIDExist($conn, $tracker_id, 'tracker_id', 'tb_core_web_tracker_list')) {
+				echo json_encode(['result' => 'failed', 'error' => 'Web tracker not found']);
 			} else {
-				// 1. Re-run preflight so the operator can't bypass the JS.
-				$emails = is_array($ctx['recipient_emails'] ?? null) ? $ctx['recipient_emails'] : [];
-				$allow  = is_array($ctx['scope_allowlist']  ?? null) ? $ctx['scope_allowlist']  : [];
-				$landingProbe = function(string $url): array {
-					return taphish_preflight_http_get($url);
-				};
-				$pre = taphish_preflight_run_all([
-					'recipient_emails'    => $emails,
-					'scope_allowlist'     => $allow,
-					'target_dmarc_policy' => (string)($ctx['target_dmarc_policy'] ?? ''),
-					'sender_domain'       => (string)($ctx['sender_domain']       ?? ''),
-					'target_domain'       => (string)($ctx['target_domain']       ?? ''),
-					'sender_probe'        => null,
-					'webhook_url'         => (string)($ctx['webhook_url']         ?? ''),
-					'landing_url'         => (string)($ctx['landing_url']         ?? ''),
-					'landing_probe'       => $landingProbe,
-					'rendered_mail_body'  => (string)($ctx['rendered_mail_body']  ?? ''),
-				]);
-				if (!$pre['ok']) {
-					echo json_encode(['result' => 'failed', 'error' => 'Pre-flight gates not green', 'gates' => $pre['gates']]);
+				// The recipient group must belong to this engagement.
+				$grpEng = 0;
+				$gstmt = $conn->prepare("SELECT engagement_id FROM tb_core_mailcamp_user_group WHERE user_group_id = ?");
+				if ($gstmt) {
+					$gstmt->bind_param('s', $user_group_id);
+					$gstmt->execute();
+					$grow = $gstmt->get_result()->fetch_assoc();
+					$gstmt->close();
+					$grpEng = (isset($grow['engagement_id']) && $grow['engagement_id'] !== null) ? (int)$grow['engagement_id'] : 0;
 				}
-				// 2. CAS: draft → live.
-				elseif (!taphish_engagement_transition_status($conn, $engagement_id, 'draft', 'live')) {
-					echo json_encode(['result' => 'failed', 'error' => 'Engagement already launched or cancelled (CAS rejected)']);
+				if ($grpEng !== $engagement_id) {
+					echo json_encode(['result' => 'failed', 'error' => 'Recipient group does not belong to this engagement']);
 				} else {
-					// 3. INSERT campaign row stamped with engagement_id.
-					$campaign_id    = (string)($ctx['campaign_id']    ?? ('camp-' . substr(bin2hex(random_bytes(6)), 0, 12)));
-					$campaign_name  = (string)($ctx['campaign_name']  ?? ('Engagement ' . $engagement_id . ' launch'));
-					$campaign_data  = json_encode($ctx['campaign_data'] ?? []);
-					$scheduled_time = (string)($ctx['scheduled_time'] ?? '');
-					$camp_status    = (int)($ctx['camp_status']      ?? 0);
-
-					$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list(campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status,camp_lock,engagement_id) VALUES(?,?,?,?,?,?,0,?)");
-					if ($stmt) {
-						$entry_time = $GLOBALS['entry_time'] ?? (new DateTime())->format('d-m-Y h:i A');
-						$stmt->bind_param('ssssssi', $campaign_id, $campaign_name, $campaign_data, $entry_time, $scheduled_time, $camp_status, $engagement_id);
-						$ok = $stmt->execute();
-						$stmt->close();
-					} else {
-						$ok = false;
+					// Resolve display names for the campaign_data labels.
+					$group_name = '';
+					$template_name = '';
+					$sender_name = '';
+					if ($ns = $conn->prepare("SELECT user_group_name FROM tb_core_mailcamp_user_group WHERE user_group_id = ?")) {
+						$ns->bind_param('s', $user_group_id); $ns->execute();
+						$group_name = (string)($ns->get_result()->fetch_assoc()['user_group_name'] ?? ''); $ns->close();
 					}
-					if (!$ok) {
-						// Rollback status.
-						taphish_engagement_transition_status($conn, $engagement_id, 'live', 'draft');
-						echo json_encode(['result' => 'failed', 'error' => 'Campaign insert failed; engagement reverted to draft']);
+					if ($nt = $conn->prepare("SELECT mail_template_name FROM tb_core_mailcamp_template_list WHERE mail_template_id = ?")) {
+						$nt->bind_param('s', $mail_template_id); $nt->execute();
+						$template_name = (string)($nt->get_result()->fetch_assoc()['mail_template_name'] ?? ''); $nt->close();
+					}
+					if ($nse = $conn->prepare("SELECT sender_name FROM tb_core_mailcamp_sender_list WHERE sender_list_id = ?")) {
+						$nse->bind_param('s', $sender_list_id); $nse->execute();
+						$sender_name = (string)($nse->get_result()->fetch_assoc()['sender_name'] ?? ''); $nse->close();
+					}
+
+					// 1. Re-run preflight so the operator can't bypass the JS.
+					// Use TRUSTED server-side sources, NOT the client bundle: the
+					// scope allowlist comes from the engagement and the recipient
+					// emails are read back from the committed group, so the scope +
+					// recipients gates can't be bypassed by spoofing the JS context.
+					$engForScope = taphish_engagement_get_by_id($conn, $engagement_id);
+					$allow = ($engForScope && isset($engForScope['scope_allowlist']) && is_array($engForScope['scope_allowlist']))
+						? $engForScope['scope_allowlist'] : [];
+					$emails = [];
+					if ($gds = $conn->prepare("SELECT user_data FROM tb_core_mailcamp_user_group WHERE user_group_id = ?")) {
+						$gds->bind_param('s', $user_group_id);
+						$gds->execute();
+						$gdrow = $gds->get_result()->fetch_assoc();
+						$gds->close();
+						if ($gdrow && isset($gdrow['user_data'])) {
+							$plainUsers = json_decode((string) recipient_data_unseal($gdrow['user_data']), true) ?: [];
+							foreach ($plainUsers as $pu) {
+								$em = strtolower(trim((string)($pu['email'] ?? '')));
+								if ($em !== '') $emails[] = $em;
+							}
+						}
+					}
+					$landingProbe = function(string $url): array {
+						return taphish_preflight_http_get($url);
+					};
+					$pre = taphish_preflight_run_all([
+						'recipient_emails'    => $emails,
+						'scope_allowlist'     => $allow,
+						'target_dmarc_policy' => (string)($ctx['target_dmarc_policy'] ?? ''),
+						'sender_domain'       => (string)($ctx['sender_domain']       ?? ''),
+						'target_domain'       => (string)($ctx['target_domain']       ?? ''),
+						'sender_probe'        => null,
+						'webhook_url'         => (string)($ctx['webhook_url']         ?? ''),
+						'landing_url'         => $landing_url !== '' ? $landing_url : (string)($ctx['landing_url'] ?? ''),
+						'landing_probe'       => $landingProbe,
+						'rendered_mail_body'  => (string)($ctx['rendered_mail_body']  ?? ''),
+					]);
+					if (!$pre['ok']) {
+						echo json_encode(['result' => 'failed', 'error' => 'Pre-flight gates not green', 'gates' => $pre['gates']]);
+					}
+					// 2. CAS: draft → live.
+					elseif (!taphish_engagement_transition_status($conn, $engagement_id, 'draft', 'live')) {
+						echo json_encode(['result' => 'failed', 'error' => 'Engagement already launched or cancelled (CAS rejected)']);
 					} else {
-						logIt('Engagement launched: id=' . $engagement_id . ' campaign=' . $campaign_id);
-						echo json_encode([
-							'result'        => 'success',
-							'engagement_id' => $engagement_id,
-							'campaign_id'   => $campaign_id,
+						// 3. Build the fully-linked campaign_data + INSERT campaign row.
+						$campaign_data_arr = taphish_wizard_build_campaign_data([
+							'user_group_id'     => $user_group_id,
+							'user_group_name'   => $group_name,
+							'mail_template_id'  => $mail_template_id,
+							'mail_template_name'=> $template_name,
+							'sender_list_id'    => $sender_list_id,
+							'sender_name'       => $sender_name,
 						]);
+						$campaign_id    = 'camp-' . substr(bin2hex(random_bytes(6)), 0, 12);
+						$campaign_name  = (string)($POSTJ['campaign_name'] ?? ('Quick-Start campaign — engagement ' . $engagement_id));
+						$campaign_data  = json_encode($campaign_data_arr);
+						$scheduled_time = (string)($POSTJ['scheduled_time'] ?? '');
+						$camp_status    = (int)($POSTJ['camp_status']      ?? 0);
+
+						$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_list(campaign_id,campaign_name,campaign_data,date,scheduled_time,camp_status,camp_lock,engagement_id) VALUES(?,?,?,?,?,?,0,?)");
+						if ($stmt) {
+							$entry_time = $GLOBALS['entry_time'] ?? (new DateTime())->format('d-m-Y h:i A');
+							$stmt->bind_param('ssssssi', $campaign_id, $campaign_name, $campaign_data, $entry_time, $scheduled_time, $camp_status, $engagement_id);
+							$ok = $stmt->execute();
+							$stmt->close();
+						} else {
+							$ok = false;
+						}
+						if (!$ok) {
+							// Rollback status.
+							taphish_engagement_transition_status($conn, $engagement_id, 'live', 'draft');
+							echo json_encode(['result' => 'failed', 'error' => 'Campaign insert failed; engagement reverted to draft']);
+						} else {
+							logIt('Engagement launched: id=' . $engagement_id . ' campaign=' . $campaign_id);
+							echo json_encode([
+								'result'        => 'success',
+								'engagement_id' => $engagement_id,
+								'campaign_id'   => $campaign_id,
+							]);
+						}
 					}
 				}
 			}
@@ -493,6 +569,133 @@ if (isset($_POST)) {
 				}
 			}
 			echo json_encode(['result' => 'success'] + taphish_recipient_preview($csv, $allowlist));
+		}
+		// Phase 3.57 (full-funnel wizard): list existing web-trackers for the
+		// Step 4 dropdown (pick an existing tracker instead of auto-creating).
+		if($POSTJ['action_type'] == "wizard_list_web_trackers") {
+			$trackers = [];
+			$res = mysqli_query($conn, "SELECT tracker_id,tracker_name,active FROM tb_core_web_tracker_list ORDER BY date DESC");
+			if ($res) {
+				foreach (mysqli_fetch_all($res, MYSQLI_ASSOC) as $row) {
+					$trackers[] = [
+						'tracker_id'   => $row['tracker_id'],
+						'tracker_name' => $row['tracker_name'],
+						'active'       => (int) $row['active'],
+					];
+				}
+			}
+			echo json_encode(['result' => 'success', 'trackers' => $trackers], JSON_INVALID_UTF8_IGNORE);
+		}
+		// Phase 3.57: auto-create a minimal, functional web-tracker server-side
+		// (Name + optional webhook URL). Builds tracker_step_data + content_js +
+		// content_html via the pure builder, INSERTs active=1, returns the
+		// tracker_id + the mod URL the landing page embeds.
+		if($POSTJ['action_type'] == "wizard_create_web_tracker") {
+			$tracker_name = trim((string)($POSTJ['tracker_name'] ?? ''));
+			if ($tracker_name === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'tracker_name is required']);
+			} else {
+				// Resolve the host base the same way the other dispatcher
+				// branches do, defaulting the webhook to this host's track.php.
+				$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+				$proto  = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? $scheme;
+				$host   = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? '');
+				$base   = $host !== '' ? ($proto . '://' . $host) : '';
+				$webhook_url = trim((string)($POSTJ['webhook_url'] ?? ''));
+				if ($webhook_url === '') {
+					$webhook_url = $base !== '' ? ($base . '/track.php') : '/track.php';
+				}
+				// Generate a 6-char alnum tracker id (same scheme as the JS generator).
+				$tracker_id = getRandomStr(6);
+				while (checkAnIDExist($conn, $tracker_id, 'tracker_id', 'tb_core_web_tracker_list')) {
+					$tracker_id = getRandomStr(6);
+				}
+				$built = taphish_wizard_build_minimal_tracker($tracker_id, $tracker_name, $webhook_url);
+				$active = 1;
+				$stmt = $conn->prepare("INSERT INTO tb_core_web_tracker_list(tracker_id,tracker_name,content_html,content_js,tracker_step_data,active,date) VALUES(?,?,?,?,?,?,?)");
+				$ok = false;
+				if ($stmt) {
+					$stmt->bind_param('sssssis', $tracker_id, $tracker_name, $built['content_html'], $built['content_js'], $built['tracker_step_data'], $active, $GLOBALS['entry_time']);
+					$ok = $stmt->execute();
+					$stmt->close();
+				}
+				if ($ok) {
+					logIt('Wizard created web-tracker: ' . $tracker_name . ' (' . $tracker_id . ')');
+					$mod_url = $base !== '' ? ($base . '/mod?tlink=' . $tracker_id) : ('/mod?tlink=' . $tracker_id);
+					echo json_encode(['result' => 'success', 'tracker_id' => $tracker_id, 'mod_url' => $mod_url]);
+				} else {
+					echo json_encode(['result' => 'failed', 'error' => 'Could not create tracker']);
+				}
+			}
+		}
+		// Phase 3.57: persist a recipient group + its (scope-filtered) recipients
+		// in one shot. Reuses the pure CSV parse + scope-violation helpers, then
+		// replicates the user-group INSERT (we don't call saveUserGroup, which
+		// emits its own JSON) so we control a single clean response.
+		if($POSTJ['action_type'] == "wizard_commit_recipients") {
+			$engagement_id = (int)($POSTJ['engagement_id'] ?? 0);
+			// user_group_name is varchar(50); clamp so a long name doesn't trip a
+			// strict-mode "Data too long" error and fail the INSERT silently.
+			$group_name    = substr(trim((string)($POSTJ['group_name'] ?? '')), 0, 50);
+			$csv           = (string)($POSTJ['user_data'] ?? '');
+			if ($engagement_id <= 0 || $group_name === '') {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id and group_name are required']);
+			} elseif (!taphish_user_group_can_stamp($conn, $engagement_id)) {
+				echo json_encode(['result' => 'failed', 'error' => 'You are not a member of that engagement.']);
+			} else {
+				$eng = taphish_engagement_get_by_id($conn, $engagement_id);
+				if (!$eng) {
+					echo json_encode(['result' => 'failed', 'error' => 'Engagement not found']);
+				} else {
+					$allowlist = $eng['scope_allowlist'] ?? [];
+					$parsed = taphish_recipient_csv_parse($csv);
+					$skipped = count($parsed['errors']);
+					$rows = $parsed['rows'];
+					$violations = taphish_recipient_allowlist_violations($rows, $allowlist);
+					$scope_violations = count($violations);
+					$violationIdx = array_flip(array_column($violations, 'line_index'));
+					$arr_users = [];
+					foreach ($rows as $i => $r) {
+						if (isset($violationIdx[$i])) {
+							continue; // out of scope — dropped
+						}
+						$arr_users[] = [
+							'uid'   => getRandomStr(10),
+							'fname' => $r['fname'],
+							'lname' => $r['lname'] !== '' ? $r['lname'] : null,
+							'email' => $r['email'],
+							'notes' => '',
+						];
+					}
+					// Generate a unique group id (same random scheme as the UI).
+					$user_group_id = getRandomStr(10);
+					while (checkAnIDExist($conn, $user_group_id, 'user_group_id', 'tb_core_mailcamp_user_group')) {
+						$user_group_id = getRandomStr(10);
+					}
+					$user_data_sealed = recipient_data_seal(json_encode($arr_users));
+					$stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_user_group(user_group_id,user_group_name,user_data,date,engagement_id) VALUES(?,?,?,?,?)");
+					$ok = false;
+					if ($stmt) {
+						$stmt->bind_param('ssssi', $user_group_id, $group_name, $user_data_sealed, $GLOBALS['entry_time'], $engagement_id);
+						$ok = $stmt->execute();
+						$stmt->close();
+					}
+					if ($ok) {
+						$committed = count($arr_users);
+						logIt('Wizard committed recipients: ' . $group_name . ' (' . $committed . ' committed, ' . $skipped . ' skipped, ' . $scope_violations . ' scope violations)');
+						echo json_encode([
+							'result'           => 'success',
+							'user_group_id'    => $user_group_id,
+							'group_name'       => $group_name,
+							'committed'        => $committed,
+							'skipped'          => $skipped,
+							'scope_violations' => $scope_violations,
+						]);
+					} else {
+						echo json_encode(['result' => 'failed', 'error' => 'Could not save recipient group']);
+					}
+				}
+			}
 		}
 		// Phase 3.45e: per-recipient capture + 2FA summary for the dashboard.
 		if($POSTJ['action_type'] == "get_capture_summary_for_campaign") {
