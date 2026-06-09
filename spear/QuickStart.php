@@ -20,6 +20,8 @@
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <link rel="icon" type="image/png" sizes="16x16" href="images/brand/favicon.png">
       <title>TAPhish — Quick Start</title>
+      <link rel="stylesheet" type="text/css" href="css/summernote-lite.min.css">
+      <link rel="stylesheet" type="text/css" href="css/codemirror.min.css">
       <link rel="stylesheet" type="text/css" href="css/style.min.css">
       <link rel="stylesheet" type="text/css" href="css/brand.css">
       <link rel="stylesheet" type="text/css" href="css/toastr.min.css">
@@ -42,10 +44,10 @@
                <ol class="t-stepper" id="t_stepper" aria-label="Wizard progress">
                   <li data-step="1" class="is-active">Engagement</li>
                   <li data-step="2">OSINT</li>
-                  <li data-step="3">Pretext</li>
-                  <li data-step="4">Sender</li>
-                  <li data-step="5">Recipients</li>
-                  <li data-step="6">Landing</li>
+                  <li data-step="3">Recipients</li>
+                  <li data-step="4">Landing</li>
+                  <li data-step="5">Mail</li>
+                  <li data-step="6">Sender</li>
                   <li data-step="7">Launch</li>
                </ol>
                <input type="hidden" id="wizard_engagement_id" value="<?php echo (int) $resume['id']; ?>">
@@ -231,96 +233,239 @@
                   </div>
                </div>
 
-               <!-- ============ Step 3 — Pretext picker ============ -->
+               <!-- ============ Step 3 — Recipients (commit) ============ -->
                <div class="row step-wrap" id="step3_wrap" style="display:none;">
-                  <div class="col-12">
+                  <div class="col-12 mb-3">
                      <div class="card">
                         <div class="card-body">
-                           <h5 class="card-title">Step 3 — Pretext picker</h5>
+                           <h5 class="card-title">Step 3 — Recipients</h5>
                            <p class="text-muted small">
-                              Top picks based on the detected tech stack. Click <em>Clone to my templates</em>
-                              to copy a starter into your editable template list — Phase 3.39 library entry
-                              becomes a fresh row you can customise without touching the seed.
+                              Paste your CSV (<code>First,Last,Email</code> or
+                              <code>First,Email,Notes</code>), preview the scope check, then
+                              <em>commit</em>. The wizard parses with the same engine the upload
+                              page uses, drops out-of-scope rows automatically, and stores a real
+                              recipient group on this engagement — no detour to Mail User Group.
                            </p>
-                           <div class="mb-2 small text-muted" id="step3_categories">—</div>
-                           <div id="step3_pretexts" class="row">—</div>
+                           <div class="form-group">
+                              <label>Group name <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control" id="rcpt_group_name" placeholder="Acme HR — wave 1" maxlength="50">
+                           </div>
+                           <div class="form-group">
+                              <label>Recipients CSV</label>
+                              <textarea class="form-control" id="rcpt_csv" rows="6" placeholder="First,Last,Email&#10;Alice,Smith,alice@target.example"></textarea>
+                           </div>
+                           <button class="btn btn-secondary" type="button" id="btn_rcpt_preview">
+                              <i class="fa fa-eye"></i> Preview
+                           </button>
+                           <button class="btn btn-info" type="button" id="btn_rcpt_commit">
+                              <i class="fa fa-save"></i> Commit recipients
+                           </button>
+                           <div id="rcpt_preview_result" class="mt-3"></div>
+                           <div id="rcpt_commit_result" class="mt-3"></div>
                         </div>
                      </div>
                   </div>
                </div>
 
-               <!-- ============ Step 4 — Sender setup (DKIM + DNS) ============ -->
+               <!-- ============ Step 4 — Landing + Tracker (commit) ============ -->
                <div class="row step-wrap" id="step4_wrap" style="display:none;">
-                  <div class="col-12 mb-3">
+                  <div class="col-lg-6 mb-3">
+                     <div class="card h-100">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 4a — Web tracker</h5>
+                           <p class="text-muted small">
+                              The tracker captures visits + form submits and ships them to your
+                              webhook. Pick an existing tracker, or let the wizard auto-create a
+                              minimal one named after this engagement.
+                           </p>
+                           <div class="form-group">
+                              <label>Existing trackers</label>
+                              <select class="form-control" id="trk_select">
+                                 <option value="">— loading… —</option>
+                              </select>
+                           </div>
+                           <div class="form-row align-items-end">
+                              <div class="form-group col-md-7 mb-2">
+                                 <label>New tracker name</label>
+                                 <input type="text" class="form-control" id="trk_new_name" placeholder="(auto from engagement)">
+                              </div>
+                              <div class="form-group col-md-5 mb-2">
+                                 <button class="btn btn-info btn-block" type="button" id="btn_trk_create">
+                                    <i class="fa fa-plus"></i> Create tracker
+                                 </button>
+                              </div>
+                              <div class="form-group col-md-12 mb-2">
+                                 <label>Webhook URL (optional)</label>
+                                 <input type="text" class="form-control" id="trk_webhook" placeholder="(blank = this host /track.php)">
+                              </div>
+                           </div>
+                           <div id="trk_result" class="small"></div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-lg-6 mb-3">
+                     <div class="card h-100">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 4b — Landing page</h5>
+                           <p class="text-muted small">
+                              Clone a real target page (the selected tracker is injected), or spin
+                              up a curated library template. The resulting public URL becomes the
+                              CTA target wired into your mail in Step 5.
+                           </p>
+                           <div class="form-group">
+                              <label>Target URL to clone</label>
+                              <input type="text" class="form-control" id="clone_url" placeholder="https://login.microsoftonline.com/">
+                           </div>
+                           <div class="form-group">
+                              <label>Slug <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control" id="clone_slug" placeholder="m365-login">
+                              <small class="form-text text-muted">Lowercase letters, digits and hyphens. Becomes part of the public URL.</small>
+                           </div>
+                           <button class="btn btn-info" type="button" id="btn_clone_site">
+                              <i class="fa fa-clone"></i> Clone site
+                           </button>
+                           <hr>
+                           <div class="form-group mb-1">
+                              <label class="small text-muted mb-1">Or clone a library template</label>
+                              <select class="form-control form-control-sm" id="lib_select">
+                                 <option value="">— none loaded —</option>
+                              </select>
+                           </div>
+                           <button class="btn btn-outline-secondary btn-sm" type="button" id="btn_lib_clone">
+                              <i class="fa fa-book"></i> Clone library template
+                           </button>
+                           <div id="clone_result" class="mt-3 small"></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- ============ Step 5 — Mail template (inline editor) ============ -->
+               <div class="row step-wrap" id="step5_wrap" style="display:none;">
+                  <div class="col-lg-8 mb-3">
                      <div class="card">
                         <div class="card-body">
-                           <h5 class="card-title">Step 4 — Sender setup</h5>
+                           <h5 class="card-title">Step 5 — Mail template</h5>
                            <p class="text-muted small">
-                              Generate a fresh DKIM key pair for the look-alike domain. The wizard
-                              renders the three TXT records (DKIM, SPF, DMARC) you publish at the
-                              registrar so the look-alike actually delivers.
+                              Start from a ranked pretext or blank, then edit inline. <em>Save &amp; wire</em>
+                              auto-injects the CTA link to your Step 4 landing URL (with
+                              <code>?rid={{RID}}</code>) and the <code>{{TRACKER}}</code> open-pixel,
+                              then persists the template.
                            </p>
-                           <div class="form-row align-items-end">
-                              <div class="form-group col-md-3 mb-2">
+                           <div class="form-group">
+                              <label>Template name</label>
+                              <input type="text" class="form-control" id="mt_name" placeholder="Acme M365 reset">
+                           </div>
+                           <div class="form-group">
+                              <label>Subject</label>
+                              <input type="text" class="form-control" id="mt_subject" placeholder="Action required: verify your account">
+                           </div>
+                           <div class="form-group">
+                              <label>Body</label>
+                              <textarea id="mt_summernote"></textarea>
+                           </div>
+                           <button class="btn btn-info" type="button" id="btn_mt_save">
+                              <i class="fa fa-save"></i> Save &amp; wire
+                           </button>
+                           <div id="mt_result" class="mt-3"></div>
+                           <div id="mt_preview" class="mt-3"></div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-lg-4 mb-3">
+                     <div class="card h-100">
+                        <div class="card-body">
+                           <h6 class="card-title">Pretext starters</h6>
+                           <p class="small text-muted">Ranked by the OSINT tech-stack signal. Picking one fills the subject + body; or start blank.</p>
+                           <button class="btn btn-sm btn-outline-secondary mb-2" type="button" id="btn_mt_blank">
+                              <i class="fa fa-file"></i> Start blank
+                           </button>
+                           <div id="mt_pretexts">—</div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- ============ Step 6 — Sender (select or inline create) ============ -->
+               <div class="row step-wrap" id="step6_wrap" style="display:none;">
+                  <div class="col-lg-7 mb-3">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Step 6 — Sender</h5>
+                           <p class="text-muted small">
+                              Pick an existing SMTP sender, or create one inline. The selected
+                              sender's <code>From</code> domain feeds the launch pre-flight.
+                           </p>
+                           <div class="form-group">
+                              <label>Existing senders</label>
+                              <select class="form-control" id="snd_select">
+                                 <option value="">— loading… —</option>
+                              </select>
+                           </div>
+                           <button class="btn btn-info" type="button" id="btn_snd_use">
+                              <i class="fa fa-check"></i> Use selected
+                           </button>
+                           <button class="btn btn-outline-secondary" type="button" id="btn_snd_toggle">
+                              <i class="fa fa-plus"></i> Create new sender
+                           </button>
+                           <div id="snd_create" class="mt-3" style="display:none;">
+                              <div class="form-row">
+                                 <div class="form-group col-md-6 mb-2">
+                                    <label>Sender name</label>
+                                    <input type="text" class="form-control" id="snd_name" placeholder="Acme IT">
+                                 </div>
+                                 <div class="form-group col-md-6 mb-2">
+                                    <label>SMTP server:port</label>
+                                    <input type="text" class="form-control" id="snd_smtp" placeholder="smtp.example.com:587">
+                                 </div>
+                                 <div class="form-group col-md-6 mb-2">
+                                    <label>From address</label>
+                                    <input type="text" class="form-control" id="snd_from" placeholder="it@acme-corp.example">
+                                 </div>
+                                 <div class="form-group col-md-6 mb-2">
+                                    <label>Username</label>
+                                    <input type="text" class="form-control" id="snd_user" placeholder="it@acme-corp.example">
+                                 </div>
+                                 <div class="form-group col-md-6 mb-2">
+                                    <label>Password</label>
+                                    <input type="password" class="form-control" id="snd_pwd" autocomplete="new-password">
+                                 </div>
+                                 <div class="form-group col-md-6 mb-2">
+                                    <label>IMAP mailbox (optional)</label>
+                                    <input type="text" class="form-control" id="snd_mailbox" placeholder="(blank = auto)">
+                                 </div>
+                              </div>
+                              <button class="btn btn-info" type="button" id="btn_snd_save">
+                                 <i class="fa fa-save"></i> Save &amp; select sender
+                              </button>
+                           </div>
+                           <div id="snd_result" class="mt-3"></div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-lg-5 mb-3">
+                     <div class="card h-100">
+                        <div class="card-body">
+                           <h6 class="card-title">
+                              <a class="text-muted" data-toggle="collapse" href="#snd_dkim_block" role="button">
+                                 Advanced — DKIM key pair <i class="fa fa-caret-down"></i>
+                              </a>
+                           </h6>
+                           <div class="collapse" id="snd_dkim_block">
+                              <p class="small text-muted">Optional. Generate DKIM/SPF/DMARC TXT records for a look-alike domain.</p>
+                              <div class="form-group mb-2">
                                  <label>DKIM selector</label>
                                  <input type="text" id="dkim_selector" class="form-control" value="s1" autocomplete="off">
                               </div>
-                              <div class="form-group col-md-5 mb-2">
+                              <div class="form-group mb-2">
                                  <label>DMARC <code>rua</code> contact (optional)</label>
                                  <input type="email" id="dkim_rua" class="form-control" placeholder="soc@your-domain.example" autocomplete="off">
                               </div>
-                              <div class="form-group col-md-4 mb-2">
-                                 <button class="btn btn-info" type="button" id="btn_gen_dkim">
-                                    <i class="fa fa-key"></i> Generate DKIM key pair
-                                 </button>
-                              </div>
+                              <button class="btn btn-sm btn-outline-info" type="button" id="btn_gen_dkim">
+                                 <i class="fa fa-key"></i> Generate DKIM key pair
+                              </button>
+                              <div id="dkim_result"></div>
                            </div>
-                           <div id="dkim_result"></div>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-
-               <!-- ============ Step 5 — Recipient preview ============ -->
-               <div class="row step-wrap" id="step5_wrap" style="display:none;">
-                  <div class="col-12 mb-3">
-                     <div class="card">
-                        <div class="card-body">
-                           <h5 class="card-title">Step 5 — Recipient preview</h5>
-                           <p class="text-muted small">
-                              Paste your CSV (<code>First,Last,Email</code> or
-                              <code>First,Email,Notes</code>). The wizard runs the same parser the
-                              upload page uses and cross-checks every domain against the
-                              engagement's authorised scope. Bad rows are surfaced; in-scope rows
-                              get a per-domain breakdown.
-                           </p>
-                           <div class="form-group">
-                              <textarea class="form-control" id="rcpt_csv" rows="6" placeholder="First,Last,Email&#10;Alice,Smith,alice@target.example"></textarea>
-                           </div>
-                           <button class="btn btn-info" type="button" id="btn_rcpt_preview">
-                              <i class="fa fa-eye"></i> Preview
-                           </button>
-                           <a class="btn btn-link" href="MailUserGroup">Open Mail User Group →</a>
-                           <div id="rcpt_preview_result" class="mt-3"></div>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-
-               <!-- ============ Step 6 — Landing page picker ============ -->
-               <div class="row step-wrap" id="step6_wrap" style="display:none;">
-                  <div class="col-12 mb-3">
-                     <div class="card">
-                        <div class="card-body">
-                           <h5 class="card-title">Step 6 — Landing page</h5>
-                           <p class="text-muted small">
-                              Pick the page your recipients land on after clicking. Existing
-                              clones come from the Site Cloner; the library entries are
-                              hand-curated common targets you can spin up via Phase 3.44
-                              (planned). The wizard does not commit a choice — it just shows
-                              you the deep-links so you know where to go.
-                           </p>
-                           <div id="landing_options" class="row">—</div>
                         </div>
                      </div>
                   </div>
@@ -333,25 +478,14 @@
                         <div class="card-body">
                            <h5 class="card-title">Step 7 — Pre-flight + Launch</h5>
                            <p class="text-muted small">
-                              The Launch button stays disabled until every gate is green.
-                              Status transition uses compare-and-swap, so a double-click
-                              can't double-launch.
+                              Everything below is auto-filled from Steps 3–6. Run pre-flight; the
+                              Launch button stays disabled until every gate is green. Status uses
+                              compare-and-swap, so a double-click can't double-launch.
                            </p>
+                           <div id="launch_summary" class="mb-3"></div>
                            <div class="form-row align-items-end">
-                              <div class="form-group col-md-6 mb-2">
-                                 <label>Recipient emails (one per line — typically from Step 5)</label>
-                                 <textarea class="form-control" id="pf_emails" rows="3" placeholder="alice@target.example&#10;bob@hr.target.example"></textarea>
-                              </div>
                               <div class="form-group col-md-3 mb-2">
-                                 <label>Sender domain</label>
-                                 <input type="text" id="pf_sender_domain" class="form-control" placeholder="target-corp.example">
-                              </div>
-                              <div class="form-group col-md-3 mb-2">
-                                 <label>Target real domain</label>
-                                 <input type="text" id="pf_target_domain" class="form-control" placeholder="target.example">
-                              </div>
-                              <div class="form-group col-md-3 mb-2">
-                                 <label>Target DMARC policy (from Step 2)</label>
+                                 <label>Target DMARC policy</label>
                                  <select id="pf_dmarc" class="form-control">
                                     <option value="none">none</option>
                                     <option value="quarantine">quarantine</option>
@@ -359,18 +493,8 @@
                                  </select>
                               </div>
                               <div class="form-group col-md-3 mb-2">
-                                 <label>Webhook URL (optional)</label>
-                                 <input type="text" id="pf_webhook" class="form-control" placeholder="(blank = none)">
-                              </div>
-                              <div class="form-group col-md-6 mb-2">
-                                 <label>Landing URL (from Step 6 — the URL you put in the mail's CTA)</label>
-                                 <input type="text" id="pf_landing_url" class="form-control" placeholder="https://this-host/p/m365-login-XXXX/">
-                                 <small class="form-text text-muted">The pre-flight fetches this URL and verifies HTTP 200 + a &lt;form&gt; element. Empty = hard fail.</small>
-                              </div>
-                              <div class="form-group col-md-12 mb-2">
-                                 <label>Rendered mail body (paste the body AFTER you've edited the CTA)</label>
-                                 <textarea id="pf_rendered_body" rows="3" class="form-control" placeholder="<p>Hi {{FNAME}}...</p><p><a href=&quot;https://this-host/p/m365-login-XXXX/?rid={{RID}}&quot;>Click</a></p>"></textarea>
-                                 <small class="form-text text-muted">The CTA gate refuses to launch if the rendered body still carries the operator-edit marker or points its &lt;a href&gt; at the open-tracking pixel.</small>
+                                 <label>Target real domain</label>
+                                 <input type="text" id="pf_target_domain" class="form-control" placeholder="target.example">
                               </div>
                               <div class="form-group col-md-6 mb-2">
                                  <button class="btn btn-info" type="button" id="btn_run_preflight">
@@ -415,6 +539,8 @@
       <script src="js/libs/perfect-scrollbar.jquery.min.js"></script>
       <script src="js/libs/custom.min.js"></script>
       <script src="js/libs/toastr.min.js"></script>
+      <script src="js/libs/summernote-bs4.min.js"></script>
+      <script src="js/libs/codemirror.min.js"></script>
       <script src="js/common_scripts.js"></script>
       <script src="js/quick_start.js"></script>
       <script src="js/wizard_stepflow.js"></script>

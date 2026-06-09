@@ -25,6 +25,13 @@ date_default_timezone_set('UTC');
 // SELECT against tb_store; INSERT only on miss.
 if (isset($conn) && $conn instanceof mysqli) {
 	taphish_ensure_mail_presets($conn);
+	// Phase 3.27 follow-up: widen sender_acc_pwd so the at-rest-sealed SMTP
+	// password fits (the 2022 VARCHAR(50) overflows every sealed save).
+	if (is_file(dirname(__FILE__) . '/secret_at_rest.php')) {
+		require_once(dirname(__FILE__) . '/secret_at_rest.php');
+		if (function_exists('secret_at_rest_ensure_sender_pwd_width'))
+			secret_at_rest_ensure_sender_pwd_width($conn);
+	}
 	totp_ensure_schema($conn);	//Phase 3.25: add totp_secret + totp_enabled columns if missing
 	totp_ensure_recovery_schema($conn);	//Phase 3.31: create tb_totp_recovery_codes if missing
 	// Phase 3.39: create + seed the pretext library on first boot.

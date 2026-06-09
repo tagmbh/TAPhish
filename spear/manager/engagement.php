@@ -639,19 +639,31 @@ if (!function_exists('taphish_wizard_state_normalize')) {
      * stays in its encrypted table. We keep only the non-sensitive
      * inputs needed to restore the wizard's position.
      *
-     * @return array{step:int, target_domain:string, dkim_selector:string, landing_slug:string, pretext_id:int}
+     * @return array{step:int, target_domain:string, dkim_selector:string, landing_slug:string, pretext_id:int, sender_list_id:string, user_group_id:string, mail_template_id:string, tracker_id:string, clone_slug:string, landing_url:string, campaign_type:string}
      */
     function taphish_wizard_state_normalize(array $in): array
     {
         $step = (int) ($in['step'] ?? 1);
         if ($step < 1) $step = 1;
         if ($step > 7) $step = 7;
+        // Phase 3.57 (full-funnel wizard): persist the linked IDs/strings the
+        // wizard collects across steps 3–6 so a full Mail+Landing campaign can
+        // be resumed. Still NO secrets — only IDs, slugs and a plain URL.
+        $campaign_type = (string) ($in['campaign_type'] ?? '');
+        $campaign_type = in_array($campaign_type, ['', 'mail_landing'], true) ? $campaign_type : '';
         return [
-            'step'          => $step,
-            'target_domain' => substr(trim((string) ($in['target_domain'] ?? '')), 0, 253),
-            'dkim_selector' => substr(preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($in['dkim_selector'] ?? ''))) ?? '', 0, 16),
-            'landing_slug'  => substr(preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($in['landing_slug'] ?? ''))) ?? '', 0, 61),
-            'pretext_id'    => max(0, (int) ($in['pretext_id'] ?? 0)),
+            'step'             => $step,
+            'target_domain'    => substr(trim((string) ($in['target_domain'] ?? '')), 0, 253),
+            'dkim_selector'    => substr(preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($in['dkim_selector'] ?? ''))) ?? '', 0, 16),
+            'landing_slug'     => substr(preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($in['landing_slug'] ?? ''))) ?? '', 0, 61),
+            'pretext_id'       => max(0, (int) ($in['pretext_id'] ?? 0)),
+            'sender_list_id'   => substr(preg_replace('/[^A-Za-z0-9-]/', '', (string) ($in['sender_list_id'] ?? '')) ?? '', 0, 64),
+            'user_group_id'    => substr((string) ($in['user_group_id'] ?? ''), 0, 64),
+            'mail_template_id' => substr((string) ($in['mail_template_id'] ?? ''), 0, 64),
+            'tracker_id'       => substr(preg_replace('/[^A-Za-z0-9]/', '', (string) ($in['tracker_id'] ?? '')) ?? '', 0, 32),
+            'clone_slug'       => substr(preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($in['clone_slug'] ?? ''))) ?? '', 0, 61),
+            'landing_url'      => substr(trim((string) ($in['landing_url'] ?? '')), 0, 512),
+            'campaign_type'    => $campaign_type,
         ];
     }
 }
