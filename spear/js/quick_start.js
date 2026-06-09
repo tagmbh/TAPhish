@@ -106,15 +106,18 @@
     // the native datetime-local picker; B: live-render the parsed authorised
     // domains as chips so the operator sees exactly what will be saved.
     function pad2(n) { return (n < 10 ? '0' : '') + n; }
-    function toLocalInput(d) {
-        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())
-            + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    // The field is labelled "(UTC)" and the backend stores the value as UTC, so
+    // the prefilled now/+14d must use UTC components — otherwise an operator in
+    // a non-UTC zone is shown their LOCAL wall-clock under a UTC label (F7).
+    function toUtcInput(d) {
+        return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate())
+            + 'T' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes());
     }
     function prefillWindow() {
-        if (!$('#eng_start').val()) $('#eng_start').val(toLocalInput(new Date()));
+        if (!$('#eng_start').val()) $('#eng_start').val(toUtcInput(new Date()));
         if (!$('#eng_end').val()) {
-            var end = new Date(); end.setDate(end.getDate() + 14);
-            $('#eng_end').val(toLocalInput(end));
+            var end = new Date(); end.setUTCDate(end.getUTCDate() + 14);
+            $('#eng_end').val(toUtcInput(end));
         }
     }
     function parseScopeDomains() {
@@ -327,22 +330,36 @@
         if (!res) return '<span class="text-danger">lookup failed</span>';
         if (res.result !== 'success') {
             var err = res.err || res.error || '';
-            if (/api\s*key/i.test(err)) {
-                // Distinguish "no key saved" from "a key IS saved but Hunter
-                // rejected it" — otherwise an operator who configured a key in
-                // Settings is wrongly told to add one (the reported confusion).
+            // F4: branch on the server's structured err_code. The old regex on
+            // the human message + a localStorage sniff is kept only as a
+            // fallback for an older server that doesn't send a code.
+            var code = res.err_code || '';
+            var settingsLink = ' in <a href="SettingsGeneral">Settings → General</a>';
+            if (code === 'key_rejected') {
+                return '<span class="text-warning">Hunter.io rejected the configured API key</span>'
+                    + '<div class="small text-muted mt-1">Check / re-enter it' + settingsLink + ' (it may be wrong or expired).</div>';
+            }
+            if (code === 'rate_limited') {
+                return '<span class="text-warning">Hunter.io rate-limited the request</span>'
+                    + '<div class="small text-muted mt-1">Wait a bit and retry, or check your plan limits.</div>';
+            }
+            if (code === 'no_key') {
+                return '<span class="text-muted">Hunter.io API key not configured</span>'
+                    + '<div class="small text-muted mt-1">Add one' + settingsLink + ' to enable email-format guessing.</div>';
+            }
+            if (code === 'invalid_key') {
+                return '<span class="text-warning">The saved Hunter.io API key is malformed</span>'
+                    + '<div class="small text-muted mt-1">Re-enter the 40-character key' + settingsLink + '.</div>';
+            }
+            if (!code && /api\s*key/i.test(err)) {
                 var hasKey = false;
                 try { hasKey = !!(localStorage.getItem('taphish_hunter_apikey') || '').trim(); } catch (_) {}
                 if (hasKey) {
                     return '<span class="text-warning">Hunter.io rejected the configured API key</span>'
-                        + '<div class="small text-muted mt-1">'
-                        + 'Check / re-enter it in <a href="SettingsGeneral">Settings → General</a> (it may be wrong, expired, or rate-limited).'
-                        + '</div>';
+                        + '<div class="small text-muted mt-1">Check / re-enter it' + settingsLink + ' (it may be wrong, expired, or rate-limited).</div>';
                 }
                 return '<span class="text-muted">Hunter.io API key not configured</span>'
-                    + '<div class="small text-muted mt-1">'
-                    + 'Add one in <a href="SettingsGeneral">Settings → General</a> to enable email-format guessing.'
-                    + '</div>';
+                    + '<div class="small text-muted mt-1">Add one' + settingsLink + ' to enable email-format guessing.</div>';
             }
             return '<span class="text-danger">' + esc(err || 'lookup failed') + '</span>';
         }

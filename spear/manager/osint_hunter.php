@@ -34,6 +34,29 @@ if (!function_exists('osint_hunter_is_valid_domain')) {
     }
 }
 
+if (!function_exists('osint_hunter_classify_error')) {
+    /**
+     * Map a Hunter.io error object to a stable code (F4) so callers branch on
+     * a token instead of regex-matching the human message. Hunter signals auth
+     * failures with HTTP 401/403 (id=invalid_api_key), rate limits with 429.
+     *
+     * @param array<string,mixed> $first the first entry of the `errors` array
+     */
+    function osint_hunter_classify_error(array $first): string
+    {
+        $code = (int) ($first['code'] ?? 0);
+        $id   = strtolower((string) ($first['id'] ?? ''));
+        if ($code === 401 || $code === 403 || strpos($id, 'api_key') !== false
+            || strpos($id, 'unauthor') !== false || strpos($id, 'forbidden') !== false) {
+            return 'key_rejected';
+        }
+        if ($code === 429 || strpos($id, 'too_many') !== false || strpos($id, 'rate') !== false) {
+            return 'rate_limited';
+        }
+        return 'api_error';
+    }
+}
+
 if (!function_exists('osint_hunter_is_valid_api_key')) {
     /**
      * Hunter.io v2 keys are 40-char hex strings. Reject anything else
@@ -86,9 +109,9 @@ if (!function_exists('osint_hunter_parse_domain_search')) {
             return ['ok' => false, 'err' => 'Hunter.io response was not an object'];
         }
         if (isset($raw['errors']) && is_array($raw['errors']) && $raw['errors'] !== []) {
-            $first = $raw['errors'][0] ?? [];
-            $msg = is_array($first) ? ($first['details'] ?? $first['code'] ?? 'unknown error') : 'unknown error';
-            return ['ok' => false, 'err' => 'Hunter.io: ' . (string) $msg];
+            $first = is_array($raw['errors'][0] ?? null) ? $raw['errors'][0] : [];
+            $msg = $first['details'] ?? $first['code'] ?? 'unknown error';
+            return ['ok' => false, 'err' => 'Hunter.io: ' . (string) $msg, 'err_code' => osint_hunter_classify_error($first)];
         }
         $data = $raw['data'] ?? null;
         if (!is_array($data)) {
@@ -136,13 +159,18 @@ if (!function_exists('osint_hunter_domain_search')) {
     function osint_hunter_domain_search(string $domain, string $apiKey, int $limit = 25): array
     {
         if (!osint_hunter_is_valid_domain($domain)) {
-            return ['ok' => false, 'err' => 'Invalid domain format'];
+            return ['ok' => false, 'err' => 'Invalid domain format', 'err_code' => 'bad_domain'];
+        }
+        // Distinguish "no key configured" from "a key is set but malformed" so
+        // the UI can tell the operator the right thing (F4).
+        if (trim($apiKey) === '') {
+            return ['ok' => false, 'err' => 'No Hunter.io API key configured', 'err_code' => 'no_key'];
         }
         if (!osint_hunter_is_valid_api_key($apiKey)) {
-            return ['ok' => false, 'err' => 'Invalid Hunter.io API key format'];
+            return ['ok' => false, 'err' => 'Invalid Hunter.io API key format', 'err_code' => 'invalid_key'];
         }
         if (!function_exists('curl_init')) {
-            return ['ok' => false, 'err' => 'ext-curl not available on this PHP runtime'];
+            return ['ok' => false, 'err' => 'ext-curl not available on this PHP runtime', 'err_code' => 'no_curl'];
         }
         $limit = max(1, min(100, $limit));
 
@@ -212,9 +240,9 @@ if (!function_exists('osint_hunter_parse_email_finder')) {
             return ['ok' => false, 'err' => 'Hunter.io response was not an object'];
         }
         if (isset($raw['errors']) && is_array($raw['errors']) && $raw['errors'] !== []) {
-            $first = $raw['errors'][0] ?? [];
-            $msg = is_array($first) ? ($first['details'] ?? $first['code'] ?? 'unknown error') : 'unknown error';
-            return ['ok' => false, 'err' => 'Hunter.io: ' . (string) $msg];
+            $first = is_array($raw['errors'][0] ?? null) ? $raw['errors'][0] : [];
+            $msg = $first['details'] ?? $first['code'] ?? 'unknown error';
+            return ['ok' => false, 'err' => 'Hunter.io: ' . (string) $msg, 'err_code' => osint_hunter_classify_error($first)];
         }
         $data = $raw['data'] ?? null;
         if (!is_array($data)) {

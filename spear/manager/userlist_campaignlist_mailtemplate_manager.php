@@ -319,7 +319,13 @@ if (isset($_POST)) {
 					return $res;
 				};
 			}
-			$landingProbe = function(string $url): array {
+			// F2: only probe a cloned landing on this host — never an arbitrary
+			// operator-supplied URL (SSRF).
+			$reqHost = (string)($_SERVER['HTTP_HOST'] ?? '');
+			$landingProbe = function(string $url) use ($reqHost): array {
+				if (!taphish_landing_url_is_probeable($url, $reqHost)) {
+					return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host'];
+				}
 				return taphish_preflight_http_get($url);
 			};
 			$report = taphish_preflight_run_all([
@@ -523,7 +529,12 @@ if (isset($_POST)) {
 							}
 						}
 					}
-					$landingProbe = function(string $url): array {
+					// F2: SSRF guard — only a cloned landing on this host is probeable.
+					$reqHost = (string)($_SERVER['HTTP_HOST'] ?? '');
+					$landingProbe = function(string $url) use ($reqHost): array {
+						if (!taphish_landing_url_is_probeable($url, $reqHost)) {
+							return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host'];
+						}
 						return taphish_preflight_http_get($url);
 					};
 					$pre = taphish_preflight_run_all([
