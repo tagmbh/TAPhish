@@ -170,6 +170,49 @@ if (!function_exists('taphish_preflight_http_get')) {
     }
 }
 
+if (!function_exists('taphish_landing_url_is_probeable')) {
+    /**
+     * SSRF guard for the landing probe (F2). The server is about to issue an
+     * HTTP GET to `$url`; without a guard an authenticated operator could aim
+     * it at an internal host (`169.254.169.254`, an admin panel, …). A wizard
+     * landing is always a cloned page served from THIS host, so we constrain
+     * the probe to exactly that: same host as the request, http(s) scheme, and
+     * a path under the cloned-landing prefixes (`/p/<slug>` or the canonical
+     * `/spear/sniperhost/cloned/<slug>/`). Everything else is refused.
+     *
+     * Pure: no DB / network. The host comparison ignores the port so a probe
+     * to `host:8099` from a request to the same `host:8099` still matches.
+     */
+    function taphish_landing_url_is_probeable(string $url, string $requestHost): bool
+    {
+        $parts = parse_url(trim($url));
+        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+            return false;
+        }
+        $scheme = strtolower($parts['scheme']);
+        if ($scheme !== 'http' && $scheme !== 'https') {
+            return false;
+        }
+        $hostOnly = static function (string $h): string {
+            $h = strtolower(trim($h));
+            // Strip a :port suffix (but keep bracketed IPv6 intact enough to compare).
+            if ($h !== '' && $h[0] !== '[') {
+                $colon = strrpos($h, ':');
+                if ($colon !== false) {
+                    $h = substr($h, 0, $colon);
+                }
+            }
+            return $h;
+        };
+        if ($requestHost === '' || $hostOnly($parts['host']) !== $hostOnly($requestHost)) {
+            return false;
+        }
+        $path = $parts['path'] ?? '';
+        return strncmp($path, '/p/', 3) === 0
+            || strpos($path, '/spear/sniperhost/cloned/') !== false;
+    }
+}
+
 if (!function_exists('taphish_preflight_landing_gate')) {
     /**
      * Landing-page reachability. Fetches the configured landing URL with an

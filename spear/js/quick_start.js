@@ -41,8 +41,8 @@
         return {
             name: $('#eng_name').val(),
             target_org: $('#eng_org').val(),
-            start_at: $('#eng_start').val(),
-            end_at: $('#eng_end').val(),
+            start_at: localInputToUtc($('#eng_start').val()),
+            end_at: localInputToUtc($('#eng_end').val()),
             scope_allowlist: $('#eng_scope').val(),
             notes: $('#eng_notes').val()
         };
@@ -106,9 +106,22 @@
     // the native datetime-local picker; B: live-render the parsed authorised
     // domains as chips so the operator sees exactly what will be saved.
     function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    // F7: the engagement window field shows the operator's LOCAL time (the
+    // native datetime-local picker's natural behaviour); we convert it to UTC
+    // on submit. Prefill now/+14d in local components to match.
     function toLocalInput(d) {
         return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())
             + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+    // Read a datetime-local value (interpreted as LOCAL wall-clock by Date) and
+    // emit the equivalent instant as a UTC "YYYY-MM-DDTHH:MM" string — the
+    // shape the server parses as UTC. Empty/invalid input passes through.
+    function localInputToUtc(v) {
+        if (!v) return v;
+        var d = new Date(v);
+        if (isNaN(d.getTime())) return v;
+        return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate())
+            + 'T' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes());
     }
     function prefillWindow() {
         if (!$('#eng_start').val()) $('#eng_start').val(toLocalInput(new Date()));
@@ -327,22 +340,36 @@
         if (!res) return '<span class="text-danger">lookup failed</span>';
         if (res.result !== 'success') {
             var err = res.err || res.error || '';
-            if (/api\s*key/i.test(err)) {
-                // Distinguish "no key saved" from "a key IS saved but Hunter
-                // rejected it" — otherwise an operator who configured a key in
-                // Settings is wrongly told to add one (the reported confusion).
+            // F4: branch on the server's structured err_code. The old regex on
+            // the human message + a localStorage sniff is kept only as a
+            // fallback for an older server that doesn't send a code.
+            var code = res.err_code || '';
+            var settingsLink = ' in <a href="SettingsGeneral">Settings → General</a>';
+            if (code === 'key_rejected') {
+                return '<span class="text-warning">Hunter.io rejected the configured API key</span>'
+                    + '<div class="small text-muted mt-1">Check / re-enter it' + settingsLink + ' (it may be wrong or expired).</div>';
+            }
+            if (code === 'rate_limited') {
+                return '<span class="text-warning">Hunter.io rate-limited the request</span>'
+                    + '<div class="small text-muted mt-1">Wait a bit and retry, or check your plan limits.</div>';
+            }
+            if (code === 'no_key') {
+                return '<span class="text-muted">Hunter.io API key not configured</span>'
+                    + '<div class="small text-muted mt-1">Add one' + settingsLink + ' to enable email-format guessing.</div>';
+            }
+            if (code === 'invalid_key') {
+                return '<span class="text-warning">The saved Hunter.io API key is malformed</span>'
+                    + '<div class="small text-muted mt-1">Re-enter the 40-character key' + settingsLink + '.</div>';
+            }
+            if (!code && /api\s*key/i.test(err)) {
                 var hasKey = false;
                 try { hasKey = !!(localStorage.getItem('taphish_hunter_apikey') || '').trim(); } catch (_) {}
                 if (hasKey) {
                     return '<span class="text-warning">Hunter.io rejected the configured API key</span>'
-                        + '<div class="small text-muted mt-1">'
-                        + 'Check / re-enter it in <a href="SettingsGeneral">Settings → General</a> (it may be wrong, expired, or rate-limited).'
-                        + '</div>';
+                        + '<div class="small text-muted mt-1">Check / re-enter it' + settingsLink + ' (it may be wrong, expired, or rate-limited).</div>';
                 }
                 return '<span class="text-muted">Hunter.io API key not configured</span>'
-                    + '<div class="small text-muted mt-1">'
-                    + 'Add one in <a href="SettingsGeneral">Settings → General</a> to enable email-format guessing.'
-                    + '</div>';
+                    + '<div class="small text-muted mt-1">Add one' + settingsLink + ' to enable email-format guessing.</div>';
             }
             return '<span class="text-danger">' + esc(err || 'lookup failed') + '</span>';
         }
@@ -596,53 +623,41 @@
         var csv = $('#rcpt_csv').val() || '';
         if (groupName === '') { if (window.toastr) toastr.warning('Enter a group name'); $('#rcpt_group_name').focus(); return; }
         if (csv.trim() === '') { if (window.toastr) toastr.warning('Paste a CSV first'); return; }
-        // Make sure WZ.recipient_emails reflects this CSV (in case preview was skipped).
+        // Commit parses + scope-filters the CSV server-side and returns the
+        // in-scope emails it stored, so one request covers both the persist and
+        // the Step 7 summary count (no separate preview round-trip).
         $('#btn_rcpt_commit').prop('disabled', true);
         $('#rcpt_commit_result').html(skeleton(2));
-        post({ action_type: 'wizard_recipient_preview', user_data: csv, engagement_id: id })
-            .done(function (pv) {
-                if (pv && pv.result === 'success') {
-                    var bad = {};
-                    (pv.scope_violations || []).forEach(function (v) {
-                        if (typeof v.line_index !== 'undefined') bad[v.line_index] = true;
-                    });
-                    WZ.recipient_emails = (pv.rows || [])
-                        .filter(function (_r, i) { return !bad[i]; })
-                        .map(function (r) { return (r.email || '').toLowerCase(); })
+        post({ action_type: 'wizard_commit_recipients', engagement_id: id, group_name: groupName, user_data: csv })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    WZ.user_group_id = res.user_group_id;
+                    WZ.recipient_emails = (res.emails || [])
+                        .map(function (e) { return String(e || '').toLowerCase(); })
                         .filter(Boolean);
+                    $('#rcpt_commit_result').html(
+                        '<div class="alert alert-success">' +
+                        '<strong>Committed.</strong> Group <code>' + esc(res.group_name) + '</code> — ' +
+                        '<strong>' + (res.committed || 0) + '</strong> recipient(s) stored, ' +
+                        (res.skipped || 0) + ' skipped, ' +
+                        (res.scope_violations || 0) + ' out of scope.' +
+                        '</div>'
+                    );
+                    if (window.toastr) toastr.success('Recipients committed');
+                    persistState();
+                    unlockNext();
+                } else {
+                    $('#rcpt_commit_result').html('<div class="alert alert-danger">' + esc((res && res.error) || 'Commit failed') + '</div>');
                 }
-                post({ action_type: 'wizard_commit_recipients', engagement_id: id, group_name: groupName, user_data: csv })
-                    .done(function (res) {
-                        if (res && res.result === 'success') {
-                            WZ.user_group_id = res.user_group_id;
-                            $('#rcpt_commit_result').html(
-                                '<div class="alert alert-success">' +
-                                '<strong>Committed.</strong> Group <code>' + esc(res.group_name) + '</code> — ' +
-                                '<strong>' + (res.committed || 0) + '</strong> recipient(s) stored, ' +
-                                (res.skipped || 0) + ' skipped, ' +
-                                (res.scope_violations || 0) + ' out of scope.' +
-                                '</div>'
-                            );
-                            if (window.toastr) toastr.success('Recipients committed');
-                            persistState();
-                            unlockNext();
-                        } else {
-                            $('#rcpt_commit_result').html('<div class="alert alert-danger">' + esc((res && res.error) || 'Commit failed') + '</div>');
-                        }
-                    })
-                    .fail(function () { $('#rcpt_commit_result').html('<div class="alert alert-danger">Request failed</div>'); })
-                    .always(function () { $('#btn_rcpt_commit').prop('disabled', false); });
             })
-            .fail(function () {
-                $('#rcpt_commit_result').html('<div class="alert alert-danger">Request failed</div>');
-                $('#btn_rcpt_commit').prop('disabled', false);
-            });
+            .fail(function () { $('#rcpt_commit_result').html('<div class="alert alert-danger">Request failed</div>'); })
+            .always(function () { $('#btn_rcpt_commit').prop('disabled', false); });
     }
 
     // ----- Step 4: Landing + Tracker -------------------------------------
 
     function slugifyName(s) {
-        return String(s || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
+        return TAPhishWizardPure.slugifyName(s);
     }
 
     function loadTrackers() {
@@ -705,7 +720,8 @@
     }
 
     function publicUrlFromSlug(slug) {
-        return window.location.protocol + '//' + window.location.host + '/spear/sniperhost/cloned/' + slug + '/';
+        // F9: mirror ClonedSite::buildPublicUrl — the clean /p/<slug>/ alias.
+        return window.location.protocol + '//' + window.location.host + '/p/' + slug + '/';
     }
 
     function onCloneSuccess(slug, publicUrl) {
@@ -867,28 +883,11 @@
         $('#mt_summernote').summernote('focus');
     }
 
-    // Wire the CTA + open pixel into the body:
-    //  1. Replace the pretext-library placeholder marker (the seed templates
-    //     ship `https://example.com/REPLACE-WITH-LANDING-URL`) with the real
-    //     cloned-landing URL — otherwise the pre-flight mail_body gate refuses
-    //     to launch ("CTA still points to the REPLACE-WITH-LANDING-URL marker").
-    //  2. Append a fresh CTA only if the landing URL still isn't present.
-    //  3. Append the {{TRACKER}} open-pixel placeholder if absent.
+    // Wire the CTA + open pixel into the body. The pure implementation lives in
+    // wizard_pure.js (TAPhishWizardPure.wireBody) so it can be unit-tested in
+    // node; here we just feed it the current landing URL.
     function wireBody(html) {
-        var landing = WZ.landing_url || '';
-        var ctaHref = landing ? (landing + (landing.indexOf('?') === -1 ? '?' : '&') + 'rid={{RID}}') : '';
-        if (ctaHref) {
-            html = html
-                .replace(/https?:\/\/example\.com\/REPLACE-WITH-LANDING-URL/gi, ctaHref)
-                .replace(/REPLACE-WITH-LANDING-URL/gi, ctaHref);
-            if (html.indexOf(landing) === -1) {
-                html += '<p><a href="' + ctaHref + '">' + ctaHref + '</a></p>';
-            }
-        }
-        if (html.indexOf('{{TRACKER}}') === -1) {
-            html += '{{TRACKER}}';
-        }
-        return html;
+        return TAPhishWizardPure.wireBody(html, WZ.landing_url || '');
     }
 
     function saveMailTemplate() {
@@ -1024,6 +1023,42 @@
             })
             .fail(function () { $('#snd_result').html('<div class="alert alert-danger">Request failed</div>'); })
             .always(function () { $('#btn_snd_save').prop('disabled', false); });
+    }
+
+    // F3: send a real test mail through the selected sender so the operator can
+    // verify the SMTP path before launch (the launch gate treats a missing
+    // probe as advisory). Reuses the existing send_test_mail_verification
+    // action; the password is filled server-side from the stored sender.
+    function testSender() {
+        var id = $('#snd_select').val() || WZ.sender_list_id;
+        if (!id) { if (window.toastr) toastr.warning('Select or save a sender first'); return; }
+        var to = ($('#snd_test_to').val() || '').trim();
+        if (to === '') { if (window.toastr) toastr.warning('Enter a test recipient address'); $('#snd_test_to').focus(); return; }
+        var s = senderById(id);
+        if (!s) { if (window.toastr) toastr.warning('Sender not loaded yet — reselect it'); return; }
+        $('#btn_snd_test').prop('disabled', true);
+        $('#snd_test_result').html(skeleton(1));
+        post({
+            action_type: 'send_test_mail_verification',
+            sender_list_id: id,
+            sender_list_mail_sender_SMTP_server: s.sender_SMTP_server || '',
+            sender_list_mail_sender_from: s.sender_from || '',
+            sender_list_mail_sender_acc_username: s.sender_acc_username || '',
+            sender_list_mail_sender_acc_pwd: '',   // server fills from the stored sender
+            sender_list_cust_headers: s.cust_headers || {},
+            test_to_address: to,
+            dsn_type: s.dsn_type || 'custom'
+        })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    $('#snd_test_result').html('<div class="alert alert-success">Test mail sent to <code>' + esc(to) + '</code>. Confirm it arrives before launching.</div>');
+                    if (window.toastr) toastr.success('Test mail sent');
+                } else {
+                    $('#snd_test_result').html('<div class="alert alert-danger">' + esc((res && res.error) || 'Send failed') + '</div>');
+                }
+            })
+            .fail(function () { $('#snd_test_result').html('<div class="alert alert-danger">Request failed</div>'); })
+            .always(function () { $('#btn_snd_test').prop('disabled', false); });
     }
 
     // ----- Step 7: Pre-flight + Launch -----------------------------------
@@ -1203,6 +1238,7 @@
         // Step 6 — Sender (+ advanced DKIM).
         $('#btn_snd_use').on('click', useSelectedSender);
         $('#btn_snd_save').on('click', saveSender);
+        $('#btn_snd_test').on('click', testSender);
         $('#btn_snd_toggle').on('click', function () { $('#snd_create').slideToggle(); });
         $('#btn_gen_dkim').on('click', runDkimGen);
         // Step 7 — Pre-flight + Launch.

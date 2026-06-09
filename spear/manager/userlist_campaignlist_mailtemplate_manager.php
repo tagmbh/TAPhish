@@ -319,7 +319,13 @@ if (isset($_POST)) {
 					return $res;
 				};
 			}
-			$landingProbe = function(string $url): array {
+			// F2: only probe a cloned landing on this host — never an arbitrary
+			// operator-supplied URL (SSRF).
+			$reqHost = (string)($_SERVER['HTTP_HOST'] ?? '');
+			$landingProbe = function(string $url) use ($reqHost): array {
+				if (!taphish_landing_url_is_probeable($url, $reqHost)) {
+					return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host'];
+				}
 				return taphish_preflight_http_get($url);
 			};
 			$report = taphish_preflight_run_all([
@@ -469,21 +475,36 @@ if (isset($_POST)) {
 				if ($grpEng !== $engagement_id) {
 					echo json_encode(['result' => 'failed', 'error' => 'Recipient group does not belong to this engagement']);
 				} else {
-					// Resolve display names for the campaign_data labels.
+					// Resolve display names for the campaign_data labels, plus the
+					// stored mail-template body + sender From — the launch gates
+					// must judge the artifacts that actually ship, NOT the client
+					// `context` bundle (which an operator/replayed request can spoof).
 					$group_name = '';
 					$template_name = '';
+					$template_body = '';
 					$sender_name = '';
+					$sender_from = '';
 					if ($ns = $conn->prepare("SELECT user_group_name FROM tb_core_mailcamp_user_group WHERE user_group_id = ?")) {
 						$ns->bind_param('s', $user_group_id); $ns->execute();
 						$group_name = (string)($ns->get_result()->fetch_assoc()['user_group_name'] ?? ''); $ns->close();
 					}
-					if ($nt = $conn->prepare("SELECT mail_template_name FROM tb_core_mailcamp_template_list WHERE mail_template_id = ?")) {
+					if ($nt = $conn->prepare("SELECT mail_template_name, mail_template_content FROM tb_core_mailcamp_template_list WHERE mail_template_id = ?")) {
 						$nt->bind_param('s', $mail_template_id); $nt->execute();
-						$template_name = (string)($nt->get_result()->fetch_assoc()['mail_template_name'] ?? ''); $nt->close();
+						$trow = $nt->get_result()->fetch_assoc(); $nt->close();
+						$template_name = (string)($trow['mail_template_name'] ?? '');
+						$template_body = (string)($trow['mail_template_content'] ?? '');
 					}
-					if ($nse = $conn->prepare("SELECT sender_name FROM tb_core_mailcamp_sender_list WHERE sender_list_id = ?")) {
+					if ($nse = $conn->prepare("SELECT sender_name, sender_from FROM tb_core_mailcamp_sender_list WHERE sender_list_id = ?")) {
 						$nse->bind_param('s', $sender_list_id); $nse->execute();
-						$sender_name = (string)($nse->get_result()->fetch_assoc()['sender_name'] ?? ''); $nse->close();
+						$srow = $nse->get_result()->fetch_assoc(); $nse->close();
+						$sender_name = (string)($srow['sender_name'] ?? '');
+						$sender_from = (string)($srow['sender_from'] ?? '');
+					}
+					// Derive the sender domain from the stored From, not the client.
+					$sender_domain = '';
+					$atPos = strpos($sender_from, '@');
+					if ($atPos !== false) {
+						$sender_domain = strtolower(trim(substr($sender_from, $atPos + 1)));
 					}
 
 					// 1. Re-run preflight so the operator can't bypass the JS.
@@ -508,20 +529,28 @@ if (isset($_POST)) {
 							}
 						}
 					}
-					$landingProbe = function(string $url): array {
+					// F2: SSRF guard — only a cloned landing on this host is probeable.
+					$reqHost = (string)($_SERVER['HTTP_HOST'] ?? '');
+					$landingProbe = function(string $url) use ($reqHost): array {
+						if (!taphish_landing_url_is_probeable($url, $reqHost)) {
+							return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host'];
+						}
 						return taphish_preflight_http_get($url);
 					};
 					$pre = taphish_preflight_run_all([
 						'recipient_emails'    => $emails,
 						'scope_allowlist'     => $allow,
 						'target_dmarc_policy' => (string)($ctx['target_dmarc_policy'] ?? ''),
-						'sender_domain'       => (string)($ctx['sender_domain']       ?? ''),
+						'sender_domain'       => $sender_domain,
 						'target_domain'       => (string)($ctx['target_domain']       ?? ''),
 						'sender_probe'        => null,
 						'webhook_url'         => (string)($ctx['webhook_url']         ?? ''),
 						'landing_url'         => $landing_url !== '' ? $landing_url : (string)($ctx['landing_url'] ?? ''),
 						'landing_probe'       => $landingProbe,
-						'rendered_mail_body'  => (string)($ctx['rendered_mail_body']  ?? ''),
+						// The mail-body/CTA gate judges the STORED template, so a
+						// template still carrying the REPLACE-WITH-LANDING-URL marker
+						// can't be waved through with a clean client-supplied body.
+						'rendered_mail_body'  => $template_body,
 					]);
 					if (!$pre['ok']) {
 						echo json_encode(['result' => 'failed', 'error' => 'Pre-flight gates not green', 'gates' => $pre['gates']]);
@@ -701,6 +730,10 @@ if (isset($_POST)) {
 							'committed'        => $committed,
 							'skipped'          => $skipped,
 							'scope_violations' => $scope_violations,
+							// The in-scope emails actually stored — lets the client
+							// drive the Step 7 summary count without a separate
+							// preview round-trip.
+							'emails'           => array_map(static fn($u) => $u['email'], $arr_users),
 						]);
 					} else {
 						echo json_encode(['result' => 'failed', 'error' => 'Could not save recipient group']);

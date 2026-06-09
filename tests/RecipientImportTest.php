@@ -160,6 +160,62 @@ final class RecipientImportTest extends TestCase
         self::assertSame('', $p['rows'][1]['lname']);
     }
 
+    public function testParseQuotedFieldWithEmbeddedDelimiter(): void
+    {
+        // A quoted "Last, First" cell carries the delimiter inside the
+        // enclosure, so it must stay one column and not spuriously look like
+        // an extra field or split the email off. (F6 edge case.)
+        $csv = "Name,Email\n\"Smith, Alice\",alice@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(1, $p['rows']);
+        self::assertCount(0, $p['errors']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        // The single mapped name cell "Smith, Alice" is split on the first
+        // space; the embedded comma stays attached to the first token (the
+        // point of the test is that the quoted delimiter never split columns).
+        self::assertSame('Alice', $p['rows'][0]['lname']);
+    }
+
+    public function testParseNonLatinNamedHeaderMapsViaSynonyms(): void
+    {
+        // German column names are recognised by the header synonym regexes
+        // (vorname → fname, nachname → lname, e-mail → email). (F6 edge case.)
+        $csv = "Vorname,Nachname,E-Mail\nAlice,Smith,alice@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(1, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+        self::assertSame('Smith', $p['rows'][0]['lname']);
+    }
+
+    public function testParseUnmappableNonLatinHeaderFallsBackToScan(): void
+    {
+        // A header whose names match no synonym (e.g. Japanese) is still
+        // recognised as a header (no cell is an email) and dropped; the data
+        // rows are then parsed by the email-scan path. Graceful degradation
+        // rather than mis-reading the header as data. (F6 edge case.)
+        $csv = "氏名,メール\nAlice,alice@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(1, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+    }
+
+    public function testParseHeaderlessFirstRowWithNoEmailIsConsumedAsHeader(): void
+    {
+        // KNOWN LIMITATION (handoff §4.5 / review F6): the header heuristic is
+        // "first non-blank line is a header when it mentions mail OR no cell is
+        // a valid email". A genuine first DATA row that happens to carry no
+        // email (e.g. a name-only row) is therefore swallowed as a header and
+        // silently dropped — it is NOT recorded as a parse error. This test
+        // pins that behaviour so a future change to the heuristic is noticed.
+        $csv = "Alice,Smith\nbob@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(1, $p['rows']);                 // only bob survives
+        self::assertSame('bob@acme.test', $p['rows'][0]['email']);
+        self::assertCount(0, $p['errors']);               // the dropped row is silent
+    }
+
     public function testDomainBreakdownCountsPerDomain(): void
     {
         $rows = [

@@ -28,6 +28,50 @@ final class PreflightChecksTest extends TestCase
         self::assertFalse($r['ok']);
     }
 
+    // --- F2: landing-probe SSRF guard ------------------------------------
+
+    public function testLandingProbeAllowsClonedPathOnSameHost(): void
+    {
+        self::assertTrue(taphish_landing_url_is_probeable(
+            'https://phish.example/spear/sniperhost/cloned/m365/', 'phish.example'
+        ));
+        self::assertTrue(taphish_landing_url_is_probeable(
+            'https://phish.example/p/m365/', 'phish.example'
+        ));
+    }
+
+    public function testLandingProbeAllowsSameHostWithPort(): void
+    {
+        self::assertTrue(taphish_landing_url_is_probeable(
+            'http://127.0.0.1:8099/spear/sniperhost/cloned/m365/', '127.0.0.1:8099'
+        ));
+    }
+
+    public function testLandingProbeBlocksDifferentHost(): void
+    {
+        // The classic SSRF target — a different host than the request.
+        self::assertFalse(taphish_landing_url_is_probeable(
+            'http://169.254.169.254/latest/meta-data/', 'phish.example'
+        ));
+        self::assertFalse(taphish_landing_url_is_probeable(
+            'http://internal-admin/spear/sniperhost/cloned/x/', 'phish.example'
+        ));
+    }
+
+    public function testLandingProbeBlocksNonClonedPathOnSameHost(): void
+    {
+        // Same host but not a cloned-landing path — e.g. an internal endpoint.
+        self::assertFalse(taphish_landing_url_is_probeable(
+            'https://phish.example/manager/secret', 'phish.example'
+        ));
+    }
+
+    public function testLandingProbeBlocksNonHttpSchemeAndEmptyHost(): void
+    {
+        self::assertFalse(taphish_landing_url_is_probeable('file:///etc/passwd', 'phish.example'));
+        self::assertFalse(taphish_landing_url_is_probeable('https://phish.example/p/x/', ''));
+    }
+
     public function testScopeGateRejectsEmptyRecipients(): void
     {
         $r = taphish_preflight_scope_gate([], ['acme.test']);

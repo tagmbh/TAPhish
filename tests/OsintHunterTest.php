@@ -120,6 +120,46 @@ final class OsintHunterTest extends TestCase
         self::assertStringContainsString('Invalid API key', $r['err']);
     }
 
+    // --- F4: structured error codes --------------------------------------
+
+    public function testClassifyKeyRejectedFromAuthCode(): void
+    {
+        self::assertSame('key_rejected', osint_hunter_classify_error(['id' => 'invalid_api_key', 'code' => 401]));
+        self::assertSame('key_rejected', osint_hunter_classify_error(['id' => 'forbidden', 'code' => 403]));
+    }
+
+    public function testClassifyRateLimited(): void
+    {
+        self::assertSame('rate_limited', osint_hunter_classify_error(['id' => 'too_many_requests', 'code' => 429]));
+    }
+
+    public function testClassifyFallsBackToApiError(): void
+    {
+        self::assertSame('api_error', osint_hunter_classify_error(['id' => 'something_else', 'code' => 400]));
+        self::assertSame('api_error', osint_hunter_classify_error([]));
+    }
+
+    public function testParseAttachesKeyRejectedCode(): void
+    {
+        $raw = json_encode(['errors' => [['id' => 'invalid_api_key', 'code' => 401, 'details' => 'Invalid API key']]]);
+        $r = osint_hunter_parse_domain_search($raw);
+        self::assertSame('key_rejected', $r['err_code']);
+    }
+
+    public function testDomainSearchEmptyKeyIsNoKey(): void
+    {
+        $r = osint_hunter_domain_search('example.com', '');
+        self::assertFalse($r['ok']);
+        self::assertSame('no_key', $r['err_code']);
+    }
+
+    public function testDomainSearchMalformedKeyIsInvalidKey(): void
+    {
+        $r = osint_hunter_domain_search('example.com', 'not-a-real-key');
+        self::assertFalse($r['ok']);
+        self::assertSame('invalid_key', $r['err_code']);
+    }
+
     public function testParseRejectsNonJsonString(): void
     {
         $r = osint_hunter_parse_domain_search('<html>503</html>');
