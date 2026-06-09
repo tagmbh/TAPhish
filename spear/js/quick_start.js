@@ -328,6 +328,17 @@
         if (res.result !== 'success') {
             var err = res.err || res.error || '';
             if (/api\s*key/i.test(err)) {
+                // Distinguish "no key saved" from "a key IS saved but Hunter
+                // rejected it" — otherwise an operator who configured a key in
+                // Settings is wrongly told to add one (the reported confusion).
+                var hasKey = false;
+                try { hasKey = !!(localStorage.getItem('taphish_hunter_apikey') || '').trim(); } catch (_) {}
+                if (hasKey) {
+                    return '<span class="text-warning">Hunter.io rejected the configured API key</span>'
+                        + '<div class="small text-muted mt-1">'
+                        + 'Check / re-enter it in <a href="SettingsGeneral">Settings → General</a> (it may be wrong, expired, or rate-limited).'
+                        + '</div>';
+                }
                 return '<span class="text-muted">Hunter.io API key not configured</span>'
                     + '<div class="small text-muted mt-1">'
                     + 'Add one in <a href="SettingsGeneral">Settings → General</a> to enable email-format guessing.'
