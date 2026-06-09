@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../spear/manager/osint_hunter.php';
 require_once __DIR__ . '/../../spear/manager/osint_crt_sh.php';
 require_once __DIR__ . '/../../spear/manager/osint_shodan.php';
 require_once __DIR__ . '/../../spear/manager/ai_landing_page.php';
+require_once __DIR__ . '/../../spear/manager/anthropic_settings.php';
 require_once __DIR__ . '/../../spear/manager/recipient_tz.php';
 require_once __DIR__ . '/../../spear/manager/totp.php';
 require_once __DIR__ . '/../../spear/manager/log_classifier.php';

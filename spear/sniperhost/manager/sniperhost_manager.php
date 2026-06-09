@@ -53,6 +53,17 @@ if (isset($_POST)) {
 			$prompt = (string) ($POSTJ['prompt'] ?? '');
 			$apiKey = (string) ($POSTJ['api_key'] ?? '');
 			$model  = (string) ($POSTJ['model'] ?? '');
+			if (trim($apiKey) === '') {
+				// Prefer the encrypted-at-rest key from the Settings card
+				// so the operator never has to paste it per request. The
+				// legacy POST `api_key` is still honoured for programmatic
+				// callers / one-off keys.
+				require_once(dirname(__FILE__, 2) . '/manager/anthropic_settings.php');
+				$stored = taphish_anthropic_get_api_key($conn);
+				if ($stored !== null) {
+					$apiKey = $stored;
+				}
+			}
 			$result = ai_landing_generate($prompt, $apiKey, $model);
 			echo json_encode(['result' => $result['ok'] ? 'success' : 'failed'] + $result);
 		}

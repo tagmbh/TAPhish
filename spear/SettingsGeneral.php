@@ -198,6 +198,40 @@
                         <div class="col-md-12"><div id="telegram_test_result" class="small mt-1"></div></div>
                      </div>
                      <hr/>
+                     <!-- AI / Anthropic API key. Powers the AI landing-page
+                          generator and any future AI-assisted feature.
+                          Stored encrypted at-rest in tb_store; the key is
+                          never returned to this page after saving (only a
+                          fixed-width mask). Leave blank and save to clear. -->
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">AI / Anthropic API key</h6>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <i class="small">
+                              Powers the AI landing-page generator (Site Cloner → Open Landing Page editor → AI tab)
+                              and any future AI-assisted feature. Get a key from
+                              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+                              Stored encrypted at-rest; the key is never shown again after saving. Leave the field
+                              as the masked placeholder to keep the existing key when only adjusting other settings.
+                              Clear the field and save to disable AI features.
+                           </i>
+                        </div>
+                        <label for="anthropic_api_key" class="col-md-2 text-left control-label col-form-label">API key:</label>
+                        <div class="col-md-7">
+                           <input type="password" class="form-control" id="anthropic_api_key" placeholder="sk-ant-api03-…" autocomplete="off">
+                        </div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-info" id="btn_save_anthropic"><i class="fa fas fa-save"></i> Save</button>
+                           <button type="button" class="btn btn-outline-secondary" id="btn_test_anthropic"><i class="fa fas fa-bolt"></i> Test</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12"><div id="anthropic_test_result" class="small mt-1"></div></div>
+                     </div>
+                     <hr/>
                      <!-- Phase 3.52: BeEF integration. Operator BYO BeEF;
                           TAPhish stores creds encrypted at-rest and proxies
                           the REST API for the per-clone hook toggle + the

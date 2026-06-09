@@ -581,6 +581,48 @@ function clearJunkSPData(e){
                 .fail(function (xhr) { $('#telegram_test_result').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
         });
 
+        // ---- Anthropic API key (AI landing generator + future AI) ---------
+        function loadAnthropic() {
+            postSettings({ action_type: 'anthropic_settings_load' }).done(function (d) {
+                if (!d || d.result !== 'success') return;
+                if (!d.configured) { $('#anthropic_api_key').val(''); return; }
+                $('#anthropic_api_key').val(d.key_masked || '');
+            });
+        }
+        loadAnthropic();
+        $('#btn_save_anthropic').on('click', function () {
+            postSettings({
+                action_type: 'anthropic_settings_save',
+                api_key: $('#anthropic_api_key').val()
+            })
+                .done(function (d) {
+                    if (d && d.result === 'success') {
+                        if (d.cleared) toastr.success('', 'Anthropic key cleared.');
+                        else if (d.noop) toastr.info('', 'No change (masked placeholder kept the existing key).');
+                        else toastr.success('', 'Anthropic key saved.');
+                        loadAnthropic();
+                        $('#anthropic_test_result').empty();
+                    } else {
+                        toastr.error('', (d && d.error) || 'Save failed.');
+                    }
+                })
+                .fail(function (xhr) { toastr.error('', 'Request failed (HTTP ' + xhr.status + ').'); });
+        });
+        $('#btn_test_anthropic').on('click', function () {
+            $('#anthropic_test_result').html('<span class="text-muted">pinging Anthropic…</span>');
+            postSettings({ action_type: 'anthropic_settings_test' })
+                .done(function (d) {
+                    if (d && d.result === 'success' && d.ok) {
+                        var modelTag = d.model ? (' <code>' + $('<div>').text(d.model).html() + '</code>') : '';
+                        $('#anthropic_test_result').html('<span class="text-success"><i class="fa fa-check"></i> Key works' + modelTag + '.</span>');
+                    } else {
+                        var err = (d && d.error) || 'Test failed.';
+                        $('#anthropic_test_result').html('<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> ' + $('<div>').text(err).html() + '</span>');
+                    }
+                })
+                .fail(function (xhr) { $('#anthropic_test_result').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
+        });
+
         // ---- Phase 3.57: off-host backup push destination (S3 / WebDAV) ----
         function togglePushFields() {
             var t = $('#push_type').val();
