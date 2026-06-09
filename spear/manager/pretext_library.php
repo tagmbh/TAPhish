@@ -416,6 +416,56 @@ if (!function_exists('taphish_mail_body_is_unsafe_to_send')) {
     }
 }
 
+if (!function_exists('taphish_mail_body_extract_cta_landing_urls')) {
+    /**
+     * Pull the `<a href=…>` URLs out of a rendered mail body, filtering out
+     * URLs that are NOT landing pages — open-tracking pixel hits and any
+     * obvious "real product" footer/Unsubscribe link.
+     *
+     * Used by the send-time landing-availability probe in
+     * `mail_campaign_cron.php`: every distinct landing URL in the rendered
+     * body is probed once per cron tick. If any probe fails, the recipient's
+     * send is refused with status 3 = Error.
+     *
+     * Pure helper: only string parsing. Probing is the caller's job.
+     *
+     * @return list<string>  distinct landing-URL candidates, in document order
+     */
+    function taphish_mail_body_extract_cta_landing_urls(string $body): array
+    {
+        $out = [];
+        if (preg_match_all('#<a\b[^>]*\bhref\s*=\s*["\']([^"\']+)["\']#i', $body, $matches) === false) {
+            return $out;
+        }
+        foreach ($matches[1] as $url) {
+            $url = trim($url);
+            if ($url === '' || $url === '#') {
+                continue;
+            }
+            // Open-tracking pixel hits (rare as <a href> after the PR #135
+            // pre-send guard, but defence in depth).
+            if (stripos($url, 'tmail?mid=') !== false) {
+                continue;
+            }
+            // Real-product trust anchors that the m365-login template uses
+            // as the post-capture redirect target. The capture has already
+            // happened by the time the recipient sees them; probing them
+            // here is wasted work AND would 200 anyway.
+            if (preg_match('#^https?://(?:login\.microsoftonline|accounts\.google|login\.okta|portal\.azure)\b#i', $url)) {
+                continue;
+            }
+            // Skip mailto:, tel:, javascript:.
+            if (preg_match('#^(?:mailto|tel|javascript):#i', $url)) {
+                continue;
+            }
+            if (!in_array($url, $out, true)) {
+                $out[] = $url;
+            }
+        }
+        return $out;
+    }
+}
+
 if (!function_exists('taphish_pretext_list')) {
     /**
      * Return all pretexts grouped by category, newest first within each.

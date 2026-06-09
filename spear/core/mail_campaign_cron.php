@@ -6,6 +6,7 @@ require_once(dirname(__FILE__,2) . '/manager/ab_variants.php');
 require_once(dirname(__FILE__,2) . '/manager/recipient_tz.php');
 require_once(dirname(__FILE__,2) . '/manager/secret_at_rest.php');
 require_once(dirname(__FILE__,2) . '/manager/pretext_library.php');
+require_once(dirname(__FILE__,2) . '/manager/preflight_checks.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -305,6 +306,34 @@ function InitMailCampaign($conn, $campaign_id){
 		if ($_send_blocker !== null) {
 			statusEntryCreate($conn,$RID,$campaign_id,$MC_name,$send_time,$keyword_vals['{{NAME}}'],$keyword_vals['{{EMAIL}}']);
 			statusEntryUpdate($conn, $RID, 3, json_encode(['CTA guard refused send: ' . $_send_blocker]));
+			continue;
+		}
+
+		// Send-time landing-availability probe. Every distinct landing URL
+		// in the rendered body is probed once per cron tick; subsequent
+		// recipients in this tick get the cached verdict. If the operator
+		// launched a campaign whose cloned landing has since been deleted
+		// from disk — or the landing host is otherwise down — we refuse
+		// the send rather than ship a mail whose CTA 404s.
+		$_send_landing_blocker = null;
+		foreach (taphish_mail_body_extract_cta_landing_urls($msg_body) as $_landing) {
+			if (!isset($GLOBALS['_taphish_landing_probe_cache'])) {
+				$GLOBALS['_taphish_landing_probe_cache'] = [];
+			}
+			if (!array_key_exists($_landing, $GLOBALS['_taphish_landing_probe_cache'])) {
+				$_p = taphish_preflight_http_get($_landing);
+				$_gate = taphish_preflight_landing_gate($_landing, function() use ($_p) { return $_p; });
+				$GLOBALS['_taphish_landing_probe_cache'][$_landing] = $_gate;
+			}
+			if (!$GLOBALS['_taphish_landing_probe_cache'][$_landing]['ok']) {
+				$_send_landing_blocker = 'Landing URL ' . $_landing . ' — '
+				                       . $GLOBALS['_taphish_landing_probe_cache'][$_landing]['reason'];
+				break;
+			}
+		}
+		if ($_send_landing_blocker !== null) {
+			statusEntryCreate($conn,$RID,$campaign_id,$MC_name,$send_time,$keyword_vals['{{NAME}}'],$keyword_vals['{{EMAIL}}']);
+			statusEntryUpdate($conn, $RID, 3, json_encode(['Landing-page probe refused send: ' . $_send_landing_blocker]));
 			continue;
 		}
 
