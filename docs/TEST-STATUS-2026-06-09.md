@@ -114,8 +114,23 @@ These are operator-side configuration tasks the platform is waiting on:
 
 ---
 
+## 2026-06-09 02:30 CEST follow-up — Bug-3 redux
+
+After the 7 verification mails went out, the operator reported the M365 templates (the two they had manually patched yesterday) worked, but the other 5 templates (Policy attestation, Post Paket, Swiss Airlines Boarding Pass, M365 deaktivieren, Intranet) landed on a blank white page when the CTA was clicked.
+
+**Root cause:** PR #120's "fix" was itself a regression. It replaced `https://example.com/REPLACE-WITH-TRACKER-URL` (an obvious operator-edit marker) with the `{{TRACKINGURL}}` merge token in every pretext seed body. But `{{TRACKINGURL}}` does not expand to a landing URL — it expands to the OPEN-TRACKING PIXEL endpoint `/tmail?mid=…&rid=…`, which returns a 1×1 transparent image. So the operator hit Launch without manually rewriting the CTA, and every recipient who clicked the link saw a blank white page.
+
+**Fix:** PR #135 (merged 2026-06-09).
+- Seed bodies again ship with `https://example.com/REPLACE-WITH-LANDING-URL` so the operator sees the marker in the wizard before launch.
+- The boot-time heal is reversed — it rewrites `href="{{TRACKINGURL}}"` back to the marker URL in both the seed library and already-cloned mail templates.
+- A new pre-send guard in `mail_campaign_cron.php` (`taphish_mail_body_is_unsafe_to_send()`) refuses to dispatch any mail whose body still contains the marker, points its CTA at `/tmail?mid=` (open-pixel), or references the legacy SniperHost fallback `lp_pages/oops.html`. Failed rows show status 3 = Error in the dashboard with a clear reason, so the operator finds out BEFORE recipients click.
+
+**Operator step that closes this loop:** in Step 5 of the QuickStart wizard, after cloning a pretext, you MUST edit the mail body and replace the marker URL with the actual cloned-landing URL for this campaign (e.g. `https://ptbe.autodiscover.li/p/m365-login-XXXX/`). The pre-send guard now hard-fails the dispatch if you forget — no silent broken-CTA campaigns going out again.
+
+---
+
 ## Tonight's PR ledger
 
-14 PRs merged today: #120 → #133. Suite **752 → 835 tests / 2377 → 2608 assertions**. Three production bugs found end-to-end (pretext-clone content type + literal URL; `.htaccess` vanity sub-path; M365 logo placeholder), four UX fixes (root landing 302, dashboard freeze, mobile activity feed, table column clipping), six pure-helper extractions, plus the architecture-finding amendment.
+15 PRs merged today: #120 → #135. Suite **752 → 845 tests / 2377 → 2631 assertions**. Three production bugs found end-to-end (pretext-clone content type + literal URL; `.htaccess` vanity sub-path; M365 logo placeholder), one root-cause regression caught the same night (PR #135's pre-send guard), four UX fixes (root landing 302, dashboard freeze, mobile activity feed, table column clipping), six pure-helper extractions, plus the architecture-finding amendment.
 
 See [`MORNING-REPORT-2026-06-08.md`](MORNING-REPORT-2026-06-08.md) for the morning handoff narrative.
