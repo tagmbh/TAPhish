@@ -295,9 +295,9 @@
                            <label for="ai_landing_model" class="col-sm-3 control-label col-form-label">Model</label>
                            <div class="col-sm-9">
                               <select class="form-control" id="ai_landing_model">
-                                 <option value="claude-3-5-haiku-latest">Claude 3.5 Haiku (fast, cheap)</option>
-                                 <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
-                                 <option value="claude-3-7-sonnet-latest">Claude 3.7 Sonnet</option>
+                                 <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (fast, cheap — default)</option>
+                                 <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (balanced)</option>
+                                 <option value="claude-opus-4-8">Claude Opus 4.8 (most capable)</option>
                                  <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
                                  <option value="claude-opus-4-5">Claude Opus 4.5</option>
                               </select>

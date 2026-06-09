@@ -26,7 +26,7 @@
 if (!function_exists('ai_landing_default_model')) {
     function ai_landing_default_model(): string
     {
-        return 'claude-3-5-haiku-latest';
+        return 'claude-haiku-4-5-20251001';
     }
 }
 
@@ -40,9 +40,9 @@ if (!function_exists('ai_landing_allowed_models')) {
     function ai_landing_allowed_models(): array
     {
         return [
-            'claude-3-5-haiku-latest',
-            'claude-3-5-sonnet-latest',
-            'claude-3-7-sonnet-latest',
+            'claude-haiku-4-5-20251001',
+            'claude-sonnet-4-6',
+            'claude-opus-4-8',
             'claude-sonnet-4-5',
             'claude-opus-4-5',
         ];
