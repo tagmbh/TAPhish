@@ -86,11 +86,18 @@ if (!function_exists('taphish_preflight_sender_reachable_gate')) {
      * Has the configured Mail Sender's last SMTP/IMAP probe come back
      * OK? `$probe` is a callback that returns `['ok' => bool, 'error' =>
      * string]`; the wizard wraps the existing `verifyMailboxAccess`.
+     *
+     * When no probe is wired the gate degrades to "ok with a note" — the
+     * same contract as the webhook + landing gates. A live IMAP/SMTP probe
+     * at the exact launch moment is fragile (and the dedicated "Test sender"
+     * action already lets the operator verify on demand), so a missing probe
+     * must not be the single thing that makes a fully-configured campaign
+     * un-launchable. A probe that IS wired and fails still hard-blocks.
      */
     function taphish_preflight_sender_reachable_gate(?callable $probe): array
     {
         if ($probe === null) {
-            return ['ok' => false, 'reason' => 'No mail-sender probe configured.'];
+            return ['ok' => true, 'reason' => 'Mail sender selected; reachability not probed (use "Test sender" to verify).'];
         }
         $r = $probe();
         if (!empty($r['ok'])) {

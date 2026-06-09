@@ -269,3 +269,27 @@ if (!function_exists('secret_at_rest_get_key')) {
         return $key;
     }
 }
+
+if (!function_exists('secret_at_rest_ensure_sender_pwd_width')) {
+    /**
+     * Idempotent boot migration. The original (2022) schema declared
+     * tb_core_mailcamp_sender_list.sender_acc_pwd as VARCHAR(50). Phase 3.27
+     * began sealing the SMTP password at rest, whose base64 envelope (enc1:
+     * + iv + tag + ciphertext) overflows 50 chars even for a short password
+     * — so EVERY sender save fatals with "Data too long" on an un-migrated
+     * install. Widen once to comfortably hold a sealed long password.
+     */
+    function secret_at_rest_ensure_sender_pwd_width(\mysqli $conn): void
+    {
+        $res = @$conn->query(
+            "SELECT CHARACTER_MAXIMUM_LENGTH AS n FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'tb_core_mailcamp_sender_list'
+               AND COLUMN_NAME = 'sender_acc_pwd'"
+        );
+        $n = ($res && ($row = $res->fetch_assoc())) ? (int) $row['n'] : 0;
+        if ($n > 0 && $n < 512) {
+            @$conn->query("ALTER TABLE tb_core_mailcamp_sender_list MODIFY sender_acc_pwd VARCHAR(512) NOT NULL");
+        }
+    }
+}

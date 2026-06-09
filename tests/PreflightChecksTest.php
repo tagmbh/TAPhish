@@ -65,10 +65,13 @@ final class PreflightChecksTest extends TestCase
         self::assertTrue($r['ok']);
     }
 
-    public function testSenderReachableGateFailsOnNullProbe(): void
+    public function testSenderReachableGateDegradesToOkOnNullProbe(): void
     {
+        // No probe wired → ok-with-note (consistent with the webhook +
+        // landing gates), so a fully-configured campaign stays launchable.
         $r = taphish_preflight_sender_reachable_gate(null);
-        self::assertFalse($r['ok']);
+        self::assertTrue($r['ok']);
+        self::assertNotNull($r['reason']);
     }
 
     public function testSenderReachableGateFailsOnFailingProbe(): void
