@@ -178,6 +178,22 @@ output.
 
 ---
 
+## B′. Status (what shipped on this branch)
+
+| # | Finding | Status |
+|---|---------|--------|
+| F1 | Launch gate trusts client mail body | **Fixed** — launch judges the stored template body + server-derived sender domain |
+| F2 | SSRF via `landing_url` | **Fixed** — `taphish_landing_url_is_probeable()` restricts the probe to a cloned page on this host (both call sites) |
+| F4 | Brittle Hunter error routing | **Fixed** — structured `err_code`; `renderHunter` branches on it, regex kept only as legacy fallback |
+| F5 | Redundant preview round-trip | **Fixed** — commit returns the in-scope emails; the extra preview POST is gone |
+| F6 | CSV header edge cases | **Fixed** — 4 tests added (quoted delimiter, German header, non-Latin fallback, and a characterization test pinning the no-email-first-row drop) |
+| F7 | datetime-local vs UTC | **Partial** — prefilled defaults now use UTC to match the label; full convert-vs-relabel is an operator decision |
+| F3 | Sender-probe advisory / "Test sender" | **Open (product decision)** — `verifyMailboxAccess` (IMAP) and `sendTestMailVerification` (SMTP) already exist; which to wire into Step 6 is the operator's call |
+| F8 | No JS regression net | **Open (infra)** — repo has no JS test harness (no `package.json`); not adding a framework + refactoring working IIFE JS without a browser to re-verify |
+| F9 | CTA exposes internal clone path | **Open (cosmetic)** — switching the canonical URL to `/p/<slug>/` touches every clone path and can't be live-tested from here |
+
+Test count: 921 green (was 910), +11 for the new guards/parsers.
+
 ## C. Plan (sequenced)
 
 **Ship now (small, high-value, no product decision):**
