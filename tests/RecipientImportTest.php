@@ -33,13 +33,20 @@ final class RecipientImportTest extends TestCase
     public function testParseStripsUtf8Bom(): void
     {
         $csv = "\xEF\xBB\xBFEmail\nbob@acme.test\n";
-        // BOM is stripped, the "Email" header is dropped, then the next
-        // line has just an email in cell 0 → cell 2 is empty, falls
-        // through to "invalid email format". This is the legacy
-        // behaviour and we keep it deterministic.
+        // CHANGED (auto-detection): the BOM is still stripped and the
+        // "Email" header line is still recognised + dropped. But unlike
+        // the old fixed-column parser, a single-column Email file is now
+        // valid: the lone email cell is detected via FILTER_VALIDATE_EMAIL
+        // and accepted as a row with empty fname/lname. We still assert
+        // the BOM-strip works (otherwise the header cell would read
+        // "\xEF\xBB\xBFEmail" — still header-like, but the point of this
+        // test is the strip path stays correct end to end).
         $p = taphish_recipient_csv_parse($csv);
-        self::assertCount(0, $p['rows']);
-        self::assertNotEmpty($p['errors']);
+        self::assertCount(1, $p['rows']);
+        self::assertCount(0, $p['errors']);
+        self::assertSame('bob@acme.test', $p['rows'][0]['email']);
+        self::assertSame('', $p['rows'][0]['fname']);
+        self::assertSame('', $p['rows'][0]['lname']);
     }
 
     public function testParseHandlesCrlfAndCr(): void
@@ -70,6 +77,87 @@ final class RecipientImportTest extends TestCase
         $csv = "First,Last,Email\nAlice,Smith,ALICE@Acme.Test\n";
         $p = taphish_recipient_csv_parse($csv);
         self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+    }
+
+    public function testParseSemicolonDelimiter(): void
+    {
+        $csv = "First;Last;Email\nAlice;Smith;alice@acme.test\nBob;Jones;bob@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(2, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+        self::assertSame('Smith', $p['rows'][0]['lname']);
+        self::assertCount(0, $p['errors']);
+    }
+
+    public function testParseTabDelimiter(): void
+    {
+        $csv = "First\tLast\tEmail\nAlice\tSmith\talice@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(1, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+        self::assertSame('Smith', $p['rows'][0]['lname']);
+        self::assertCount(0, $p['errors']);
+    }
+
+    public function testParseEmailFirstColumnOrder(): void
+    {
+        // Email,First,Last — email is in cell 0, names follow.
+        $csv = "Email,First,Last\nalice@acme.test,Alice,Smith\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(1, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+        self::assertSame('Smith', $p['rows'][0]['lname']);
+    }
+
+    public function testParseNameEmailTwoColumns(): void
+    {
+        // "Name,Email" header: the generic name column maps to fname.
+        $csv = "Name,Email\nAlice,alice@acme.test\nBob,bob@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(2, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+        self::assertSame('', $p['rows'][0]['lname']);
+    }
+
+    public function testParseNamedHeaderEmailFirstLast(): void
+    {
+        // Named header: email,first_name,last_name in an unusual order.
+        $csv = "email,first_name,last_name\nalice@acme.test,Alice,Smith\nbob@acme.test,Bob,Jones\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(2, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+        self::assertSame('Smith', $p['rows'][0]['lname']);
+    }
+
+    public function testParseSingleEmailColumnWithoutHeader(): void
+    {
+        // No header, just emails — each is accepted with empty names.
+        $csv = "alice@acme.test\nbob@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(2, $p['rows']);
+        self::assertSame('alice@acme.test', $p['rows'][0]['email']);
+        self::assertSame('', $p['rows'][0]['fname']);
+        self::assertSame('', $p['rows'][0]['lname']);
+        self::assertCount(0, $p['errors']);
+    }
+
+    public function testParseSingleCellFullNameSplit(): void
+    {
+        // "Alice Smith,alice@acme.test" — the lone name cell is split on
+        // the first space into fname + lname.
+        $csv = "Name,Email\nAlice Smith,alice@acme.test\nBob,bob@acme.test\n";
+        $p = taphish_recipient_csv_parse($csv);
+        self::assertCount(2, $p['rows']);
+        self::assertSame('Alice', $p['rows'][0]['fname']);
+        self::assertSame('Smith', $p['rows'][0]['lname']);
+        // Bob has no space → fname only.
+        self::assertSame('Bob', $p['rows'][1]['fname']);
+        self::assertSame('', $p['rows'][1]['lname']);
     }
 
     public function testDomainBreakdownCountsPerDomain(): void

@@ -300,7 +300,18 @@ if (isset($_POST)) {
 		if($POSTJ['action_type'] == "wizard_preflight") {
 			$ctx = is_array($POSTJ['context'] ?? null) ? $POSTJ['context'] : [];
 			$emails = is_array($ctx['recipient_emails'] ?? null) ? $ctx['recipient_emails'] : [];
+			// Scope must come from the engagement, NOT the client form field —
+			// #eng_scope is empty after the Step 1 form resets / on resume, so
+			// trusting it makes the scope gate spuriously fail. Fall back to the
+			// client value only when no engagement id is supplied.
+			$pf_eid = (int)($POSTJ['engagement_id'] ?? 0);
 			$allow  = is_array($ctx['scope_allowlist']  ?? null) ? $ctx['scope_allowlist']  : [];
+			if ($pf_eid > 0) {
+				$pf_eng = taphish_engagement_get_by_id($conn, $pf_eid);
+				if ($pf_eng && isset($pf_eng['scope_allowlist']) && is_array($pf_eng['scope_allowlist'])) {
+					$allow = $pf_eng['scope_allowlist'];
+				}
+			}
 			$senderProbe = null;
 			if (!empty($ctx['sender_list_id']) && !empty($ctx['probe_sender'])) {
 				$senderProbe = function() use ($conn, $ctx) {

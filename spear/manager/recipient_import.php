@@ -14,13 +14,30 @@
 if (!function_exists('taphish_recipient_csv_parse')) {
     /**
      * Parse a CSV blob into a list of `['fname', 'lname', 'email']`
-     * rows + a list of errors. Accepts both the "fname,lname,email"
-     * and "fname,email,notes" shapes the existing UI lets operators
-     * upload — same heuristic as the legacy `uploadUserCVS` path. The
-     * first non-blank line is treated as the header row and dropped
-     * (lowercased "email" or "e-mail" anywhere in it = header).
+     * rows + a list of errors. Auto-detects the column layout instead
+     * of assuming fixed positions, so any of these shapes "just work":
      *
-     * Strips UTF-8 BOM. Handles CRLF + CR + LF. Skips blank lines.
+     *   First,Last,Email          Email,First,Last
+     *   First,Email,Notes         Email            (single column)
+     *   Name,Email                email,first_name,last_name (named header)
+     *   First;Last;Email          (semicolon-delimited)
+     *   First\tLast\tEmail        (tab-delimited)
+     *
+     * Strategy:
+     *   1. Delimiter autodetect from the first non-blank line (most
+     *      frequent of `,` `;` `\t`, default `,`), applied to all rows.
+     *   2. Header detection: the first non-blank line is a header when
+     *      it mentions mail OR when none of its cells is a valid email.
+     *      If named columns are recognised we build a role→index map and
+     *      use it for every data row.
+     *   3. Otherwise, per data row: the first cell that passes
+     *      FILTER_VALIDATE_EMAIL is the email; remaining cells become
+     *      fname then lname (a lone "Alice Smith" cell is split on the
+     *      first space).
+     *
+     * Email is always lowercased. Bad/empty rows are collected as
+     * errors (partial import) rather than aborting the batch. Strips
+     * UTF-8 BOM. Handles CRLF + CR + LF. Skips blank lines.
      *
      * @return array{
      *   rows: array<int, array{fname:string, lname:string, email:string}>,
@@ -34,30 +51,62 @@ if (!function_exists('taphish_recipient_csv_parse')) {
 
         $rows = [];
         $errors = [];
-        $headerSkipped = false;
 
+        // --- 1. Find the first non-blank line + autodetect the delimiter.
+        $delimiter = ',';
+        $firstNonBlankIdx = null;
+        foreach ($lines as $idx => $line) {
+            if (trim($line) !== '') {
+                $firstNonBlankIdx = $idx;
+                $delimiter = taphish_recipient_detect_delimiter(trim($line));
+                break;
+            }
+        }
+
+        if ($firstNonBlankIdx === null) {
+            return ['rows' => $rows, 'errors' => $errors];
+        }
+
+        // --- 2. Header detection on the first non-blank line.
+        $headerCells = str_getcsv(trim($lines[$firstNonBlankIdx]), $delimiter, '"', '\\');
+        $headerCells = array_map(static fn($c) => trim((string) $c), $headerCells);
+
+        $mentionsMail = false;
+        $anyCellIsEmail = false;
+        foreach ($headerCells as $cell) {
+            if (stripos($cell, 'mail') !== false) {
+                $mentionsMail = true;
+            }
+            if (filter_var($cell, FILTER_VALIDATE_EMAIL)) {
+                $anyCellIsEmail = true;
+            }
+        }
+        $isHeader = $mentionsMail || !$anyCellIsEmail;
+
+        // Role→column-index map built from named headers (when present).
+        $map = null;
+        if ($isHeader) {
+            $map = taphish_recipient_map_header($headerCells);
+        }
+
+        // --- 3. Walk the data lines.
         foreach ($lines as $i => $line) {
             $line = trim($line);
             if ($line === '') {
                 continue;
             }
-            if (!$headerSkipped) {
-                $headerSkipped = true;
-                if (stripos($line, 'email') !== false || stripos($line, 'e-mail') !== false) {
-                    continue;
-                }
-                // No header detected — re-process this line below.
+            if ($i === $firstNonBlankIdx && $isHeader) {
+                // The header line itself is never a data row.
+                continue;
             }
-            $parts = str_getcsv($line, ',', '"', '\\');
-            $fname = trim((string) ($parts[0] ?? ''));
-            $lname = trim((string) ($parts[1] ?? ''));
-            $email = trim((string) ($parts[2] ?? ''));
 
-            // Same fallback as legacy: if cell-2 isn't an email, try cell-1.
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)
-                && filter_var($lname, FILTER_VALIDATE_EMAIL)) {
-                $email = $lname;
-                $lname = '';
+            $parts = str_getcsv($line, $delimiter, '"', '\\');
+            $parts = array_map(static fn($c) => trim((string) $c), $parts);
+
+            if ($map !== null) {
+                [$fname, $lname, $email] = taphish_recipient_extract_by_map($parts, $map);
+            } else {
+                [$fname, $lname, $email] = taphish_recipient_extract_by_scan($parts);
             }
 
             if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -77,6 +126,165 @@ if (!function_exists('taphish_recipient_csv_parse')) {
         }
 
         return ['rows' => $rows, 'errors' => $errors];
+    }
+}
+
+if (!function_exists('taphish_recipient_detect_delimiter')) {
+    /**
+     * Pick the most frequent of `,` `;` `\t` in a line. Defaults to `,`
+     * (ties or zero occurrences keep the comma so single-column files
+     * stay sane).
+     */
+    function taphish_recipient_detect_delimiter(string $line): string
+    {
+        $candidates = [',' => 0, ';' => 0, "\t" => 0];
+        foreach ($candidates as $d => $_) {
+            $candidates[$d] = substr_count($line, $d);
+        }
+        $best = ',';
+        $bestCount = 0;
+        foreach ($candidates as $d => $count) {
+            if ($count > $bestCount) {
+                $best = $d;
+                $bestCount = $count;
+            }
+        }
+        return $best;
+    }
+}
+
+if (!function_exists('taphish_recipient_map_header')) {
+    /**
+     * Map header column names to roles. Returns an associative array
+     * with any of the keys 'email', 'fname', 'lname' set to the column
+     * index they live in. A bare /name/i column (not first/last) feeds
+     * fname when fname isn't otherwise claimed.
+     *
+     * Returns null when nothing recognisable is found, so the caller
+     * falls back to positional/email-scan extraction.
+     *
+     * @param string[] $headerCells
+     * @return array{email?:int, fname?:int, lname?:int}|null
+     */
+    function taphish_recipient_map_header(array $headerCells): ?array
+    {
+        $map = [];
+        $genericNameIdx = null;
+        foreach ($headerCells as $idx => $cell) {
+            $c = strtolower(trim($cell));
+            if ($c === '') {
+                continue;
+            }
+            if (!isset($map['email']) && preg_match('/mail/i', $c)) {
+                $map['email'] = $idx;
+                continue;
+            }
+            if (!isset($map['fname']) && preg_match('/first|vorname|given|fname/i', $c)) {
+                $map['fname'] = $idx;
+                continue;
+            }
+            if (!isset($map['lname']) && preg_match('/last|nach|surname|family|lname/i', $c)) {
+                $map['lname'] = $idx;
+                continue;
+            }
+            // Generic "name" column — only used for fname if it's free.
+            if ($genericNameIdx === null && preg_match('/name/i', $c)) {
+                $genericNameIdx = $idx;
+            }
+        }
+        if (!isset($map['fname']) && $genericNameIdx !== null) {
+            $map['fname'] = $genericNameIdx;
+        }
+
+        return $map === [] ? null : $map;
+    }
+}
+
+if (!function_exists('taphish_recipient_extract_by_map')) {
+    /**
+     * Pull fname/lname/email out of a data row using a header role map.
+     *
+     * @param string[] $parts
+     * @param array{email?:int, fname?:int, lname?:int} $map
+     * @return array{0:string,1:string,2:string} [fname, lname, email]
+     */
+    function taphish_recipient_extract_by_map(array $parts, array $map): array
+    {
+        $email = isset($map['email']) ? (string) ($parts[$map['email']] ?? '') : '';
+        $fname = isset($map['fname']) ? (string) ($parts[$map['fname']] ?? '') : '';
+        $lname = isset($map['lname']) ? (string) ($parts[$map['lname']] ?? '') : '';
+
+        // Single mapped name column (no separate last-name column) that
+        // carries a full "Alice Smith" value → split on the first space,
+        // mirroring the header-less scan path.
+        if (!isset($map['lname']) && isset($map['fname'])
+            && strpos(trim($fname), ' ') !== false) {
+            $bits = explode(' ', trim($fname), 2);
+            $fname = $bits[0];
+            $lname = $bits[1] ?? '';
+        }
+
+        // Defensive: if the mapped email cell isn't an email but some
+        // other cell is, prefer the real email (handles slightly-off
+        // headers gracefully).
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            foreach ($parts as $cell) {
+                if (filter_var($cell, FILTER_VALIDATE_EMAIL)) {
+                    $email = (string) $cell;
+                    break;
+                }
+            }
+        }
+
+        return [$fname, $lname, $email];
+    }
+}
+
+if (!function_exists('taphish_recipient_extract_by_scan')) {
+    /**
+     * Pull fname/lname/email out of a data row with no header map: the
+     * first email-looking cell is the email; the remaining cells become
+     * fname then lname (in order). A lone remaining cell containing a
+     * space is split once into fname + lname (e.g. "Alice Smith").
+     *
+     * @param string[] $parts
+     * @return array{0:string,1:string,2:string} [fname, lname, email]
+     */
+    function taphish_recipient_extract_by_scan(array $parts): array
+    {
+        $email = '';
+        $emailIdx = null;
+        foreach ($parts as $idx => $cell) {
+            if (filter_var($cell, FILTER_VALIDATE_EMAIL)) {
+                $email = (string) $cell;
+                $emailIdx = $idx;
+                break;
+            }
+        }
+
+        $rest = [];
+        foreach ($parts as $idx => $cell) {
+            if ($idx === $emailIdx) {
+                continue;
+            }
+            if (trim((string) $cell) !== '') {
+                $rest[] = (string) $cell;
+            }
+        }
+
+        $fname = '';
+        $lname = '';
+        if (count($rest) === 1 && strpos(trim($rest[0]), ' ') !== false) {
+            // Single "Alice Smith" cell → split on the first space.
+            $bits = explode(' ', trim($rest[0]), 2);
+            $fname = $bits[0];
+            $lname = $bits[1] ?? '';
+        } else {
+            $fname = $rest[0] ?? '';
+            $lname = $rest[1] ?? '';
+        }
+
+        return [$fname, $lname, $email];
     }
 }
 

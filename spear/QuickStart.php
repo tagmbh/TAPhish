@@ -78,16 +78,19 @@
                                  <div class="form-group col-md-6">
                                     <label>Window start (UTC) <span class="text-danger">*</span></label>
                                     <input type="datetime-local" class="form-control" id="eng_start" required>
+                                    <small class="form-text text-muted">Click the field to pick a date &amp; time. Pre-filled to now.</small>
                                  </div>
                                  <div class="form-group col-md-6">
                                     <label>Window end (UTC) <span class="text-danger">*</span></label>
                                     <input type="datetime-local" class="form-control" id="eng_end" required>
+                                    <small class="form-text text-muted">Must be after the start. Pre-filled to +14 days.</small>
                                  </div>
                               </div>
                               <div class="form-group">
                                  <label>Authorised email domains <span class="text-danger">*</span></label>
-                                 <textarea class="form-control" id="eng_scope" rows="4" placeholder="acme.com&#10;hr.acme.com&#10;vendor.example.org" required></textarea>
-                                 <small class="form-text text-muted">One domain per line (commas or spaces also fine). Sub-domains are covered automatically by their parent (acme.com covers payroll.acme.com).</small>
+                                 <textarea class="form-control" id="eng_scope" rows="3" placeholder="acme.com, hr.acme.com, vendor.example.org" required></textarea>
+                                 <small class="form-text text-muted">Type or paste the domains the customer authorised you to phish — separated by comma, space, or new line. Sub-domains are covered automatically (<code>acme.com</code> also covers <code>payroll.acme.com</code>).</small>
+                                 <div id="eng_scope_chips" class="mt-2"></div>
                               </div>
                               <div class="form-group">
                                  <label>Notes</label>

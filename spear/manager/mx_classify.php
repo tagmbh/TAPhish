@@ -202,13 +202,28 @@ if (!function_exists('taphish_mx_lookup')) {
         $records = $resolver
             ? $resolver($domain)
             : @dns_get_record($domain, DNS_MX);
-        if (!is_array($records)) {
-            return [];
-        }
         $targets = [];
-        foreach ($records as $r) {
-            if (isset($r['target']) && is_string($r['target']) && $r['target'] !== '') {
-                $targets[] = $r['target'];
+        if (is_array($records)) {
+            foreach ($records as $r) {
+                if (isset($r['target']) && is_string($r['target']) && $r['target'] !== '') {
+                    $targets[] = $r['target'];
+                }
+            }
+        }
+        // Fallback: on a number of shared/container hosts dns_get_record(...,
+        // DNS_MX) returns false/empty even when the domain has MX records,
+        // while getmxrr() (a different resolver path) succeeds. DNS_TXT works
+        // on those hosts, which is why the DMARC lane looks fine but MX shows
+        // "no records". Only in the live path (no injected resolver) so the
+        // unit suite stays deterministic.
+        if (!$targets && $resolver === null) {
+            $hosts = [];
+            if (@getmxrr($domain, $hosts) && !empty($hosts)) {
+                foreach ($hosts as $h) {
+                    if (is_string($h) && $h !== '') {
+                        $targets[] = $h;
+                    }
+                }
             }
         }
         return $targets;

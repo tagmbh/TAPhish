@@ -102,10 +102,50 @@
             .fail(function () { renderRecent([]); });
     }
 
+    // A: pre-fill the engagement window (start = now, end = +14d) and keep
+    // the native datetime-local picker; B: live-render the parsed authorised
+    // domains as chips so the operator sees exactly what will be saved.
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function toLocalInput(d) {
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())
+            + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+    function prefillWindow() {
+        if (!$('#eng_start').val()) $('#eng_start').val(toLocalInput(new Date()));
+        if (!$('#eng_end').val()) {
+            var end = new Date(); end.setDate(end.getDate() + 14);
+            $('#eng_end').val(toLocalInput(end));
+        }
+    }
+    function parseScopeDomains() {
+        return ($('#eng_scope').val() || '').split(/[\s,;]+/)
+            .map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
+    }
+    function renderScopeChips() {
+        var $box = $('#eng_scope_chips'); if (!$box.length) return;
+        var domains = parseScopeDomains();
+        if (!domains.length) { $box.empty(); return; }
+        var seen = {};
+        $box.html(domains.filter(function (d) { if (seen[d]) return false; seen[d] = 1; return true; })
+            .map(function (d) {
+                var ok = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(d);
+                return '<span class="badge ' + (ok ? 'badge-info' : 'badge-warning') + ' mr-1 mb-1">'
+                    + esc(d) + (ok ? '' : ' ?') + '</span>';
+            }).join(''));
+    }
+
     function onSubmit(e) {
         e.preventDefault();
         clearFieldErrors();
         $('#eng_result').empty();
+        // A: the window end must be after the start (datetime-local values
+        // sort lexicographically = chronologically).
+        var _st = $('#eng_start').val(), _en = $('#eng_end').val();
+        if (_st && _en && _en <= _st) {
+            markFieldError('eng_end', 'The window end must be after the start.');
+            $('#eng_result').html('<div class="alert alert-danger">Please fix the highlighted fields.</div>');
+            return;
+        }
         $('#btn_save_eng').prop('disabled', true);
 
         // Phase 3.46-pre: capture scope BEFORE reset so we can cascade
@@ -267,11 +307,20 @@
     function renderHomoglyph(res) {
         if (!res || res.result !== 'success') return '<span class="text-danger">lookup failed</span>';
         var c = (res.candidates || []).slice(0, 6);
-        if (!c.length) return '<span class="text-muted">no candidates</span>';
-        return '<ol class="mb-0 pl-3">' + c.map(function (x) {
-            return '<li><code>' + esc(x.domain) + '</code> <span class="text-muted">'
-                + esc(x.kind) + ' &middot; score ' + (x.score || 0).toFixed(2) + '</span></li>';
-        }).join('') + '</ol>';
+        if (!c.length) return '<span class="text-muted">no registrable candidates</span>';
+        // Candidates come from homoglyph_check_candidates: validated via
+        // Hostpoint's domain-check, enriched with the punycode (name_idna) form.
+        // Each gets a "register at Hostpoint" deep-link (paste the shown name).
+        var REG = 'https://www.hostpoint.ch/en/domains/domains.html';
+        var rows = c.map(function (x) {
+            var idna = (x.name_idna && x.name_idna !== x.domain)
+                ? ' <span class="text-muted">(' + esc(x.name_idna) + ')</span>' : '';
+            return '<li><code>' + esc(x.domain) + '</code>' + idna
+                + ' <span class="text-muted">' + esc(x.kind) + ' &middot; score ' + (x.score || 0).toFixed(2) + '</span>'
+                + ' <a href="' + REG + '" target="_blank" rel="noopener noreferrer" class="small">register →</a></li>';
+        }).join('');
+        return '<div class="small text-muted mb-1">Valid registrable look-alikes (checked on Hostpoint):</div>'
+            + '<ol class="mb-0 pl-3">' + rows + '</ol>';
     }
 
     function renderHunter(res) {
@@ -363,13 +412,17 @@
         }
         $('#osint_panel').show();
         var shodanKey = '';
+        var hunterKey = '';
         try { shodanKey = (localStorage.getItem('taphish_shodan_key') || '').trim(); } catch (_) {}
+        // Hunter key is saved browser-side by Settings → General under this
+        // localStorage name; the lane must forward it or the server sees no key.
+        try { hunterKey = (localStorage.getItem('taphish_hunter_apikey') || '').trim(); } catch (_) {}
         var lanes = {
             osint_dmarc:      { action_type: 'email_posture_lookup', domain: domain },
             osint_mx:         { action_type: 'mx_classify_domain',   domain: domain },
-            osint_homoglyph:  { action_type: 'homoglyph_candidates', domain: domain, limit: 30 },
+            osint_homoglyph:  { action_type: 'homoglyph_check_candidates', domain: domain },
             osint_subdomains: { action_type: 'osint_crt_sh_subdomains', domain: domain },
-            osint_hunter:     { action_type: 'osint_hunter_search',  domain: domain, limit: 15 },
+            osint_hunter:     { action_type: 'osint_hunter_search',  domain: domain, limit: 15, api_key: hunterKey },
             osint_web:        { action_type: 'web_fingerprint',      domain: domain },
             osint_shodan:     { action_type: 'osint_shodan_host',    domain: domain, api_key: shodanKey }
         };
@@ -803,13 +856,23 @@
         $('#mt_summernote').summernote('focus');
     }
 
-    // Inject the CTA link to the landing URL (with ?rid={{RID}}) if absent, and
-    // the {{TRACKER}} open-pixel placeholder if absent.
+    // Wire the CTA + open pixel into the body:
+    //  1. Replace the pretext-library placeholder marker (the seed templates
+    //     ship `https://example.com/REPLACE-WITH-LANDING-URL`) with the real
+    //     cloned-landing URL — otherwise the pre-flight mail_body gate refuses
+    //     to launch ("CTA still points to the REPLACE-WITH-LANDING-URL marker").
+    //  2. Append a fresh CTA only if the landing URL still isn't present.
+    //  3. Append the {{TRACKER}} open-pixel placeholder if absent.
     function wireBody(html) {
         var landing = WZ.landing_url || '';
         var ctaHref = landing ? (landing + (landing.indexOf('?') === -1 ? '?' : '&') + 'rid={{RID}}') : '';
-        if (ctaHref && html.indexOf(landing) === -1) {
-            html += '<p><a href="' + ctaHref + '">' + ctaHref + '</a></p>';
+        if (ctaHref) {
+            html = html
+                .replace(/https?:\/\/example\.com\/REPLACE-WITH-LANDING-URL/gi, ctaHref)
+                .replace(/REPLACE-WITH-LANDING-URL/gi, ctaHref);
+            if (html.indexOf(landing) === -1) {
+                html += '<p><a href="' + ctaHref + '">' + ctaHref + '</a></p>';
+            }
         }
         if (html.indexOf('{{TRACKER}}') === -1) {
             html += '{{TRACKER}}';
@@ -1014,7 +1077,7 @@
         var ctx = gatherPreflightContext();
         $('#preflight_result').html(skeleton(4));
         $('#btn_launch').prop('disabled', true);
-        post({ action_type: 'wizard_preflight', context: ctx })
+        post({ action_type: 'wizard_preflight', engagement_id: engId(), context: ctx })
             .done(function (res) {
                 if (!res || res.result !== 'success') {
                     $('#preflight_result').html('<div class="alert alert-danger">Pre-flight failed</div>');
@@ -1099,6 +1162,10 @@
     $(function () {
         $('#frm_engagement').on('submit', onSubmit);
         $('#btn_refresh_eng').on('click', refreshList);
+        // A/B: sensible window defaults + live domain-chip preview.
+        prefillWindow();
+        $('#eng_scope').on('input', renderScopeChips);
+        renderScopeChips();
         $('#btn_osint_run').on('click', function () { runOsint($('#osint_domain').val()); });
         $('#btn_osint_use_from_eng').on('click', function (e) {
             e.preventDefault();
