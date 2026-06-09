@@ -122,6 +122,64 @@ if (isset($_POST)) {
 			}
 		}
 
+		// ---- Anthropic API key (AI landing generator + future AI) -------
+		// Encrypted at-rest in tb_store (type='anthropic', name='api_key').
+		// The plaintext key is never returned to the page; the load action
+		// returns only a fixed-width prefix-preserving mask + a configured
+		// bool. Saving an empty key deletes the row.
+		if($POSTJ['action_type'] == "anthropic_settings_load") {
+			require_once(dirname(__FILE__) . '/anthropic_settings.php');
+			$k = taphish_anthropic_get_api_key($conn);
+			if ($k === null) {
+				echo json_encode(['result' => 'success', 'configured' => false]);
+			} else {
+				echo json_encode([
+					'result'       => 'success',
+					'configured'   => true,
+					'key_masked'   => taphish_anthropic_mask_api_key($k),
+				]);
+			}
+		}
+		if($POSTJ['action_type'] == "anthropic_settings_save") {
+			require_once(dirname(__FILE__) . '/anthropic_settings.php');
+			$apiKey = (string)($POSTJ['api_key'] ?? '');
+			$trim   = trim($apiKey);
+			if ($trim === '') {
+				$ok = taphish_anthropic_set_api_key($conn, '');
+				echo json_encode($ok
+					? ['result' => 'success', 'cleared' => true]
+					: ['result' => 'failed', 'error' => 'Could not clear API key.']);
+				if ($ok) logIt('Anthropic API key cleared');
+			} elseif (preg_match('/•/u', $trim)) {
+				// "•••" sentinel = keep existing key (no-op save).
+				echo json_encode(['result' => 'success', 'noop' => true]);
+			} elseif (!taphish_anthropic_validate_api_key($trim)) {
+				echo json_encode(['result' => 'failed', 'error' => 'Invalid Anthropic API key format (expect sk-ant-…).']);
+			} else {
+				$ok = taphish_anthropic_set_api_key($conn, $trim);
+				echo json_encode($ok
+					? ['result' => 'success']
+					: ['result' => 'failed', 'error' => 'Could not save — at-rest encryption key not configured. Check spear/storage/at-rest-key.bin.']);
+				if ($ok) logIt('Anthropic API key configured');
+			}
+		}
+		if($POSTJ['action_type'] == "anthropic_settings_test") {
+			require_once(dirname(__FILE__) . '/anthropic_settings.php');
+			require_once(dirname(__FILE__) . '/ai_landing_page.php');
+			$k = taphish_anthropic_get_api_key($conn);
+			if ($k === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'Anthropic API key not configured']);
+			} else {
+				// Tiny PONG ping — uses ai_landing_generate's transport so
+				// any cert/network issue surfaces the same way it would
+				// at real-generate time.
+				$r = ai_landing_generate('Reply with exactly the word PONG and nothing else.', $k, '', 50);
+				echo json_encode(['result' => 'success', 'ok' => !empty($r['ok']),
+					'error' => empty($r['ok']) ? ($r['err'] ?? 'Unknown error') : null,
+					'model' => $r['model'] ?? null]);
+			}
+		}
+
 		// ---- Phase 3.52: BeEF integration settings -----------------------
 		// Encrypted-at-rest credentials live in tb_store; the load action
 		// never returns the password (only a fixed-width mask). A "•••"
