@@ -41,8 +41,8 @@
         return {
             name: $('#eng_name').val(),
             target_org: $('#eng_org').val(),
-            start_at: $('#eng_start').val(),
-            end_at: $('#eng_end').val(),
+            start_at: localInputToUtc($('#eng_start').val()),
+            end_at: localInputToUtc($('#eng_end').val()),
             scope_allowlist: $('#eng_scope').val(),
             notes: $('#eng_notes').val()
         };
@@ -106,18 +106,28 @@
     // the native datetime-local picker; B: live-render the parsed authorised
     // domains as chips so the operator sees exactly what will be saved.
     function pad2(n) { return (n < 10 ? '0' : '') + n; }
-    // The field is labelled "(UTC)" and the backend stores the value as UTC, so
-    // the prefilled now/+14d must use UTC components — otherwise an operator in
-    // a non-UTC zone is shown their LOCAL wall-clock under a UTC label (F7).
-    function toUtcInput(d) {
+    // F7: the engagement window field shows the operator's LOCAL time (the
+    // native datetime-local picker's natural behaviour); we convert it to UTC
+    // on submit. Prefill now/+14d in local components to match.
+    function toLocalInput(d) {
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())
+            + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+    // Read a datetime-local value (interpreted as LOCAL wall-clock by Date) and
+    // emit the equivalent instant as a UTC "YYYY-MM-DDTHH:MM" string — the
+    // shape the server parses as UTC. Empty/invalid input passes through.
+    function localInputToUtc(v) {
+        if (!v) return v;
+        var d = new Date(v);
+        if (isNaN(d.getTime())) return v;
         return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate())
             + 'T' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes());
     }
     function prefillWindow() {
-        if (!$('#eng_start').val()) $('#eng_start').val(toUtcInput(new Date()));
+        if (!$('#eng_start').val()) $('#eng_start').val(toLocalInput(new Date()));
         if (!$('#eng_end').val()) {
-            var end = new Date(); end.setUTCDate(end.getUTCDate() + 14);
-            $('#eng_end').val(toUtcInput(end));
+            var end = new Date(); end.setDate(end.getDate() + 14);
+            $('#eng_end').val(toLocalInput(end));
         }
     }
     function parseScopeDomains() {
@@ -647,7 +657,7 @@
     // ----- Step 4: Landing + Tracker -------------------------------------
 
     function slugifyName(s) {
-        return String(s || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
+        return TAPhishWizardPure.slugifyName(s);
     }
 
     function loadTrackers() {
@@ -710,7 +720,8 @@
     }
 
     function publicUrlFromSlug(slug) {
-        return window.location.protocol + '//' + window.location.host + '/spear/sniperhost/cloned/' + slug + '/';
+        // F9: mirror ClonedSite::buildPublicUrl — the clean /p/<slug>/ alias.
+        return window.location.protocol + '//' + window.location.host + '/p/' + slug + '/';
     }
 
     function onCloneSuccess(slug, publicUrl) {
@@ -872,28 +883,11 @@
         $('#mt_summernote').summernote('focus');
     }
 
-    // Wire the CTA + open pixel into the body:
-    //  1. Replace the pretext-library placeholder marker (the seed templates
-    //     ship `https://example.com/REPLACE-WITH-LANDING-URL`) with the real
-    //     cloned-landing URL — otherwise the pre-flight mail_body gate refuses
-    //     to launch ("CTA still points to the REPLACE-WITH-LANDING-URL marker").
-    //  2. Append a fresh CTA only if the landing URL still isn't present.
-    //  3. Append the {{TRACKER}} open-pixel placeholder if absent.
+    // Wire the CTA + open pixel into the body. The pure implementation lives in
+    // wizard_pure.js (TAPhishWizardPure.wireBody) so it can be unit-tested in
+    // node; here we just feed it the current landing URL.
     function wireBody(html) {
-        var landing = WZ.landing_url || '';
-        var ctaHref = landing ? (landing + (landing.indexOf('?') === -1 ? '?' : '&') + 'rid={{RID}}') : '';
-        if (ctaHref) {
-            html = html
-                .replace(/https?:\/\/example\.com\/REPLACE-WITH-LANDING-URL/gi, ctaHref)
-                .replace(/REPLACE-WITH-LANDING-URL/gi, ctaHref);
-            if (html.indexOf(landing) === -1) {
-                html += '<p><a href="' + ctaHref + '">' + ctaHref + '</a></p>';
-            }
-        }
-        if (html.indexOf('{{TRACKER}}') === -1) {
-            html += '{{TRACKER}}';
-        }
-        return html;
+        return TAPhishWizardPure.wireBody(html, WZ.landing_url || '');
     }
 
     function saveMailTemplate() {
@@ -1029,6 +1023,42 @@
             })
             .fail(function () { $('#snd_result').html('<div class="alert alert-danger">Request failed</div>'); })
             .always(function () { $('#btn_snd_save').prop('disabled', false); });
+    }
+
+    // F3: send a real test mail through the selected sender so the operator can
+    // verify the SMTP path before launch (the launch gate treats a missing
+    // probe as advisory). Reuses the existing send_test_mail_verification
+    // action; the password is filled server-side from the stored sender.
+    function testSender() {
+        var id = $('#snd_select').val() || WZ.sender_list_id;
+        if (!id) { if (window.toastr) toastr.warning('Select or save a sender first'); return; }
+        var to = ($('#snd_test_to').val() || '').trim();
+        if (to === '') { if (window.toastr) toastr.warning('Enter a test recipient address'); $('#snd_test_to').focus(); return; }
+        var s = senderById(id);
+        if (!s) { if (window.toastr) toastr.warning('Sender not loaded yet — reselect it'); return; }
+        $('#btn_snd_test').prop('disabled', true);
+        $('#snd_test_result').html(skeleton(1));
+        post({
+            action_type: 'send_test_mail_verification',
+            sender_list_id: id,
+            sender_list_mail_sender_SMTP_server: s.sender_SMTP_server || '',
+            sender_list_mail_sender_from: s.sender_from || '',
+            sender_list_mail_sender_acc_username: s.sender_acc_username || '',
+            sender_list_mail_sender_acc_pwd: '',   // server fills from the stored sender
+            sender_list_cust_headers: s.cust_headers || {},
+            test_to_address: to,
+            dsn_type: s.dsn_type || 'custom'
+        })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    $('#snd_test_result').html('<div class="alert alert-success">Test mail sent to <code>' + esc(to) + '</code>. Confirm it arrives before launching.</div>');
+                    if (window.toastr) toastr.success('Test mail sent');
+                } else {
+                    $('#snd_test_result').html('<div class="alert alert-danger">' + esc((res && res.error) || 'Send failed') + '</div>');
+                }
+            })
+            .fail(function () { $('#snd_test_result').html('<div class="alert alert-danger">Request failed</div>'); })
+            .always(function () { $('#btn_snd_test').prop('disabled', false); });
     }
 
     // ----- Step 7: Pre-flight + Launch -----------------------------------
@@ -1208,6 +1238,7 @@
         // Step 6 — Sender (+ advanced DKIM).
         $('#btn_snd_use').on('click', useSelectedSender);
         $('#btn_snd_save').on('click', saveSender);
+        $('#btn_snd_test').on('click', testSender);
         $('#btn_snd_toggle').on('click', function () { $('#snd_create').slideToggle(); });
         $('#btn_gen_dkim').on('click', runDkimGen);
         // Step 7 — Pre-flight + Launch.

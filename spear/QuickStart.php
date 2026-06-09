@@ -76,14 +76,14 @@
                               </div>
                               <div class="form-row">
                                  <div class="form-group col-md-6">
-                                    <label>Window start (UTC) <span class="text-danger">*</span></label>
+                                    <label>Window start (your local time) <span class="text-danger">*</span></label>
                                     <input type="datetime-local" class="form-control" id="eng_start" required>
-                                    <small class="form-text text-muted">Click the field to pick a date &amp; time. Pre-filled to now.</small>
+                                    <small class="form-text text-muted">Click the field to pick a date &amp; time. Pre-filled to now; stored in UTC.</small>
                                  </div>
                                  <div class="form-group col-md-6">
-                                    <label>Window end (UTC) <span class="text-danger">*</span></label>
+                                    <label>Window end (your local time) <span class="text-danger">*</span></label>
                                     <input type="datetime-local" class="form-control" id="eng_end" required>
-                                    <small class="form-text text-muted">Must be after the start. Pre-filled to +14 days.</small>
+                                    <small class="form-text text-muted">Must be after the start. Pre-filled to +14 days; stored in UTC.</small>
                                  </div>
                               </div>
                               <div class="form-group">
@@ -443,6 +443,20 @@
                               </button>
                            </div>
                            <div id="snd_result" class="mt-3"></div>
+                           <hr>
+                           <div class="form-group mb-1">
+                              <label class="small text-muted mb-1">Test sender (sends a real test mail through the selected sender)</label>
+                              <div class="input-group">
+                                 <input type="email" class="form-control" id="snd_test_to" placeholder="you@your-team.example">
+                                 <div class="input-group-append">
+                                    <button class="btn btn-outline-info" type="button" id="btn_snd_test">
+                                       <i class="fa fa-paper-plane"></i> Send test
+                                    </button>
+                                 </div>
+                              </div>
+                              <small class="form-text text-muted">Verify the SMTP send path before launch — a missing probe is otherwise only caught at send time.</small>
+                           </div>
+                           <div id="snd_test_result" class="mt-2"></div>
                         </div>
                      </div>
                   </div>
@@ -545,6 +559,7 @@
       <script src="js/libs/summernote-bs4.min.js"></script>
       <script src="js/libs/codemirror.min.js"></script>
       <script src="js/common_scripts.js"></script>
+      <script src="js/wizard_pure.js"></script>
       <script src="js/quick_start.js"></script>
       <script src="js/wizard_stepflow.js"></script>
    </body>

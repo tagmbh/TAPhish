@@ -185,7 +185,10 @@ final class ClonedSite
             $proto = 'http';
         }
         $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost');
-        return $proto . '://' . $host . '/spear/sniperhost/cloned/' . $slug . '/';
+        // F9: serve the clone under the clean public alias `/p/<slug>/` (mapped
+        // to spear/sniperhost/cloned/<slug>/ by .htaccess) instead of exposing
+        // the internal path in the phishing CTA.
+        return $proto . '://' . $host . '/p/' . $slug . '/';
     }
 
     /**
