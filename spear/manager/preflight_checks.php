@@ -121,6 +121,117 @@ if (!function_exists('taphish_preflight_webhook_gate')) {
     }
 }
 
+if (!function_exists('taphish_preflight_http_get')) {
+    /**
+     * Tiny curl GET helper for the landing-page probe. NOT pure — kept
+     * out of any pure-helper assertion so the unit suite can stub the
+     * probe rather than hitting the network. Production wraps this as the
+     * `landing_probe` callable passed to `run_all`.
+     *
+     * Returns the shape the landing gate expects:
+     *   ['ok' => bool, 'status' => int, 'body' => string, 'error' => string]
+     */
+    function taphish_preflight_http_get(string $url): array
+    {
+        if (trim($url) === '' || !function_exists('curl_init')) {
+            return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'curl unavailable or url empty'];
+        }
+        $ch = curl_init($url);
+        if ($ch === false) {
+            return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'curl_init failed'];
+        }
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 3,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 4,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'TAPhish-Preflight/1.0',
+            CURLOPT_HTTPHEADER     => ['Accept: text/html,*/*'],
+        ]);
+        $body   = (string) curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error  = (string) curl_error($ch);
+        curl_close($ch);
+        return [
+            'ok'     => ($error === '' && $status >= 200 && $status < 400),
+            'status' => $status,
+            'body'   => $body,
+            'error'  => $error,
+        ];
+    }
+}
+
+if (!function_exists('taphish_preflight_landing_gate')) {
+    /**
+     * Landing-page reachability. Fetches the configured landing URL with an
+     * HTTP probe and verifies it returns 200 + an HTML body that contains a
+     * `<form>` (so the credential-capture flow has somewhere to submit to).
+     *
+     * `$probe` is injectable: `(string $url) => ['ok' => bool, 'status' => int,
+     * 'body' => string, 'error' => string]`. Production calls it with a curl
+     * wrapper; tests pass a stub.
+     *
+     * An empty URL is a hard fail — the campaign has no landing wired up, so
+     * the CTA in the mail body either marker-broken (caught by the mail-body
+     * gate below) or pointing at a non-existent path. Either way: refuse.
+     */
+    function taphish_preflight_landing_gate(string $landingUrl, ?callable $probe): array
+    {
+        if (trim($landingUrl) === '') {
+            return ['ok' => false, 'reason' => 'No landing page selected for the campaign — pick or clone one in Step 6.'];
+        }
+        if ($probe === null) {
+            return ['ok' => true, 'reason' => 'Landing URL configured; reachability not probed.'];
+        }
+        $r = $probe($landingUrl);
+        $status = (int) ($r['status'] ?? 0);
+        if (empty($r['ok']) || $status < 200 || $status >= 400) {
+            return ['ok' => false, 'reason' => 'Landing page unreachable: HTTP ' . ($status ?: 'error') . ($r['error'] ?? '' ? (' (' . $r['error'] . ')') : '')];
+        }
+        $body = (string) ($r['body'] ?? '');
+        if ($body === '') {
+            return ['ok' => false, 'reason' => 'Landing page returned 200 but the body was empty.'];
+        }
+        // The capture flow needs a <form> on the landing. Without one, the
+        // operator's just hosting a static brochure page — no credentials
+        // get recorded even on a successful click.
+        if (stripos($body, '<form') === false) {
+            return ['ok' => false, 'reason' => 'Landing page returned 200 but has no <form> — credentials would have nowhere to submit.'];
+        }
+        return ['ok' => true, 'reason' => null];
+    }
+}
+
+if (!function_exists('taphish_preflight_mail_body_gate')) {
+    /**
+     * Mail-body CTA gate. Runs the same `taphish_mail_body_is_unsafe_to_send`
+     * pre-send guard at preflight time, so an operator hitting Launch with an
+     * unedited operator-edit marker (or a CTA that expands to the open-pixel)
+     * gets a red gate in the wizard instead of silently shipping a campaign
+     * whose link lands on a blank white page.
+     *
+     * The mail body is supplied AFTER `filterKeywords()` has substituted the
+     * merge tokens (the wizard's preflight call site does the same render
+     * the cron does). Empty body short-circuits to false so a misconfigured
+     * template can't accidentally pass.
+     */
+    function taphish_preflight_mail_body_gate(string $renderedBody): array
+    {
+        if (trim($renderedBody) === '') {
+            return ['ok' => false, 'reason' => 'Mail template body is empty.'];
+        }
+        if (function_exists('taphish_mail_body_is_unsafe_to_send')) {
+            $reason = taphish_mail_body_is_unsafe_to_send($renderedBody);
+            if ($reason !== null) {
+                return ['ok' => false, 'reason' => 'Mail CTA gate refused: ' . $reason];
+            }
+        }
+        return ['ok' => true, 'reason' => null];
+    }
+}
+
 if (!function_exists('taphish_preflight_run_all')) {
     /**
      * Run every gate from a single context bundle. Returns a structured
@@ -136,6 +247,9 @@ if (!function_exists('taphish_preflight_run_all')) {
      *   sender_probe:     callable|null  (() => ['ok' => bool, 'error' => string])
      *   webhook_url:      string
      *   webhook_probe:    callable|null  ((url) => ['ok' => bool, 'status' => int])
+     *   landing_url:      string
+     *   landing_probe:    callable|null  ((url) => ['ok' => bool, 'status' => int, 'body' => string])
+     *   rendered_mail_body: string       (after filterKeywords substitution)
      */
     function taphish_preflight_run_all(array $ctx): array
     {
@@ -154,6 +268,13 @@ if (!function_exists('taphish_preflight_run_all')) {
             'webhook'      => taphish_preflight_webhook_gate(
                 (string) ($ctx['webhook_url'] ?? ''),
                 $ctx['webhook_probe'] ?? null
+            ),
+            'landing'      => taphish_preflight_landing_gate(
+                (string) ($ctx['landing_url'] ?? ''),
+                $ctx['landing_probe'] ?? null
+            ),
+            'mail_body'    => taphish_preflight_mail_body_gate(
+                (string) ($ctx['rendered_mail_body'] ?? '')
             ),
         ];
         $allOk = true;

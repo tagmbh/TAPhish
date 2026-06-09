@@ -307,6 +307,9 @@ if (isset($_POST)) {
 					return $res;
 				};
 			}
+			$landingProbe = function(string $url): array {
+				return taphish_preflight_http_get($url);
+			};
 			$report = taphish_preflight_run_all([
 				'recipient_emails'    => $emails,
 				'scope_allowlist'     => $allow,
@@ -315,6 +318,9 @@ if (isset($_POST)) {
 				'target_domain'       => (string)($ctx['target_domain']       ?? ''),
 				'sender_probe'        => $senderProbe,
 				'webhook_url'         => (string)($ctx['webhook_url']         ?? ''),
+				'landing_url'         => (string)($ctx['landing_url']         ?? ''),
+				'landing_probe'       => $landingProbe,
+				'rendered_mail_body'  => (string)($ctx['rendered_mail_body']  ?? ''),
 			]);
 			echo json_encode(['result' => 'success'] + $report);
 		}
@@ -424,6 +430,9 @@ if (isset($_POST)) {
 				// 1. Re-run preflight so the operator can't bypass the JS.
 				$emails = is_array($ctx['recipient_emails'] ?? null) ? $ctx['recipient_emails'] : [];
 				$allow  = is_array($ctx['scope_allowlist']  ?? null) ? $ctx['scope_allowlist']  : [];
+				$landingProbe = function(string $url): array {
+					return taphish_preflight_http_get($url);
+				};
 				$pre = taphish_preflight_run_all([
 					'recipient_emails'    => $emails,
 					'scope_allowlist'     => $allow,
@@ -432,6 +441,9 @@ if (isset($_POST)) {
 					'target_domain'       => (string)($ctx['target_domain']       ?? ''),
 					'sender_probe'        => null,
 					'webhook_url'         => (string)($ctx['webhook_url']         ?? ''),
+					'landing_url'         => (string)($ctx['landing_url']         ?? ''),
+					'landing_probe'       => $landingProbe,
+					'rendered_mail_body'  => (string)($ctx['rendered_mail_body']  ?? ''),
 				]);
 				if (!$pre['ok']) {
 					echo json_encode(['result' => 'failed', 'error' => 'Pre-flight gates not green', 'gates' => $pre['gates']]);

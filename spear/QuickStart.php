@@ -363,6 +363,16 @@
                                  <input type="text" id="pf_webhook" class="form-control" placeholder="(blank = none)">
                               </div>
                               <div class="form-group col-md-6 mb-2">
+                                 <label>Landing URL (from Step 6 — the URL you put in the mail's CTA)</label>
+                                 <input type="text" id="pf_landing_url" class="form-control" placeholder="https://this-host/p/m365-login-XXXX/">
+                                 <small class="form-text text-muted">The pre-flight fetches this URL and verifies HTTP 200 + a &lt;form&gt; element. Empty = hard fail.</small>
+                              </div>
+                              <div class="form-group col-md-12 mb-2">
+                                 <label>Rendered mail body (paste the body AFTER you've edited the CTA)</label>
+                                 <textarea id="pf_rendered_body" rows="3" class="form-control" placeholder="<p>Hi {{FNAME}}...</p><p><a href=&quot;https://this-host/p/m365-login-XXXX/?rid={{RID}}&quot;>Click</a></p>"></textarea>
+                                 <small class="form-text text-muted">The CTA gate refuses to launch if the rendered body still carries the operator-edit marker or points its &lt;a href&gt; at the open-tracking pixel.</small>
+                              </div>
+                              <div class="form-group col-md-6 mb-2">
                                  <button class="btn btn-info" type="button" id="btn_run_preflight">
                                     <i class="fa fa-stethoscope"></i> Run pre-flight
                                  </button>

@@ -604,6 +604,8 @@
             target_domain:       ($('#pf_target_domain').val() || '').trim().toLowerCase(),
             target_dmarc_policy: $('#pf_dmarc').val(),
             webhook_url:         ($('#pf_webhook').val() || '').trim(),
+            landing_url:         ($('#pf_landing_url').val() || '').trim(),
+            rendered_mail_body:  ($('#pf_rendered_body').val() || ''),
         };
     }
 

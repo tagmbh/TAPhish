@@ -108,6 +108,45 @@ final class MailBodyPreSendGuardTest extends TestCase
         }
     }
 
+    public function testExtractCtaLandingUrlsReturnsClickableLinks(): void
+    {
+        $body = '<p><a href="https://ptbe.autodiscover.li/p/m365-x/?rid=ABC">Sign in</a></p>'
+              . '<img src="https://ptbe.autodiscover.li/tmail?mid=mc1&rid=ABC"/>';
+        $urls = taphish_mail_body_extract_cta_landing_urls($body);
+        self::assertSame(['https://ptbe.autodiscover.li/p/m365-x/?rid=ABC'], $urls);
+    }
+
+    public function testExtractCtaLandingUrlsSkipsOpenPixelHref(): void
+    {
+        // Even if (incorrectly) wrapped in an <a href> — the existing
+        // CTA guard catches this; the extractor must NOT also surface it
+        // to the landing probe, because /tmail isn't a landing.
+        $body = '<p><a href="https://ptbe.autodiscover.li/tmail?mid=mc1&rid=ABC">Tracking</a></p>';
+        self::assertSame([], taphish_mail_body_extract_cta_landing_urls($body));
+    }
+
+    public function testExtractCtaLandingUrlsSkipsKnownTrustAnchors(): void
+    {
+        // m365-login redirects to login.microsoftonline.com after capture;
+        // probing it from the cron is wasted work AND would always 200.
+        $body = '<p><a href="https://ptbe.autodiscover.li/p/m365-x/">Sign in</a></p>'
+              . '<p><a href="https://login.microsoftonline.com/">Help</a></p>';
+        self::assertSame(['https://ptbe.autodiscover.li/p/m365-x/'], taphish_mail_body_extract_cta_landing_urls($body));
+    }
+
+    public function testExtractCtaLandingUrlsDeduplicates(): void
+    {
+        $body = '<p><a href="https://x.example/p/y/">A</a><a href="https://x.example/p/y/">B</a></p>';
+        self::assertSame(['https://x.example/p/y/'], taphish_mail_body_extract_cta_landing_urls($body));
+    }
+
+    public function testExtractCtaLandingUrlsSkipsAnchorsAndJavascript(): void
+    {
+        $body = '<p><a href="#">Top</a><a href="javascript:void(0)">JS</a><a href="mailto:a@b">Mail</a>'
+              . '<a href="https://x.example/p/y/">Real</a></p>';
+        self::assertSame(['https://x.example/p/y/'], taphish_mail_body_extract_cta_landing_urls($body));
+    }
+
     public function testUnsafePatternsListIsNonEmpty(): void
     {
         $patterns = taphish_mail_body_unsafe_patterns();
