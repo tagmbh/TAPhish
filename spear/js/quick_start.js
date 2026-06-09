@@ -596,47 +596,35 @@
         var csv = $('#rcpt_csv').val() || '';
         if (groupName === '') { if (window.toastr) toastr.warning('Enter a group name'); $('#rcpt_group_name').focus(); return; }
         if (csv.trim() === '') { if (window.toastr) toastr.warning('Paste a CSV first'); return; }
-        // Make sure WZ.recipient_emails reflects this CSV (in case preview was skipped).
+        // Commit parses + scope-filters the CSV server-side and returns the
+        // in-scope emails it stored, so one request covers both the persist and
+        // the Step 7 summary count (no separate preview round-trip).
         $('#btn_rcpt_commit').prop('disabled', true);
         $('#rcpt_commit_result').html(skeleton(2));
-        post({ action_type: 'wizard_recipient_preview', user_data: csv, engagement_id: id })
-            .done(function (pv) {
-                if (pv && pv.result === 'success') {
-                    var bad = {};
-                    (pv.scope_violations || []).forEach(function (v) {
-                        if (typeof v.line_index !== 'undefined') bad[v.line_index] = true;
-                    });
-                    WZ.recipient_emails = (pv.rows || [])
-                        .filter(function (_r, i) { return !bad[i]; })
-                        .map(function (r) { return (r.email || '').toLowerCase(); })
+        post({ action_type: 'wizard_commit_recipients', engagement_id: id, group_name: groupName, user_data: csv })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    WZ.user_group_id = res.user_group_id;
+                    WZ.recipient_emails = (res.emails || [])
+                        .map(function (e) { return String(e || '').toLowerCase(); })
                         .filter(Boolean);
+                    $('#rcpt_commit_result').html(
+                        '<div class="alert alert-success">' +
+                        '<strong>Committed.</strong> Group <code>' + esc(res.group_name) + '</code> — ' +
+                        '<strong>' + (res.committed || 0) + '</strong> recipient(s) stored, ' +
+                        (res.skipped || 0) + ' skipped, ' +
+                        (res.scope_violations || 0) + ' out of scope.' +
+                        '</div>'
+                    );
+                    if (window.toastr) toastr.success('Recipients committed');
+                    persistState();
+                    unlockNext();
+                } else {
+                    $('#rcpt_commit_result').html('<div class="alert alert-danger">' + esc((res && res.error) || 'Commit failed') + '</div>');
                 }
-                post({ action_type: 'wizard_commit_recipients', engagement_id: id, group_name: groupName, user_data: csv })
-                    .done(function (res) {
-                        if (res && res.result === 'success') {
-                            WZ.user_group_id = res.user_group_id;
-                            $('#rcpt_commit_result').html(
-                                '<div class="alert alert-success">' +
-                                '<strong>Committed.</strong> Group <code>' + esc(res.group_name) + '</code> — ' +
-                                '<strong>' + (res.committed || 0) + '</strong> recipient(s) stored, ' +
-                                (res.skipped || 0) + ' skipped, ' +
-                                (res.scope_violations || 0) + ' out of scope.' +
-                                '</div>'
-                            );
-                            if (window.toastr) toastr.success('Recipients committed');
-                            persistState();
-                            unlockNext();
-                        } else {
-                            $('#rcpt_commit_result').html('<div class="alert alert-danger">' + esc((res && res.error) || 'Commit failed') + '</div>');
-                        }
-                    })
-                    .fail(function () { $('#rcpt_commit_result').html('<div class="alert alert-danger">Request failed</div>'); })
-                    .always(function () { $('#btn_rcpt_commit').prop('disabled', false); });
             })
-            .fail(function () {
-                $('#rcpt_commit_result').html('<div class="alert alert-danger">Request failed</div>');
-                $('#btn_rcpt_commit').prop('disabled', false);
-            });
+            .fail(function () { $('#rcpt_commit_result').html('<div class="alert alert-danger">Request failed</div>'); })
+            .always(function () { $('#btn_rcpt_commit').prop('disabled', false); });
     }
 
     // ----- Step 4: Landing + Tracker -------------------------------------
