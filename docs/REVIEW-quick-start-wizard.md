@@ -187,12 +187,14 @@ output.
 | F4 | Brittle Hunter error routing | **Fixed** — structured `err_code`; `renderHunter` branches on it, regex kept only as legacy fallback |
 | F5 | Redundant preview round-trip | **Fixed** — commit returns the in-scope emails; the extra preview POST is gone |
 | F6 | CSV header edge cases | **Fixed** — 4 tests added (quoted delimiter, German header, non-Latin fallback, and a characterization test pinning the no-email-first-row drop) |
-| F7 | datetime-local vs UTC | **Partial** — prefilled defaults now use UTC to match the label; full convert-vs-relabel is an operator decision |
-| F3 | Sender-probe advisory / "Test sender" | **Open (product decision)** — `verifyMailboxAccess` (IMAP) and `sendTestMailVerification` (SMTP) already exist; which to wire into Step 6 is the operator's call |
-| F8 | No JS regression net | **Open (infra)** — repo has no JS test harness (no `package.json`); not adding a framework + refactoring working IIFE JS without a browser to re-verify |
-| F9 | CTA exposes internal clone path | **Open (cosmetic)** — switching the canonical URL to `/p/<slug>/` touches every clone path and can't be live-tested from here |
+| F7 | datetime-local vs UTC | **Fixed** — field relabelled to the operator's local time and converted local→UTC on submit (operator chose convert-on-submit) |
+| F3 | Sender-probe advisory / "Test sender" | **Fixed** — Step 6 "Send test" button sends a real test mail via `send_test_mail_verification` (operator chose the SMTP path); the launch gate stays advisory by design |
+| F8 | No JS regression net | **Fixed** — `wireBody`/`slugifyName` extracted to a pure module (`spear/js/wizard_pure.js`) with a zero-dependency node test (`tests/js/wizardPure.test.mjs`, 10 cases) |
+| F9 | CTA exposes internal clone path | **Fixed** — `buildPublicUrl` + JS fallback emit the clean `/p/<slug>/` alias |
 
-Test count: 921 green (was 910), +11 for the new guards/parsers.
+Test count: 921 PHPUnit green (was 910) + 10 node tests for the pure JS.
+
+**All nine findings are now addressed.** Run the JS tests with `node tests/js/wizardPure.test.mjs`. Note: F9 relies on the `.htaccess` `/p/<slug>/` rewrite, and the local QA router must map the same alias; the F2 guard accepts both `/p/` and the legacy internal path, so a mixed deployment is safe.
 
 ## C. Plan (sequenced)
 
