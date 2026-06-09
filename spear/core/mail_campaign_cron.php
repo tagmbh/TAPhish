@@ -5,6 +5,7 @@ require_once(dirname(__FILE__,2) . '/manager/common_functions.php');
 require_once(dirname(__FILE__,2) . '/manager/ab_variants.php');
 require_once(dirname(__FILE__,2) . '/manager/recipient_tz.php');
 require_once(dirname(__FILE__,2) . '/manager/secret_at_rest.php');
+require_once(dirname(__FILE__,2) . '/manager/pretext_library.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -294,12 +295,25 @@ function InitMailCampaign($conn, $campaign_id){
 		$message->from(new Address($sender_from_mail, $sender_from_name))->subject((filterKeywords($_subj,$keyword_vals)));
 		$msg_body = filterKeywords($_body,$keyword_vals);
 		$msg_body = filterQRBarCode($msg_body,$keyword_vals,$message);
+
+		// Pre-send guard: refuse to dispatch any mail whose CTA still
+		// points at an unedited operator-edit marker or at the open-
+		// tracking pixel. Without this check, the recipient clicks the CTA
+		// and lands on a 1×1 transparent image (white page). Status code 3
+		// = "Error in sending" makes the failure visible in the dashboard.
+		$_send_blocker = taphish_mail_body_is_unsafe_to_send($msg_body);
+		if ($_send_blocker !== null) {
+			statusEntryCreate($conn,$RID,$campaign_id,$MC_name,$send_time,$keyword_vals['{{NAME}}'],$keyword_vals['{{EMAIL}}']);
+			statusEntryUpdate($conn, $RID, 3, json_encode(['CTA guard refused send: ' . $_send_blocker]));
+			continue;
+		}
+
 		if($_ctype == 'text/html')
             $message->html($msg_body);
         else
             $message->text($msg_body);
 
-	  	statusEntryCreate($conn,$RID,$campaign_id,$MC_name,$send_time,$keyword_vals['{{NAME}}'],$keyword_vals['{{EMAIL}}']); 
+	  	statusEntryCreate($conn,$RID,$campaign_id,$MC_name,$send_time,$keyword_vals['{{NAME}}'],$keyword_vals['{{EMAIL}}']);
 	  	try{
 		  	if($config_recipient_type == "to")
 		  		$message->to($arr_user['email']);
