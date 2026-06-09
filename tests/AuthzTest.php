@@ -192,6 +192,7 @@ final class AuthzTest extends TestCase
             'get_logs', 'get_store_list', 'set_capture_webhook_url',
             'beef_settings_save', 'beef_settings_load', 'beef_test_connection',
             'telegram_settings_save', 'telegram_test',
+            'anthropic_settings_load', 'anthropic_settings_save', 'anthropic_settings_test',
             'add_user_to_table', 'update_user', 'delete_user', 'audit_log_query',
         ] as $a) {
             self::assertTrue(taphish_policy_allows($a, 'super-admin'), "$a → super-admin");
