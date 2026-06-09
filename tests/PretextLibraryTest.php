@@ -87,29 +87,35 @@ final class PretextLibraryTest extends TestCase
         }
     }
 
-    public function testEverySeedUsesTheTrackingUrlMergeToken(): void
+    public function testEverySeedCtaUsesTheOperatorEditMarker(): void
     {
-        // Each body must use {{TRACKINGURL}} — the actual token the send-time
-        // substitution in common_functions.php / filterKeywords recognises. A
-        // literal placeholder URL (the previous "REPLACE-WITH-TRACKER-URL"
-        // shape) would land in the recipient's inbox UNCHANGED, breaking the
-        // tracker + landing redirect flow entirely. Regression: 2026-06-08.
+        // Design contract — Bug-3 root-cause fix (2026-06-09).
+        //
+        // Each seed body must use the literal operator-edit marker
+        // `https://example.com/REPLACE-WITH-LANDING-URL` for its CTA, NOT
+        // the `{{TRACKINGURL}}` merge token. Reason: `{{TRACKINGURL}}`
+        // expands to the OPEN-PIXEL endpoint `/tmail?mid=…&rid=…`. If an
+        // `<a href="{{TRACKINGURL}}">…</a>` slips into a real campaign,
+        // every recipient clicks the CTA and lands on a 1×1 transparent
+        // image — i.e. a blank white page (the "first two work, others
+        // don't" production report on 2026-06-09).
+        //
+        // The marker is intentionally visible so the operator sees it
+        // before launch, and the pre-send guard
+        // `taphish_mail_body_is_unsafe_to_send()` refuses to dispatch any
+        // mail whose body still carries it.
         foreach (taphish_pretext_seeds() as $s) {
             self::assertStringContainsString(
-                '{{TRACKINGURL}}',
+                'REPLACE-WITH-LANDING-URL',
                 $s['body'],
-                "Seed '{$s['name']}' is missing the {{TRACKINGURL}} merge token."
+                "Seed '{$s['name']}' must carry the operator-edit marker URL so an unedited launch surfaces the missing landing URL."
             );
-            // and the body must NOT carry the old literal placeholder
-            self::assertStringNotContainsString(
-                'REPLACE-WITH-TRACKER-URL',
+            // The {{TRACKINGURL}} token expands to the open-tracking pixel
+            // and is NEVER a valid CTA. A future edit must not regress.
+            self::assertDoesNotMatchRegularExpression(
+                '#<a\b[^>]*href\s*=\s*["\']{{TRACKINGURL}}["\']#i',
                 $s['body'],
-                "Seed '{$s['name']}' still carries the old literal placeholder."
-            );
-            self::assertStringNotContainsString(
-                'example.com',
-                $s['body'],
-                "Seed '{$s['name']}' still points at example.com instead of the merge token."
+                "Seed '{$s['name']}' uses {{TRACKINGURL}} as a CTA href — that expands to the open-pixel and produces a blank white page."
             );
         }
     }
