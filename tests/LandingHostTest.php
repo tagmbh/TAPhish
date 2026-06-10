@@ -172,6 +172,50 @@ final class LandingHostTest extends TestCase
         @rmdir($dir);
     }
 
+    // --- P3: default host + push status ---------------------------------
+
+    public function testMarkDefaultSetsOneAndClearsOthers(): void
+    {
+        $profiles = [
+            ['id' => 'a', 'is_default' => true],
+            ['id' => 'b'],
+            ['id' => 'c', 'is_default' => true],
+        ];
+        $out = landing_host_mark_default($profiles, 'b');
+        self::assertFalse($out[0]['is_default']);
+        self::assertTrue($out[1]['is_default']);
+        self::assertFalse($out[2]['is_default']);
+    }
+
+    public function testMarkDefaultBlankIdClearsAll(): void
+    {
+        $out = landing_host_mark_default([['id' => 'a', 'is_default' => true]], '');
+        self::assertFalse($out[0]['is_default']);
+    }
+
+    public function testPickDefaultPrefersFlaggedElseFirst(): void
+    {
+        self::assertSame('b', landing_host_pick_default([['id' => 'a'], ['id' => 'b', 'is_default' => true]])['id']);
+        self::assertSame('a', landing_host_pick_default([['id' => 'a'], ['id' => 'b']])['id']);
+        self::assertNull(landing_host_pick_default([]));
+    }
+
+    public function testFromRequestParsesIsDefault(): void
+    {
+        self::assertTrue(landing_host_from_request(['is_default' => 'on'])['is_default']);
+        self::assertTrue(landing_host_from_request(['is_default' => true])['is_default']);
+        self::assertFalse(landing_host_from_request([])['is_default']);
+    }
+
+    public function testStampPushRecordsMeta(): void
+    {
+        $c = landing_host_stamp_push($this->goodCfg(), 'm365', 'https://owa.x.ch/m365/', 7, '2026-06-10T10:00:00Z');
+        self::assertSame('m365', $c['last_push']['slug']);
+        self::assertSame(7, $c['last_push']['uploaded']);
+        self::assertSame('https://owa.x.ch/m365/', $c['last_push']['public_url']);
+        self::assertSame('2026-06-10T10:00:00Z', $c['last_push']['at']);
+    }
+
     public function testPushDirEmptyDirIsAnError(): void
     {
         $dir = sys_get_temp_dir() . '/lh_' . bin2hex(random_bytes(4));

@@ -343,8 +343,11 @@ if (isset($_POST)) {
 				'password'         => $POSTJ['password']         ?? '',
 				'remote_base_path' => $POSTJ['remote_base_path'] ?? '',
 				'public_url_base'  => $POSTJ['public_url_base']  ?? '',
+				'is_default'       => $POSTJ['is_default']       ?? false,
 			]);
-			$cfg = landing_host_merge_secret($cfg, landing_host_get($conn, $cfg['id']));
+			$existing = landing_host_get($conn, $cfg['id']);
+			$cfg = landing_host_merge_secret($cfg, $existing);
+			if ($existing !== null && isset($existing['last_push'])) { $cfg['last_push'] = $existing['last_push']; } // P3 keep push history
 			$v = landing_host_validate($cfg);
 			if (!$v['ok']) {
 				echo json_encode(['result' => 'failed', 'error' => implode('; ', $v['errors'])]);
@@ -352,6 +355,7 @@ if (isset($_POST)) {
 				echo json_encode(['result' => 'failed', 'error' => 'At-rest encryption key unavailable — refusing to store an FTP password in plaintext.']);
 			} else {
 				$ok = landing_host_save($conn, $v['cfg']);
+				if ($ok && !empty($v['cfg']['is_default'])) { $ok = landing_host_store_all($conn, landing_host_mark_default(landing_host_get_all($conn), $cfg['id'])); } // P3 single default
 				echo json_encode($ok ? ['result' => 'success', 'id' => $cfg['id']] : ['result' => 'failed', 'error' => 'Could not store profile.']);
 				if ($ok) logIt('landing host profile saved: ' . $cfg['label'] . ' (' . $cfg['host'] . ')');
 			}
@@ -394,12 +398,20 @@ if (isset($_POST)) {
 			} else {
 				$r = landing_host_push_dir($cfg, $slug, $dir);
 				if (!empty($r['ok'])) {
+					landing_host_save($conn, landing_host_stamp_push($cfg, $slug, (string)$r['public_url'], (int)$r['uploaded'], gmdate('Y-m-d\TH:i:s\Z'))); // P3 push status
 					logIt('landing pushed to external host: ' . $slug . ' -> ' . $r['public_url'] . ' (' . $r['uploaded'] . ' files)');
 					echo json_encode(['result' => 'success', 'public_url' => $r['public_url'], 'uploaded' => $r['uploaded']]);
 				} else {
 					echo json_encode(['result' => 'failed', 'error' => (string)($r['error'] ?? 'push failed')]);
 				}
 			}
+		}
+
+		if($POSTJ['action_type'] == "landing_host_dns") {
+			require_once(dirname(__FILE__) . '/lookalike_deploy.php');
+			$domain = trim((string)($POSTJ['domain'] ?? ''));
+			if ($domain === "") { echo json_encode(['result' => 'failed', 'error' => 'domain required']); }
+			else { echo json_encode(['result' => 'success', 'records' => lookalike_build_dns_records($domain)]); }
 		}
 
 		if($POSTJ['action_type'] == "modify_timestamp_settings")

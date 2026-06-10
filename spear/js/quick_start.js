@@ -750,9 +750,12 @@
                 var $sel = $('#lh_wiz_select');
                 // keep the first "TAPhish-hosted" option, append profiles
                 $sel.find('option:gt(0)').remove();
+                var def = '';
                 (res.profiles || []).forEach(function (p) {
                     $sel.append($('<option>').val(p.id).text((p.label || p.host) + ' — ' + (p.public_url_base || '')));
+                    if (p.is_default) { def = p.id; }
                 });
+                if (def) { $sel.val(def); }   // P3: preselect the default host
             });
     }
 

@@ -86,6 +86,7 @@ if (!function_exists('landing_host_from_request')) {
         if ($port < 1 || $port > 65535) {
             $port = 21;
         }
+        $def = $req['is_default'] ?? false;
         return [
             'id'               => $id,
             'label'            => trim((string) ($req['label'] ?? '')),
@@ -96,6 +97,7 @@ if (!function_exists('landing_host_from_request')) {
             'password'         => (string) ($req['password'] ?? ''),
             'remote_base_path' => landing_host_normalize_base_path((string) ($req['remote_base_path'] ?? '')),
             'public_url_base'  => rtrim(trim((string) ($req['public_url_base'] ?? '')), '/') . '/',
+            'is_default'       => ($def === true || $def === 1 || $def === '1' || $def === 'true' || $def === 'on'),
         ];
     }
 }
@@ -373,6 +375,59 @@ if (!function_exists('landing_host_save')) {
             $all[] = $cfg;
         }
         return landing_host_store_all($conn, $all);
+    }
+}
+
+if (!function_exists('landing_host_mark_default')) {
+    /**
+     * P3 — pure: mark exactly one profile (by id) as the default in a list and
+     * clear `is_default` on all others. A blank/unknown id clears every default.
+     *
+     * @param array<int,array> $profiles
+     * @return array<int,array>
+     */
+    function landing_host_mark_default(array $profiles, string $id): array
+    {
+        foreach ($profiles as &$p) {
+            $p['is_default'] = ((string) ($p['id'] ?? '') === $id) && $id !== '';
+        }
+        unset($p);
+        return $profiles;
+    }
+}
+
+if (!function_exists('landing_host_pick_default')) {
+    /**
+     * P3 — pure: the default profile from a list (the one flagged is_default),
+     * falling back to the first profile, or null when the list is empty.
+     *
+     * @param array<int,array> $profiles
+     */
+    function landing_host_pick_default(array $profiles): ?array
+    {
+        foreach ($profiles as $p) {
+            if (!empty($p['is_default'])) {
+                return $p;
+            }
+        }
+        return $profiles[0] ?? null;
+    }
+}
+
+if (!function_exists('landing_host_stamp_push')) {
+    /**
+     * P3 — pure: record the last successful push on a profile (non-secret meta
+     * shown in the UI: when, which slug, the public URL, how many files).
+     */
+    function landing_host_stamp_push(array $cfg, string $slug, string $publicUrl, int $uploaded, string $atUtc): array
+    {
+        $cfg['last_push'] = [
+            'at'         => $atUtc,
+            'slug'       => $slug,
+            'public_url' => $publicUrl,
+            'uploaded'   => $uploaded,
+        ];
+        return $cfg;
     }
 }
 
