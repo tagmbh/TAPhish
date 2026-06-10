@@ -12,22 +12,35 @@ name: Deploy to operator host (FTPS)
 #
 # Uses lftp's `mirror -R` for the differential upload.
 #
-# Required repo secrets:
+# Two deploy targets, picked via the `target` input:
+#   production (default) → DEPLOY_*   secrets
+#   second               → DEPLOY2_*  secrets
+#
+# Required repo secrets (per target; replace the prefix for `second`):
 #   DEPLOY_HOST     FTP host (e.g. sl1737.web.hostpoint.ch)
 #   DEPLOY_USER     FTP username (e.g. ftp@yourdomain.li)
 #   DEPLOY_PASSWORD FTP password
 #   DEPLOY_PATH     remote target directory. For sub-FTP accounts
-#                   that are chrooted to the domain root, this is
-#                   usually "/" or "./". For master accounts that
-#                   land at /home/<account>/, this is the absolute
-#                   docroot path.
-#
+#                   chrooted to the domain root, usually "/" or "./".
+#                   For master accounts that land at /home/<account>/,
+#                   the home-relative or absolute docroot (e.g.
+#                   "www/yourdomain.ch").
 # Optional:
 #   DEPLOY_PORT     defaults to 21
+#
+# For the second instance add: DEPLOY2_HOST, DEPLOY2_USER,
+# DEPLOY2_PASSWORD, DEPLOY2_PATH (+ optional DEPLOY2_PORT).
 
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: 'Which host to deploy to'
+        type: choice
+        options:
+          - production
+          - second
+        default: production
       dry_run:
         description: 'Dry-run (preview the list of changes, no upload)'
         type: boolean
@@ -45,7 +58,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: "deploy"
+  # Per-target so a second-instance deploy never queues behind / cancels a
+  # production one (and vice versa).
+  group: "deploy-${{ inputs.target }}"
   cancel-in-progress: false
 
 jobs:
@@ -56,22 +71,50 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Verify required secrets
+      - name: Resolve target + verify its secrets
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
+          TARGET: ${{ inputs.target }}
+          # production set
+          P_HOST: ${{ secrets.DEPLOY_HOST }}
+          P_USER: ${{ secrets.DEPLOY_USER }}
+          P_PATH: ${{ secrets.DEPLOY_PATH }}
+          P_PORT: ${{ secrets.DEPLOY_PORT }}
+          P_PASS: ${{ secrets.DEPLOY_PASSWORD }}
+          # second set
+          S_HOST: ${{ secrets.DEPLOY2_HOST }}
+          S_USER: ${{ secrets.DEPLOY2_USER }}
+          S_PATH: ${{ secrets.DEPLOY2_PATH }}
+          S_PORT: ${{ secrets.DEPLOY2_PORT }}
+          S_PASS: ${{ secrets.DEPLOY2_PASSWORD }}
         run: |
+          set -e
+          if [ "$TARGET" = "second" ]; then
+            H="$S_HOST"; U="$S_USER"; PA="$S_PATH"; PO="$S_PORT"; PW="$S_PASS"; PREFIX="DEPLOY2"
+          else
+            H="$P_HOST"; U="$P_USER"; PA="$P_PATH"; PO="$P_PORT"; PW="$P_PASS"; PREFIX="DEPLOY"
+          fi
+          # Validate the SELECTED target's secrets — never silently fall back.
           missing=()
-          [ -z "$DEPLOY_HOST" ] && missing+=("DEPLOY_HOST")
-          [ -z "$DEPLOY_USER" ] && missing+=("DEPLOY_USER")
-          [ -z "$DEPLOY_PATH" ] && missing+=("DEPLOY_PATH")
-          [ -z "$DEPLOY_PASSWORD" ] && missing+=("DEPLOY_PASSWORD")
+          [ -z "$H" ]  && missing+=("${PREFIX}_HOST")
+          [ -z "$U" ]  && missing+=("${PREFIX}_USER")
+          [ -z "$PA" ] && missing+=("${PREFIX}_PATH")
+          [ -z "$PW" ] && missing+=("${PREFIX}_PASSWORD")
           if [ ${#missing[@]} -ne 0 ]; then
-            echo "::error::Missing required repo secret(s): ${missing[*]}"
+            echo "::error::Missing required repo secret(s) for target '$TARGET': ${missing[*]}"
             exit 1
           fi
+          # Mask the password and carry the resolved values to later steps.
+          # GitHub masks known secret values in logs; add-mask covers it even
+          # after the bash assignment.
+          echo "::add-mask::$PW"
+          {
+            echo "RESOLVED_HOST=$H"
+            echo "RESOLVED_USER=$U"
+            echo "RESOLVED_PATH=$PA"
+            echo "RESOLVED_PORT=${PO:-21}"
+            echo "LFTP_PASSWORD=$PW"
+          } >> "$GITHUB_ENV"
+          echo "Deploy target: $TARGET — ${U}@${H} → ${PA}"
 
       - name: Install lftp
         run: |
@@ -126,12 +169,12 @@ jobs:
 
       - name: Mirror to host
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          # LFTP_PASSWORD is the env name lftp's --env-password mode reads.
-          LFTP_PASSWORD: ${{ secrets.DEPLOY_PASSWORD }}
+          # Resolved in the first step (target-selected); LFTP_PASSWORD is the
+          # env name lftp's --env-password mode reads.
+          DEPLOY_HOST: ${{ env.RESOLVED_HOST }}
+          DEPLOY_USER: ${{ env.RESOLVED_USER }}
+          DEPLOY_PATH: ${{ env.RESOLVED_PATH }}
+          DEPLOY_PORT: ${{ env.RESOLVED_PORT }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_DELETE_REMOTE: ${{ inputs.delete_remote }}
         run: |
@@ -180,7 +223,8 @@ jobs:
       - name: First-deploy reminder
         run: |
           echo "::notice::First time? Open https://<your-host>/install in a browser to run the wizard."
+          echo "::notice::A second instance needs its OWN database + secret.key — the install wizard creates them; do NOT reuse another instance's."
           echo "::notice::Default admin login is admin/sniperphish — change it immediately (Phase 3.9 redirects you on first login)."
           echo "::notice::Enrol in 2FA (Phase 3.25): Settings → My Profile → Two-Factor Authentication."
           echo "::notice::Register the cron worker in Hostpoint control panel: every minute, command:"
-          echo "::notice::  /usr/local/bin/php \${DEPLOY_PATH}/spear/core/SniperPhish_Manager.php"
+          echo "::notice::  /usr/local/bin/php \${RESOLVED_PATH}/spear/core/SniperPhish_Manager.php"
