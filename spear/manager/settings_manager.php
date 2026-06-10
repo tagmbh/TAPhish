@@ -322,6 +322,86 @@ if (isset($_POST)) {
 			}
 		}
 
+		// ---- Phase 3.60 (P1): external self-hosted landing hosts (FTP/FTPS) ----
+		// Manage connection profiles + push a built clone to a look-alike domain's
+		// own webspace. Secret sealed at rest; masked on load; super-admin only.
+		if($POSTJ['action_type'] == "landing_host_list") {
+			require_once(dirname(__FILE__) . '/landing_host.php');
+			$profiles = array_map('landing_host_mask', landing_host_get_all($conn));
+			echo json_encode(['result' => 'success', 'profiles' => array_values($profiles)]);
+		}
+		if($POSTJ['action_type'] == "landing_host_save") {
+			require_once(dirname(__FILE__) . '/landing_host.php');
+			require_once(dirname(__FILE__) . '/secret_at_rest.php');
+			$cfg = landing_host_from_request([
+				'id'               => $POSTJ['id']               ?? '',
+				'label'            => $POSTJ['label']            ?? '',
+				'type'             => $POSTJ['type']             ?? 'ftps',
+				'host'             => $POSTJ['host']             ?? '',
+				'port'             => $POSTJ['port']             ?? 21,
+				'username'         => $POSTJ['username']         ?? '',
+				'password'         => $POSTJ['password']         ?? '',
+				'remote_base_path' => $POSTJ['remote_base_path'] ?? '',
+				'public_url_base'  => $POSTJ['public_url_base']  ?? '',
+			]);
+			$cfg = landing_host_merge_secret($cfg, landing_host_get($conn, $cfg['id']));
+			$v = landing_host_validate($cfg);
+			if (!$v['ok']) {
+				echo json_encode(['result' => 'failed', 'error' => implode('; ', $v['errors'])]);
+			} elseif (secret_at_rest_get_key() === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'At-rest encryption key unavailable — refusing to store an FTP password in plaintext.']);
+			} else {
+				$ok = landing_host_save($conn, $v['cfg']);
+				echo json_encode($ok ? ['result' => 'success', 'id' => $cfg['id']] : ['result' => 'failed', 'error' => 'Could not store profile.']);
+				if ($ok) logIt('landing host profile saved: ' . $cfg['label'] . ' (' . $cfg['host'] . ')');
+			}
+		}
+		if($POSTJ['action_type'] == "landing_host_delete") {
+			require_once(dirname(__FILE__) . '/landing_host.php');
+			$id = (string)($POSTJ['id'] ?? '');
+			$ok = $id !== '' && landing_host_delete($conn, $id);
+			echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Could not delete profile.']);
+			if ($ok) logIt('landing host profile deleted: ' . $id);
+		}
+		if($POSTJ['action_type'] == "landing_host_test") {
+			require_once(dirname(__FILE__) . '/landing_host.php');
+			$cfg = landing_host_get($conn, (string)($POSTJ['id'] ?? ''));
+			if ($cfg === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'Profile not found — save it first.']);
+			} else {
+				$tmp = tempnam(sys_get_temp_dir(), 'taplh_');
+				@file_put_contents($tmp, 'TAPhish landing-host connectivity probe');
+				$probe = '.taphish-probe-' . gmdate('Ymd-His') . '.txt';
+				$root  = landing_host_remote_root($cfg, '_probe');
+				$res = landing_host_default_upload($cfg, $tmp, $root . '/' . $probe);
+				@unlink($tmp);
+				echo json_encode([
+					'result' => 'success',
+					'ok'     => (bool)($res['ok'] ?? false),
+					'error'  => ($res['ok'] ?? false) ? null : ($res['error'] ?? 'connect failed'),
+				]);
+			}
+		}
+		if($POSTJ['action_type'] == "landing_host_push") {
+			require_once(dirname(__FILE__) . '/landing_host.php');
+			$cfg  = landing_host_get($conn, (string)($POSTJ['id'] ?? ''));
+			$slug = preg_replace('/[^a-z0-9-]/', '', strtolower((string)($POSTJ['slug'] ?? ''))) ?? '';
+			$dir  = dirname(__FILE__, 2) . '/sniperhost/cloned/' . $slug;
+			if ($cfg === null) {
+				echo json_encode(['result' => 'failed', 'error' => 'Landing host profile not found.']);
+			} elseif ($slug === '' || !is_dir($dir)) {
+				echo json_encode(['result' => 'failed', 'error' => 'Cloned landing not found for slug.']);
+			} else {
+				$r = landing_host_push_dir($cfg, $slug, $dir);
+				if (!empty($r['ok'])) {
+					logIt('landing pushed to external host: ' . $slug . ' -> ' . $r['public_url'] . ' (' . $r['uploaded'] . ' files)');
+					echo json_encode(['result' => 'success', 'public_url' => $r['public_url'], 'uploaded' => $r['uploaded']]);
+				} else {
+					echo json_encode(['result' => 'failed', 'error' => (string)($r['error'] ?? 'push failed')]);
+				}
+			}
+		}
+
 		if($POSTJ['action_type'] == "modify_timestamp_settings")
 			modifyTimestampSettings($conn, json_encode($POSTJ['time_zone']), json_encode($POSTJ['time_format']));
 		if($POSTJ['action_type'] == "get_timestamp_settings")
