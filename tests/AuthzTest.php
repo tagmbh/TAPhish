@@ -55,6 +55,17 @@ final class AuthzTest extends TestCase
         self::assertFalse(taphish_policy_allows('audit_log_query', 'read-only'));
     }
 
+    public function testLandingHostExactKeysBeatWildcard(): void
+    {
+        // Phase 3.60: read + push are operator-level; management stays super-admin.
+        self::assertTrue(taphish_policy_allows('landing_host_list', 'operator'));
+        self::assertTrue(taphish_policy_allows('landing_host_push', 'operator'));
+        self::assertFalse(taphish_policy_allows('landing_host_save', 'operator'));
+        self::assertFalse(taphish_policy_allows('landing_host_delete', 'operator'));
+        self::assertTrue(taphish_policy_allows('landing_host_save', 'super-admin'));
+        self::assertFalse(taphish_policy_allows('landing_host_list', 'read-only'));
+    }
+
     public function testOperatorTierAction(): void
     {
         self::assertTrue(taphish_policy_allows('save_engagement', 'operator'));

@@ -338,6 +338,22 @@
                               <i class="fa fa-book"></i> Clone library template
                            </button>
                            <div id="clone_result" class="mt-3 small"></div>
+                           <div id="lh_host_block" class="mt-3" style="display:none;">
+                              <hr>
+                              <label class="small text-muted mb-1">Optional — host the clone on a look-alike domain (own cert)</label>
+                              <div class="input-group input-group-sm">
+                                 <select class="form-control" id="lh_wiz_select">
+                                    <option value="">— TAPhish-hosted (/p/…) —</option>
+                                 </select>
+                                 <div class="input-group-append">
+                                    <button class="btn btn-outline-info" type="button" id="btn_lh_wiz_push">
+                                       <i class="fa fa-upload"></i> Push to host
+                                    </button>
+                                 </div>
+                              </div>
+                              <small class="form-text text-muted">Pushes the cloned page to the selected host over FTPS; the landing URL then uses that domain (e.g. <code>https://owa.textilcolor.ch/</code>).</small>
+                              <div id="lh_wiz_result" class="small mt-2"></div>
+                           </div>
                         </div>
                      </div>
                   </div>

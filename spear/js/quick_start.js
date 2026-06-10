@@ -734,8 +734,50 @@
             '<a href="' + esc(WZ.landing_url) + '" target="_blank" rel="noopener noreferrer">' + esc(WZ.landing_url) + '</a></div>'
         );
         if (window.toastr) toastr.success('Landing page ready');
+        // Phase 3.60: now that a clone exists, offer to push it to an external
+        // look-alike host (own cert). The block is hidden until there's a clone.
+        $('#lh_host_block').show();
         persistState();
         unlockNext();
+    }
+
+    // ----- Phase 3.60: optional external self-hosted landing host -----------
+
+    function loadWizardLandingHosts() {
+        post({ action_type: 'landing_host_list' })
+            .done(function (res) {
+                if (!res || res.result !== 'success') return;
+                var $sel = $('#lh_wiz_select');
+                // keep the first "TAPhish-hosted" option, append profiles
+                $sel.find('option:gt(0)').remove();
+                (res.profiles || []).forEach(function (p) {
+                    $sel.append($('<option>').val(p.id).text((p.label || p.host) + ' — ' + (p.public_url_base || '')));
+                });
+            });
+    }
+
+    function pushToExternalHost() {
+        var id = $('#lh_wiz_select').val();
+        if (!id) { if (window.toastr) toastr.info('Pick a landing host (or leave TAPhish-hosted).'); return; }
+        if (!WZ.clone_slug) { if (window.toastr) toastr.warning('Clone a landing first.'); return; }
+        $('#btn_lh_wiz_push').prop('disabled', true);
+        $('#lh_wiz_result').html(skeleton(1));
+        post({ action_type: 'landing_host_push', id: id, slug: WZ.clone_slug })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    WZ.landing_url = res.public_url;
+                    $('#lh_wiz_result').html(
+                        '<div class="alert alert-success">Pushed (' + (res.uploaded || 0) + ' files). Landing URL now ' +
+                        '<a href="' + esc(res.public_url) + '" target="_blank" rel="noopener noreferrer">' + esc(res.public_url) + '</a></div>'
+                    );
+                    if (window.toastr) toastr.success('Landing pushed to external host');
+                    persistState();
+                } else {
+                    $('#lh_wiz_result').html('<div class="alert alert-danger">' + esc((res && res.error) || 'Push failed') + '</div>');
+                }
+            })
+            .fail(function () { $('#lh_wiz_result').html('<div class="alert alert-danger">Request failed</div>'); })
+            .always(function () { $('#btn_lh_wiz_push').prop('disabled', false); });
     }
 
     function cloneSite() {
@@ -809,6 +851,7 @@
     function loadStep4() {
         loadTrackers();
         loadLibraryOptions();
+        loadWizardLandingHosts();
     }
 
     // ----- Step 5: Mail template (inline editor + auto-wire) -------------
@@ -1232,6 +1275,7 @@
         $('#btn_trk_create').on('click', createTracker);
         $('#btn_clone_site').on('click', cloneSite);
         $('#btn_lib_clone').on('click', cloneLibrary);
+        $('#btn_lh_wiz_push').on('click', pushToExternalHost);
         // Step 5 — Mail template.
         $('#btn_mt_blank').on('click', startBlank);
         $('#btn_mt_save').on('click', saveMailTemplate);

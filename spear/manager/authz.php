@@ -79,6 +79,10 @@ if (!defined('TAPHISH_POLICY')) {
         'beef_test_connection'         => ['super-admin'],
         'telegram_*'                   => ['super-admin'],
         'push_settings_*'              => ['super-admin'], // Phase 3.57: off-host backup push destination
+        // Phase 3.60: managing landing-host profiles (creds) is super-admin; the
+        // wizard's read + push are operator-level (exact keys beat the wildcard).
+        'landing_host_list'            => ['super-admin', 'operator'],
+        'landing_host_push'            => ['super-admin', 'operator'],
         'landing_host_*'               => ['super-admin'], // Phase 3.60: external self-hosted landing FTP hosts
         'anthropic_settings_*'         => ['super-admin'], // Anthropic API key card (AI landing generator)
         // own-account 2FA — every authenticated user manages their own.
