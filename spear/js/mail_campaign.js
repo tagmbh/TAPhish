@@ -210,7 +210,10 @@ function saveMailCampaignAction() {
         else
             toastr.error('', response.error);
         enableDisableMe($("#bt_saveMailCamp"));
-    }); 
+    }).fail(function (xhr) {
+        toastr.error('', 'Save failed (' + (xhr && xhr.status ? xhr.status : 'network') + '). Please retry.');
+        enableDisableMe($("#bt_saveMailCamp"));
+    });
 }
 
 function promptMailCampActDeact(id, campaign_name, action_value, curr_element) {
@@ -250,7 +253,7 @@ function mailCampStartStopAction(id, campaign_name, action_value) {
             if (new_action_value == 3)
                 toastr.success('', 'Success. Campaign Stopped!');
             if (new_action_value == 0)
-                toastr.success('', 'Success. Cmapaign deactivated!');
+                toastr.success('', 'Success. Campaign deactivated!');
             if (new_action_value == 1)
                 toastr.success('', 'Success. Campaign scheduled!');
         }
@@ -410,9 +413,11 @@ function loadTableCampaignList() {
                 }).nodes().each(function(cell, i) {
                     cell.innerHTML = i + 1;
                 });
-            }).draw();            
+            }).draw();
         });
-    });   
+    }).fail(function (xhr) {
+        toastr.error('', 'Could not load campaigns (' + (xhr && xhr.status ? xhr.status : 'network') + '). Refresh to retry.');
+    });
 }
 
 function rangeCampTimeChange(e) {

@@ -77,6 +77,7 @@
                                  </div>
                                  <input type="text" class="form-control form-control" placeholder="MySQL DB Host" id="tb_db_host" value="localhost" aria-label="MySQL DB Host" aria-describedby="basic-addon1" required>
                               </div>
+                              <small class="form-text text-muted mb-3" style="margin-top:-0.75rem">DB host is usually <code>localhost</code>. On Hostpoint shared hosting it is your account's DB server, e.g. <code>xxxxxxxx.mysql.db.internal</code> (see Control Panel &rarr; Databases).</small>
                               <div class="input-group mb-3">
                                  <div class="input-group-prepend">
                                     <span class="input-group-text bg-info text-white" id="basic-addon1"><i class="fa fas fa-user"></i></span>
