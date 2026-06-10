@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAPhish — Demo · Textilcolor AG</title>
+<style>
+  :root{
+    --blue:#0067b8; --blue-dark:#004e8c; --ink:#201f1e; --muted:#605e5c;
+    --line:#edebe9; --bg:#f3f6fb; --card:#ffffff; --ok:#107c10; --warn:#c19c00;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:var(--bg); color:var(--ink); overflow:hidden;
+  }
+  .stage{height:100vh;width:100vw;display:flex;align-items:center;justify-content:center}
+  .slide{
+    display:none; width:min(960px,92vw); height:min(620px,88vh);
+    background:var(--card); border-radius:16px; padding:54px 60px;
+    box-shadow:0 18px 50px rgba(0,40,90,.14); position:relative;
+    flex-direction:column; animation:fade .35s ease;
+  }
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .kicker{color:var(--blue);font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+  h1{font-size:40px;line-height:1.1;color:var(--blue-dark);margin-bottom:16px}
+  h2{font-size:27px;color:var(--blue-dark);margin-bottom:22px}
+  p{font-size:17px;line-height:1.55;color:var(--ink);margin-bottom:12px}
+  .lead{font-size:19px;color:var(--muted)}
+  ul{list-style:none;margin-top:6px}
+  li{font-size:17px;line-height:1.5;padding:9px 0 9px 30px;position:relative;border-bottom:1px solid var(--line)}
+  li:last-child{border-bottom:none}
+  li::before{content:"";position:absolute;left:4px;top:16px;width:9px;height:9px;border-radius:2px;background:var(--blue)}
+  li.ok::before{background:var(--ok)}
+  li.warn::before{background:var(--warn)}
+  .step li{counter-increment:s;padding-left:48px}
+  .step li::before{content:counter(s);background:var(--blue);color:#fff;width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;top:8px;left:0}
+  .step{counter-reset:s}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{text-align:left;padding:9px 10px;font-size:15.5px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+  td.w{color:var(--blue-dark);font-weight:600;white-space:nowrap}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .pill{background:#eaf3fb;color:var(--blue-dark);border-radius:20px;padding:6px 14px;font-size:14px;font-weight:600}
+  .big{font-size:23px;color:var(--blue-dark);font-weight:600;margin:10px 0}
+  .quote{background:#eaf3fb;border-left:4px solid var(--blue);padding:18px 22px;border-radius:8px;font-size:18px;color:var(--blue-dark);margin-top:14px}
+  .grow{flex:1}
+  .foot{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);margin-top:auto;padding-top:18px;border-top:1px solid var(--line)}
+  .logo{display:inline-flex;gap:7px;align-items:center;font-weight:700;color:var(--blue-dark)}
+  .logo .sq{display:grid;grid-template-columns:9px 9px;grid-template-rows:9px 9px;gap:2px}
+  .logo i{display:block;width:9px;height:9px}
+  .nav{position:fixed;bottom:20px;right:26px;display:flex;gap:8px;z-index:10}
+  .nav button{border:none;background:var(--card);color:var(--blue-dark);width:42px;height:42px;border-radius:50%;
+    font-size:18px;cursor:pointer;box-shadow:0 4px 14px rgba(0,40,90,.18)}
+  .nav button:hover{background:var(--blue);color:#fff}
+  .dots{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:10}
+  .dots span{width:8px;height:8px;border-radius:50%;background:#c5d4e3;cursor:pointer;transition:.2s}
+  .dots span.on{background:var(--blue);width:22px;border-radius:5px}
+  .cover{background:linear-gradient(135deg,var(--blue) 0%,var(--blue-dark) 100%);color:#fff}
+  .cover .kicker{color:#bfe0ff}
+  .cover h1{color:#fff;font-size:48px}
+  .cover p{color:#dcecfb}
+  .cover .foot{border-top-color:rgba(255,255,255,.25);color:#bfe0ff}
+  .cover .logo{color:#fff}
+  .hint{position:fixed;bottom:24px;left:26px;font-size:12px;color:var(--muted);z-index:10}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 1 — Cover -->
+  <section class="slide cover active">
+    <div class="logo"><span class="sq"><i style="background:#F25022"></i><i style="background:#7FBA00"></i><i style="background:#00A4EF"></i><i style="background:#FFB900"></i></span> TAPhish</div>
+    <div class="grow" style="display:flex;flex-direction:column;justify-content:center">
+      <div class="kicker">Security-Awareness-Plattform · Live-Demo</div>
+      <h1>Phishing-Simulation für Textilcolor AG</h1>
+      <p class="lead">Realistische Awareness-Kampagnen — ethisch by design. Klicks und Meldungen werden gemessen, <b>Passwörter niemals erfasst.</b></p>
+    </div>
+    <div class="foot"><span>Demo-Host: deepaudit.ch</span><span>10.06.2026</span></div>
+  </section>
+
+  <!-- 2 — Was zeigen wir -->
+  <section class="slide">
+    <div class="kicker">Überblick</div>
+    <h2>Was Sie heute sehen</h2>
+    <ul>
+      <li><b>Ein-Klick-Rollout</b> einer Look-alike-Landing auf eine eigene Domain mit gültigem Zertifikat</li>
+      <li><b>Awareness-sichere M365-Anmeldeseite</b> — misst das Verhalten, verwirft das Passwort</li>
+      <li><b>Microlearning</b> sofort nach dem Klick: Stop-and-Check, URL-Prüfung, MFA-Hinweise</li>
+      <li><b>Preflight-Check</b> verhindert den Versand defekter Kampagnen (DNS / Zertifikat / Formular)</li>
+      <li><b>Tracker-Report</b> mit Klick- und Meldequoten je Empfänger — pseudonymisiert</li>
+    </ul>
+    <div class="foot"><span class="logo">TAPhish</span><span>Demo-Überblick</span></div>
+  </section>
+
+  <!-- 3 — Demo-Umgebung -->
+  <section class="slide">
+    <div class="kicker">Umgebung</div>
+    <h2>Bereit & deployed</h2>
+    <table>
+      <tr><td class="w">Demo-Instanz</td><td><a href="https://deepaudit.ch">https://deepaudit.ch</a> — live</td></tr>
+      <tr><td class="w">Zweite Instanz</td><td>Failover, gleicher Stand (beide deployed)</td></tr>
+      <tr><td class="w">Code & Audit</td><td><a href="https://github.com/tagmbh/TAPhish">github.com/tagmbh/TAPhish</a></td></tr>
+    </table>
+    <p style="margin-top:22px" class="lead">Heute ausgeliefert:</p>
+    <div class="pills">
+      <span class="pill">#160 · Go-Live-Polish</span>
+      <span class="pill">#161 · Auto-Push</span>
+      <span class="pill">#162 · Quick-Add Domain</span>
+      <span class="pill">#163 · Awareness-safe M365</span>
+    </div>
+    <div class="foot"><span class="logo">TAPhish</span><span>Alle Änderungen getestet · 946 Tests grün</span></div>
+  </section>
+
+  <!-- 4 — Demo-Ablauf -->
+  <section class="slide">
+    <div class="kicker">Live-Demo</div>
+    <h2>Der Ablauf in 5 Schritten</h2>
+    <ul class="step">
+      <li><b>Quick-Add</b> der Look-alike-Domain: FTP-Login einmal, Sub-Domains (owa, abacus, remote) ankreuzen → alle Host-Profile erzeugt</li>
+      <li>Im Wizard die Landing <b>m365-login-safe</b> klonen → <b>Auto-Push</b> auf den Standard-Host</li>
+      <li>Empfänger-Sicht: realistischer M365-Login → Absenden → <b>Microlearning</b></li>
+      <li><b>Preflight</b> prüft Erreichbarkeit & Formular vor dem Launch</li>
+      <li><b>Report</b>: Klick-/Meldequoten je Empfänger — ohne Klartext-Daten</li>
+    </ul>
+    <div class="foot"><span class="logo">TAPhish</span><span>deepaudit.ch</span></div>
+  </section>
+
+  <!-- 5 — Ethik / kein Passwort -->
+  <section class="slide">
+    <div class="kicker">Datenschutz by design</div>
+    <h2>Wir erfassen Verhalten, keine Passwörter</h2>
+    <p class="big">Die awareness-sichere Landing meldet nur: <i>„geklickt &amp; abgeschickt“</i> — der Passwortwert wird <b>vor jeder Übertragung verworfen.</b></p>
+    <ul>
+      <li class="ok">Kein Passwort übertragen, kein Passwort gespeichert</li>
+      <li class="ok">Pseudonyme rid-Token statt Klartext-Identität in der URL</li>
+      <li class="ok">Sofortige Weiterleitung auf eine Microlearning-Seite (DE)</li>
+    </ul>
+    <div class="quote">Genau die Schutzmassnahme, die Ihr Awareness-Konzept für K1 &amp; K3 vorschreibt — konform mit DSG/DSGVO.</div>
+    <div class="foot"><span class="logo">TAPhish</span><span>Ethik &amp; Compliance</span></div>
+  </section>
+
+  <!-- 6 — Wellen -->
+  <section class="slide">
+    <div class="kicker">Kampagnenplan</div>
+    <h2>Wellen-Übersicht 2026</h2>
+    <table>
+      <tr><th>Welle</th><th>Datum</th><th>Pretext</th></tr>
+      <tr><td class="w">K1</td><td>15.06.</td><td>M365 „Postfach voll“ (Baseline)</td></tr>
+      <tr><td class="w">K2</td><td>06.07.</td><td>HR-Lohn / Lieferantenrechnung (Split)</td></tr>
+      <tr><td class="w">Quishing</td><td>17.08.</td><td>QR-Code „Neue MA-App“</td></tr>
+      <tr><td class="w">K3</td><td>07.09.</td><td>OneDrive-Sharing (CEO, OSINT)</td></tr>
+      <tr><td class="w">K4</td><td>05.10.</td><td>Abteilungs-Mix (REACH / Schoeller)</td></tr>
+      <tr><td class="w">K4-Sub</td><td>KW 43</td><td>CEO-BEC + Multi-Channel Vishing</td></tr>
+    </table>
+    <div class="foot"><span class="logo">TAPhish</span><span>Stufen 2 → 4, eskalierend</span></div>
+  </section>
+
+  <!-- 7 — Vor den Wellen -->
+  <section class="slide">
+    <div class="kicker">Nächste Schritte</div>
+    <h2>Vor dem Scharfschalten</h2>
+    <ul>
+      <li class="warn"><b>CEO-Einverständnis</b> (Anhang A.4) schriftlich — vor CEO-imitierenden Szenarien (K3, K4-Sub)</li>
+      <li class="warn"><b>M365 Defender</b> Advanced Delivery: Sende-IP + Look-alike-Domain allowlisten</li>
+      <li class="warn"><b>Hostpoint-Setup</b>: FTP-Account, Sub-Domains und Let’s-Encrypt-Zertifikate anlegen</li>
+      <li class="ok"><b>Plattform</b>: vollständig deployed und getestet — bereit</li>
+    </ul>
+    <div class="quote">Sobald diese drei kundenseitigen Punkte erledigt sind, kann K1 am 15.06. starten.</div>
+    <div class="foot"><span class="logo">TAPhish</span><span>Go-Live-Checkliste</span></div>
+  </section>
+
+  <!-- 8 — Schluss -->
+  <section class="slide cover">
+    <div class="logo"><span class="sq"><i style="background:#F25022"></i><i style="background:#7FBA00"></i><i style="background:#00A4EF"></i><i style="background:#FFB900"></i></span> TAPhish</div>
+    <div class="grow" style="display:flex;flex-direction:column;justify-content:center">
+      <div class="kicker">Vielen Dank</div>
+      <h1>Fragen &amp; Live-Demo</h1>
+      <p class="lead">Jetzt gemeinsam auf <b>deepaudit.ch</b> — von der Domain-Einrichtung bis zum fertigen Report.</p>
+    </div>
+    <div class="foot"><span>deepaudit.ch</span><span>github.com/tagmbh/TAPhish</span></div>
+  </section>
+
+</div>
+
+<div class="dots" id="dots"></div>
+<div class="nav"><button onclick="go(-1)">‹</button><button onclick="go(1)">›</button></div>
+<div class="hint">← → Pfeiltasten · F = Vollbild</div>
+
+<script>
+  var slides=[].slice.call(document.querySelectorAll('.slide')), i=0, dots=document.getElementById('dots');
+  slides.forEach(function(_,n){var d=document.createElement('span');d.onclick=function(){show(n)};dots.appendChild(d)});
+  function show(n){i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(s,k){s.classList.toggle('active',k===i)});
+    [].slice.call(dots.children).forEach(function(d,k){d.classList.toggle('on',k===i)});}
+  function go(d){show(i+d)}
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(1);
+    else if(e.key==='ArrowLeft'||e.key==='PageUp')go(-1);
+    else if(e.key==='Home')show(0);
+    else if(e.key==='End')show(slides.length-1);
+    else if(e.key.toLowerCase()==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+  });
+  show(0);
+</script>
+</body>
+</html>
