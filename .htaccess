@@ -2,9 +2,29 @@ Options -Indexes
 RewriteEngine On
 
 # --- Hardening: version header + HTTPS + config protection --------------
-# Strip the version header (belt-and-braces in case expose_php is on).
+# Strip the version header (belt-and-braces in case expose_php is on) and add
+# a safe global MIME-sniffing guard. NOTE: deliberately NO X-Frame-Options /
+# HSTS here — those would degrade cloned-landing fidelity (framing) and are a
+# hard-to-undo commitment on a phishing host.
 <IfModule mod_headers.c>
   Header always unset X-Powered-By
+  Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Block direct HTTP access to non-served file types. .json is intentionally
+# NOT blocked — cloned landings ship manifest.json and other JSON assets.
+<FilesMatch "\.(ini|sh|sql|gitignore|lock|md|dist)$">
+  Require all denied
+</FilesMatch>
+
+# Compress static text assets only — never text/html (it would add cache/
+# transfer handling to the dynamic, session-bearing PHP responses).
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/javascript
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/x-javascript
+  AddOutputFilterByType DEFLATE image/svg+xml
 </IfModule>
 
 # Force HTTPS — MUST come before the routing rewrites (their [L] would stop
