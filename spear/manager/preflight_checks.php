@@ -182,8 +182,15 @@ if (!function_exists('taphish_landing_url_is_probeable')) {
      *
      * Pure: no DB / network. The host comparison ignores the port so a probe
      * to `host:8099` from a request to the same `host:8099` still matches.
+     *
+     * `$extraHosts` (Phase 3.60) is an allow-list of operator-configured external
+     * landing-host names (e.g. `owa.textilcolor.ch`) — a landing self-hosted on
+     * one of those is probeable on ANY path (the whole host is operator-owned),
+     * since look-alike landings live at the host root, not under `/p/`.
+     *
+     * @param string[] $extraHosts
      */
-    function taphish_landing_url_is_probeable(string $url, string $requestHost): bool
+    function taphish_landing_url_is_probeable(string $url, string $requestHost, array $extraHosts = []): bool
     {
         $parts = parse_url(trim($url));
         if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
@@ -204,7 +211,17 @@ if (!function_exists('taphish_landing_url_is_probeable')) {
             }
             return $h;
         };
-        if ($requestHost === '' || $hostOnly($parts['host']) !== $hostOnly($requestHost)) {
+        $host = $hostOnly($parts['host']);
+
+        // Configured external self-hosted landing host — operator-owned, any path.
+        foreach ($extraHosts as $eh) {
+            if ($host !== '' && $host === $hostOnly((string) $eh)) {
+                return true;
+            }
+        }
+
+        // Otherwise: must be a cloned page on THIS host.
+        if ($requestHost === '' || $host !== $hostOnly($requestHost)) {
             return false;
         }
         $path = $parts['path'] ?? '';

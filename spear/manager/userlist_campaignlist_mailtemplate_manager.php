@@ -320,11 +320,14 @@ if (isset($_POST)) {
 				};
 			}
 			// F2: only probe a cloned landing on this host — never an arbitrary
-			// operator-supplied URL (SSRF).
+			// operator-supplied URL (SSRF). Phase 3.60: also allow configured
+			// external self-hosted landing hosts.
+			require_once(dirname(__FILE__) . '/landing_host.php');
 			$reqHost = (string)($_SERVER['HTTP_HOST'] ?? '');
-			$landingProbe = function(string $url) use ($reqHost): array {
-				if (!taphish_landing_url_is_probeable($url, $reqHost)) {
-					return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host'];
+			$lhHosts = landing_host_public_hosts($conn);
+			$landingProbe = function(string $url) use ($reqHost, $lhHosts): array {
+				if (!taphish_landing_url_is_probeable($url, $reqHost, $lhHosts)) {
+					return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host or a configured landing host'];
 				}
 				return taphish_preflight_http_get($url);
 			};
@@ -529,11 +532,14 @@ if (isset($_POST)) {
 							}
 						}
 					}
-					// F2: SSRF guard — only a cloned landing on this host is probeable.
+					// F2: SSRF guard — a cloned landing on this host, or a configured
+					// external self-hosted landing host (Phase 3.60).
+					require_once(dirname(__FILE__) . '/landing_host.php');
 					$reqHost = (string)($_SERVER['HTTP_HOST'] ?? '');
-					$landingProbe = function(string $url) use ($reqHost): array {
-						if (!taphish_landing_url_is_probeable($url, $reqHost)) {
-							return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host'];
+					$lhHosts = landing_host_public_hosts($conn);
+					$landingProbe = function(string $url) use ($reqHost, $lhHosts): array {
+						if (!taphish_landing_url_is_probeable($url, $reqHost, $lhHosts)) {
+							return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'landing URL must be a cloned page on this host or a configured landing host'];
 						}
 						return taphish_preflight_http_get($url);
 					};

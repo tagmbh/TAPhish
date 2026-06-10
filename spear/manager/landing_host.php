@@ -376,6 +376,27 @@ if (!function_exists('landing_host_save')) {
     }
 }
 
+if (!function_exists('landing_host_public_hosts')) {
+    /**
+     * The host names of every configured profile's public_url_base — fed to the
+     * launch landing-probe allow-list (taphish_landing_url_is_probeable) so a
+     * self-hosted look-alike landing isn't rejected as off-host SSRF.
+     *
+     * @return string[]
+     */
+    function landing_host_public_hosts(\mysqli $conn): array
+    {
+        $hosts = [];
+        foreach (landing_host_get_all($conn) as $p) {
+            $h = parse_url((string) ($p['public_url_base'] ?? ''), PHP_URL_HOST);
+            if (is_string($h) && $h !== '') {
+                $hosts[] = strtolower($h);
+            }
+        }
+        return array_values(array_unique($hosts));
+    }
+}
+
 if (!function_exists('landing_host_delete')) {
     function landing_host_delete(\mysqli $conn, string $id): bool
     {

@@ -375,6 +375,80 @@
                         </div>
                      </div>
                      <hr/>
+                     <!-- Phase 3.60: external self-hosted landing hosts (FTPS push).
+                          Push a cloned landing to a look-alike domain's own webspace
+                          so it serves with its own cert. FTP password stored encrypted
+                          at-rest, never returned to the page. super-admin only. -->
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <h6 class="hbar">External landing hosts (self-hosted look-alikes) <span class="badge badge-secondary ml-2">3.60</span></h6>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <i class="small">
+                              Push a cloned landing to a look-alike domain's own Hostpoint webspace over <strong>FTPS</strong>,
+                              so it serves from e.g. <code>https://owa.textilcolor.ch/</code> with its own Let's-Encrypt cert
+                              instead of <code>/p/&lt;slug&gt;/</code>. The FTP password is stored encrypted at-rest and never
+                              shown again — leave it blank when editing to keep the existing one.
+                           </i>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12"><div id="lh_list" class="small text-muted">—</div></div>
+                     </div>
+                     <input type="hidden" id="lh_id">
+                     <div class="form-group row">
+                        <label for="lh_label" class="col-md-2 text-left control-label col-form-label">Label:</label>
+                        <div class="col-md-4">
+                           <input type="text" class="form-control" id="lh_label" placeholder="OWA look-alike" autocomplete="off">
+                        </div>
+                        <label for="lh_type" class="col-md-2 text-left control-label col-form-label">Type:</label>
+                        <div class="col-md-4">
+                           <select class="form-control" id="lh_type">
+                              <option value="ftps">FTPS (explicit TLS)</option>
+                              <option value="ftp">FTP (plain — discouraged)</option>
+                           </select>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <label for="lh_host" class="col-md-2 text-left control-label col-form-label">Host:</label>
+                        <div class="col-md-4">
+                           <input type="text" class="form-control" id="lh_host" placeholder="slXXXX.web.hostpoint.ch" autocomplete="off">
+                        </div>
+                        <label for="lh_port" class="col-md-2 text-left control-label col-form-label">Port:</label>
+                        <div class="col-md-4">
+                           <input type="number" class="form-control" id="lh_port" value="21" min="1" max="65535" autocomplete="off">
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <label for="lh_username" class="col-md-2 text-left control-label col-form-label">Username:</label>
+                        <div class="col-md-4">
+                           <input type="text" class="form-control" id="lh_username" placeholder="ftp@owa.textilcolor.ch" autocomplete="off">
+                        </div>
+                        <label for="lh_password" class="col-md-2 text-left control-label col-form-label">Password:</label>
+                        <div class="col-md-4">
+                           <input type="password" class="form-control" id="lh_password" placeholder="leave blank to keep existing" autocomplete="new-password">
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <label for="lh_base" class="col-md-2 text-left control-label col-form-label">Remote path:</label>
+                        <div class="col-md-4">
+                           <input type="text" class="form-control" id="lh_base" placeholder="(blank = FTP login dir)" autocomplete="off">
+                        </div>
+                        <label for="lh_public" class="col-md-2 text-left control-label col-form-label">Public URL:</label>
+                        <div class="col-md-4">
+                           <input type="url" class="form-control" id="lh_public" placeholder="https://owa.textilcolor.ch/" autocomplete="off">
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-9"><div id="lh_result" class="small mt-1"></div></div>
+                        <div class="col-md-3 text-right">
+                           <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_lh_new"><i class="fa fas fa-file"></i> New</button>
+                           <button type="button" class="btn btn-info" id="btn_lh_save"><i class="fa fas fa-save"></i> Save host</button>
+                        </div>
+                     </div>
+                     <hr/>
                      <!-- OSINT API keys. Stored in the browser's localStorage
                           (never sent to the TAPhish server except inline on the
                           OSINT request itself). One discoverable place to set

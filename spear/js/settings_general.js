@@ -695,5 +695,92 @@ function clearJunkSPData(e){
                 })
                 .fail(function (xhr) { $('#push_test_result').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
         });
+
+        // ---- Phase 3.60: external self-hosted landing hosts (FTPS) ----
+        function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
+        function clearLandingHostForm() {
+            $('#lh_id').val('');
+            $('#lh_label,#lh_host,#lh_username,#lh_password,#lh_base,#lh_public').val('');
+            $('#lh_port').val('21');
+            $('#lh_type').val('ftps');
+            $('#lh_result').empty();
+        }
+        function renderLandingHosts(profiles) {
+            var $l = $('#lh_list').empty();
+            if (!profiles || !profiles.length) { $l.html('<span class="text-muted">No landing hosts configured yet.</span>'); return; }
+            profiles.forEach(function (p) {
+                var row = $('<div class="mb-1"></div>');
+                row.append('<strong>' + esc(p.label || p.host) + '</strong> '
+                    + '<span class="text-muted">' + esc(p.username || '') + '@' + esc(p.host || '') + ' &rarr; ' + esc(p.public_url_base || '') + '</span> ');
+                $('<a href="#" class="ml-2">edit</a>').on('click', function (e) { e.preventDefault(); editLandingHost(p); }).appendTo(row);
+                $('<a href="#" class="ml-2">test</a>').on('click', function (e) { e.preventDefault(); testLandingHost(p.id); }).appendTo(row);
+                $('<a href="#" class="ml-2 text-danger">delete</a>').on('click', function (e) { e.preventDefault(); deleteLandingHost(p.id, p.label || p.host); }).appendTo(row);
+                $l.append(row);
+            });
+        }
+        function loadLandingHosts() {
+            postSettings({ action_type: 'landing_host_list' }).done(function (d) {
+                if (d && d.result === 'success') { renderLandingHosts(d.profiles || []); }
+            });
+        }
+        function editLandingHost(p) {
+            $('#lh_id').val(p.id || '');
+            $('#lh_label').val(p.label || '');
+            $('#lh_type').val(p.type || 'ftps');
+            $('#lh_host').val(p.host || '');
+            $('#lh_port').val(p.port || 21);
+            $('#lh_username').val(p.username || '');
+            $('#lh_password').val('');   // never prefilled — blank keeps existing
+            $('#lh_base').val(p.remote_base_path || '');
+            $('#lh_public').val(p.public_url_base || '');
+            $('#lh_result').html('<span class="text-muted">Editing — leave password blank to keep the stored one.</span>');
+        }
+        function testLandingHost(id) {
+            $('#lh_result').html('<span class="text-muted">testing FTPS connection…</span>');
+            postSettings({ action_type: 'landing_host_test', id: id })
+                .done(function (d) {
+                    if (d && d.result === 'success' && d.ok) {
+                        $('#lh_result').html('<span class="text-success"><i class="fa fa-check"></i> Connection + upload OK.</span>');
+                    } else {
+                        $('#lh_result').html('<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> ' + esc((d && d.error) || 'Test failed.') + '</span>');
+                    }
+                })
+                .fail(function (xhr) { $('#lh_result').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
+        }
+        function deleteLandingHost(id, label) {
+            if (!window.confirm('Delete landing host "' + label + '"?')) { return; }
+            postSettings({ action_type: 'landing_host_delete', id: id })
+                .done(function (d) {
+                    if (d && d.result === 'success') { toastr.success('', 'Landing host deleted.'); clearLandingHostForm(); loadLandingHosts(); }
+                    else { toastr.error('', (d && d.error) || 'Delete failed.'); }
+                })
+                .fail(function (xhr) { toastr.error('', 'Request failed (HTTP ' + xhr.status + ').'); });
+        }
+        $('#btn_lh_new').on('click', clearLandingHostForm);
+        $('#btn_lh_save').on('click', function () {
+            postSettings({
+                action_type: 'landing_host_save',
+                id: $('#lh_id').val(),
+                label: $('#lh_label').val(),
+                type: $('#lh_type').val(),
+                host: $('#lh_host').val(),
+                port: $('#lh_port').val(),
+                username: $('#lh_username').val(),
+                password: $('#lh_password').val(),
+                remote_base_path: $('#lh_base').val(),
+                public_url_base: $('#lh_public').val()
+            })
+                .done(function (d) {
+                    if (d && d.result === 'success') {
+                        toastr.success('', 'Landing host saved.');
+                        clearLandingHostForm();
+                        loadLandingHosts();
+                    } else {
+                        toastr.error('', (d && d.error) || 'Save failed.');
+                    }
+                })
+                .fail(function (xhr) { toastr.error('', 'Request failed (HTTP ' + xhr.status + ').'); });
+        });
+        loadLandingHosts();
     });
 })();
