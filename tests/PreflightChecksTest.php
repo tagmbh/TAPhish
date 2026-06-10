@@ -72,6 +72,33 @@ final class PreflightChecksTest extends TestCase
         self::assertFalse(taphish_landing_url_is_probeable('https://phish.example/p/x/', ''));
     }
 
+    // --- Phase 3.60: external self-hosted landing host allow-list ---------
+
+    public function testLandingProbeAllowsConfiguredExternalHostAnyPath(): void
+    {
+        // A self-hosted look-alike on a configured host is probeable at the root.
+        self::assertTrue(taphish_landing_url_is_probeable(
+            'https://owa.textilcolor.ch/', 'phish.example', ['owa.textilcolor.ch']
+        ));
+        self::assertTrue(taphish_landing_url_is_probeable(
+            'https://owa.textilcolor.ch/m365/login', 'phish.example', ['owa.textilcolor.ch']
+        ));
+    }
+
+    public function testLandingProbeStillBlocksUnconfiguredExternalHost(): void
+    {
+        self::assertFalse(taphish_landing_url_is_probeable(
+            'http://169.254.169.254/latest/', 'phish.example', ['owa.textilcolor.ch']
+        ));
+    }
+
+    public function testLandingProbeExternalHostMatchIsCaseAndPortInsensitive(): void
+    {
+        self::assertTrue(taphish_landing_url_is_probeable(
+            'https://OWA.Textilcolor.ch:443/x', 'phish.example', ['owa.textilcolor.ch']
+        ));
+    }
+
     public function testScopeGateRejectsEmptyRecipients(): void
     {
         $r = taphish_preflight_scope_gate([], ['acme.test']);
