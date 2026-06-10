@@ -154,8 +154,11 @@ jobs:
             case "$line" in
               ''|\#*) continue ;;
             esac
-            pat="${line%/}"
-            EXCLUDES="$EXCLUDES --exclude-glob '$pat'"
+            # KEEP a trailing slash: lftp only PRUNES a directory when the
+            # exclude-glob ends in '/'. Stripping it (the old behaviour) made
+            # lftp treat '.git' as a filename glob and still recurse into the
+            # .git/ etc. directories — so .git, docs, tests got uploaded.
+            EXCLUDES="$EXCLUDES --exclude-glob '$line'"
           done < /tmp/lftp-excludes
           printf '%s' "$EXCLUDES" > /tmp/lftp-exclude-args
           echo "Resolved exclude args:"

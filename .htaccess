@@ -39,6 +39,11 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # These files are still read server-side via PHP include; only HTTP access
 # is blocked.
 RewriteRule ^spear/config/ - [F,L]
+
+# Defence in depth: never expose a VCS dir over HTTP (source disclosure),
+# even if one ends up on the host. Matches .git as a full path segment so
+# it doesn't catch .github pages etc.
+RewriteRule (^|/)\.git(/|$) - [F,L]
 # ------------------------------------------------------------------------
 
 # Phase 3.55: TAPhish-hosted look-alike vanity paths.
