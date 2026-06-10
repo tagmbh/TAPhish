@@ -802,6 +802,65 @@ function clearJunkSPData(e){
                 })
                 .fail(function (xhr) { toastr.error('', 'Request failed (HTTP ' + xhr.status + ').'); });
         });
+        // Quick-add: generate one landing-host profile per sub-domain from a
+        // single FTP login. Saves sequentially (first = default) so the
+        // default flag isn't clobbered by out-of-order responses.
+        $('#btn_qlh_generate').on('click', function () {
+            var domain = ($('#qlh_domain').val() || '').trim().toLowerCase()
+                .replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+            var host = ($('#qlh_host').val() || '').trim();
+            var port = $('#qlh_port').val() || '21';
+            var username = ($('#qlh_username').val() || '').trim();
+            var password = $('#qlh_password').val() || '';
+            var prefix = ($('#qlh_prefix').val() || '').trim().replace(/^\/+|\/+$/g, '');
+            var subs = [];
+            ($('#qlh_subs').val() || '').split(/[\s,]+/).forEach(function (s) {
+                s = s.trim().toLowerCase();
+                if (s && /^[a-z0-9-]+$/.test(s) && subs.indexOf(s) === -1) subs.push(s);
+            });
+            if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) { toastr.warning('', 'Enter a valid look-alike domain.'); return; }
+            if (!host) { toastr.warning('', 'Enter the FTPS host.'); return; }
+            if (!username) { toastr.warning('', 'Enter the FTP username.'); return; }
+            if (!password) { toastr.warning('', 'Enter the FTP password.'); return; }
+            if (!subs.length) { toastr.warning('', 'Enter at least one sub-domain.'); return; }
+
+            var $btn = $('#btn_qlh_generate').prop('disabled', true);
+            var done = 0, failed = [];
+            $('#qlh_result').html('<div class="text-muted">Generating ' + subs.length + ' host(s)…</div>');
+
+            function saveOne(i) {
+                if (i >= subs.length) {
+                    var msg = 'Created ' + done + ' of ' + subs.length + ' host(s).' +
+                        (failed.length ? ' Failed: ' + failed.join(', ') + '.' : '');
+                    $('#qlh_result').html('<div class="alert ' + (failed.length ? 'alert-warning' : 'alert-success') +
+                        ' py-2 mb-0">' + msg + (done ? ' First sub-domain set as default.' : '') + '</div>');
+                    if (done) { toastr.success('', msg); }
+                    $('#qlh_password').val('');
+                    $btn.prop('disabled', false);
+                    loadLandingHosts();
+                    return;
+                }
+                var fqdn = subs[i] + '.' + domain;
+                postSettings({
+                    action_type: 'landing_host_save',
+                    id: '',
+                    label: subs[i],
+                    type: 'ftps',
+                    host: host,
+                    port: port,
+                    username: username,
+                    password: password,
+                    remote_base_path: (prefix ? prefix + '/' : '') + fqdn,
+                    public_url_base: 'https://' + fqdn,
+                    is_default: (i === 0)
+                })
+                    .done(function (d) { if (d && d.result === 'success') { done++; } else { failed.push(subs[i]); } })
+                    .fail(function () { failed.push(subs[i]); })
+                    .always(function () { saveOne(i + 1); });
+            }
+            saveOne(0);
+        });
+
         loadLandingHosts();
     });
 })();

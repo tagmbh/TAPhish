@@ -407,6 +407,43 @@
                            </div>
                         </div>
                      </div>
+                     <div class="card border mb-3">
+                        <div class="card-body py-2">
+                           <h6 class="mb-2"><i class="fa fas fa-magic"></i> Quick-add a look-alike domain <span class="badge badge-info">fast</span></h6>
+                           <p class="small text-muted mb-2">Enter the FTP login once and tick the sub-domains you need — TAPhish generates one host profile per sub-domain (correct remote path + <code>https://&lt;sub&gt;.&lt;domain&gt;/</code> URL), marking the first as default. The FTP account + sub-domains + their certs must already exist on Hostpoint; this just wires up the push targets.</p>
+                           <div class="form-group row mb-2">
+                              <label for="qlh_domain" class="col-md-2 col-form-label col-form-label-sm">Look-alike domain:</label>
+                              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="qlh_domain" placeholder="texti1lcolor.ch" autocomplete="off"></div>
+                              <label for="qlh_subs" class="col-md-2 col-form-label col-form-label-sm">Sub-domains:</label>
+                              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="qlh_subs" value="owa, abacus, remote" placeholder="owa, abacus, remote" autocomplete="off"></div>
+                           </div>
+                           <div class="form-group row mb-2">
+                              <label for="qlh_host" class="col-md-2 col-form-label col-form-label-sm">FTPS host:</label>
+                              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="qlh_host" placeholder="slXXXX.web.hostpoint.ch" autocomplete="off"></div>
+                              <label for="qlh_port" class="col-md-2 col-form-label col-form-label-sm">Port:</label>
+                              <div class="col-md-4"><input type="number" class="form-control form-control-sm" id="qlh_port" value="21" min="1" max="65535" autocomplete="off"></div>
+                           </div>
+                           <div class="form-group row mb-2">
+                              <label for="qlh_username" class="col-md-2 col-form-label col-form-label-sm">Username:</label>
+                              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="qlh_username" placeholder="ftp@texti1lcolor.ch" autocomplete="off"></div>
+                              <label for="qlh_password" class="col-md-2 col-form-label col-form-label-sm">Password:</label>
+                              <div class="col-md-4"><input type="password" class="form-control form-control-sm" id="qlh_password" placeholder="FTP password" autocomplete="new-password"></div>
+                           </div>
+                           <div class="form-group row mb-2">
+                              <label for="qlh_prefix" class="col-md-2 col-form-label col-form-label-sm">Web-root prefix:</label>
+                              <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="qlh_prefix" placeholder="(blank if FTP lands in web root)" autocomplete="off"></div>
+                              <div class="col-md-6">
+                                 <small class="form-text text-muted">Leave blank if the FTP account's path is the web root that holds the sub-domain folders. Use <code>www</code> only if it lands at your home dir. Each profile's remote path becomes <code>&lt;prefix&gt;/&lt;sub&gt;.&lt;domain&gt;</code>.</small>
+                              </div>
+                           </div>
+                           <div class="form-group row mb-0">
+                              <div class="col-md-12 text-right">
+                                 <button type="button" class="btn btn-info btn-sm" id="btn_qlh_generate"><i class="fa fas fa-bolt"></i> Generate sub-domain hosts</button>
+                              </div>
+                           </div>
+                           <div id="qlh_result" class="small mt-2"></div>
+                        </div>
+                     </div>
                      <div class="form-group row">
                         <div class="col-md-12"><div id="lh_list" class="small text-muted">—</div></div>
                      </div>
