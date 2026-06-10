@@ -442,10 +442,35 @@
                         </div>
                      </div>
                      <div class="form-group row">
+                        <div class="col-md-6 offset-md-2">
+                           <div class="custom-control custom-checkbox mt-2">
+                              <input type="checkbox" class="custom-control-input" id="lh_default">
+                              <label class="custom-control-label" for="lh_default">Default host (preselected in the wizard)</label>
+                           </div>
+                        </div>
+                        <div class="col-md-4 text-right">
+                           <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_lh_dns"><i class="fa fas fa-globe"></i> DNS records</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12"><div id="lh_dns_out" class="small"></div></div>
+                     </div>
+                     <div class="form-group row">
                         <div class="col-md-9"><div id="lh_result" class="small mt-1"></div></div>
                         <div class="col-md-3 text-right">
                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_lh_new"><i class="fa fas fa-file"></i> New</button>
                            <button type="button" class="btn btn-info" id="btn_lh_save"><i class="fa fas fa-save"></i> Save host</button>
+                        </div>
+                     </div>
+                     <div class="form-group row">
+                        <div class="col-md-12">
+                           <i class="small text-muted">
+                              <strong>Self-hosted runbook (Hostpoint):</strong>
+                              (1) Add the look-alike sub-domain as webspace with its own docroot + enable its Let's-Encrypt cert.
+                              (2) Point the sub-domain's web at that webspace (not a CNAME to the TAPhish host); use <em>DNS records</em> above for the advisory SPF/DKIM/DMARC.
+                              (3) Create an FTP sub-account for the webspace and enter it here.
+                              Captures still post cross-origin to this host's tracker (fire-and-forget) — no extra setup.
+                           </i>
                         </div>
                      </div>
                      <hr/>

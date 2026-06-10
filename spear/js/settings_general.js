@@ -703,15 +703,18 @@ function clearJunkSPData(e){
             $('#lh_label,#lh_host,#lh_username,#lh_password,#lh_base,#lh_public').val('');
             $('#lh_port').val('21');
             $('#lh_type').val('ftps');
-            $('#lh_result').empty();
+            $('#lh_default').prop('checked', false);
+            $('#lh_result,#lh_dns_out').empty();
         }
         function renderLandingHosts(profiles) {
             var $l = $('#lh_list').empty();
             if (!profiles || !profiles.length) { $l.html('<span class="text-muted">No landing hosts configured yet.</span>'); return; }
             profiles.forEach(function (p) {
                 var row = $('<div class="mb-1"></div>');
-                row.append('<strong>' + esc(p.label || p.host) + '</strong> '
-                    + '<span class="text-muted">' + esc(p.username || '') + '@' + esc(p.host || '') + ' &rarr; ' + esc(p.public_url_base || '') + '</span> ');
+                var star = p.is_default ? '<span class="badge badge-info mr-1">default</span>' : '';
+                var lp = p.last_push ? ' <span class="text-success">— last push: ' + esc(p.last_push.slug || '') + ' (' + esc(String(p.last_push.uploaded || 0)) + ' files, ' + esc(p.last_push.at || '') + ')</span>' : '';
+                row.append(star + '<strong>' + esc(p.label || p.host) + '</strong> '
+                    + '<span class="text-muted">' + esc(p.username || '') + '@' + esc(p.host || '') + ' &rarr; ' + esc(p.public_url_base || '') + '</span>' + lp + ' ');
                 $('<a href="#" class="ml-2">edit</a>').on('click', function (e) { e.preventDefault(); editLandingHost(p); }).appendTo(row);
                 $('<a href="#" class="ml-2">test</a>').on('click', function (e) { e.preventDefault(); testLandingHost(p.id); }).appendTo(row);
                 $('<a href="#" class="ml-2 text-danger">delete</a>').on('click', function (e) { e.preventDefault(); deleteLandingHost(p.id, p.label || p.host); }).appendTo(row);
@@ -733,6 +736,7 @@ function clearJunkSPData(e){
             $('#lh_password').val('');   // never prefilled — blank keeps existing
             $('#lh_base').val(p.remote_base_path || '');
             $('#lh_public').val(p.public_url_base || '');
+            $('#lh_default').prop('checked', !!p.is_default);
             $('#lh_result').html('<span class="text-muted">Editing — leave password blank to keep the stored one.</span>');
         }
         function testLandingHost(id) {
@@ -757,6 +761,22 @@ function clearJunkSPData(e){
                 .fail(function (xhr) { toastr.error('', 'Request failed (HTTP ' + xhr.status + ').'); });
         }
         $('#btn_lh_new').on('click', clearLandingHostForm);
+        $('#btn_lh_dns').on('click', function () {
+            var host = ($('#lh_public').val() || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+            if (!host) { $('#lh_dns_out').html('<span class="text-warning">Enter the Public URL first.</span>'); return; }
+            $('#lh_dns_out').html('<span class="text-muted">fetching advisory DNS records for ' + esc(host) + '…</span>');
+            postSettings({ action_type: 'landing_host_dns', domain: host })
+                .done(function (d) {
+                    if (!d || d.result !== 'success' || !d.records) { $('#lh_dns_out').html('<span class="text-warning">' + esc((d && d.error) || 'No records.') + '</span>'); return; }
+                    var lines = [];
+                    (d.records || []).forEach(function (r) {
+                        if (typeof r === 'string') { lines.push(r); }
+                        else { lines.push([r.type, r.host || r.name || host, r.value || r.data || ''].filter(Boolean).join('  ')); }
+                    });
+                    $('#lh_dns_out').html('<pre class="small mb-0" style="white-space:pre-wrap">' + esc(lines.join('\n')) + '</pre>');
+                })
+                .fail(function (xhr) { $('#lh_dns_out').html('<span class="text-danger">Request failed (HTTP ' + xhr.status + ').</span>'); });
+        });
         $('#btn_lh_save').on('click', function () {
             postSettings({
                 action_type: 'landing_host_save',
@@ -768,7 +788,8 @@ function clearJunkSPData(e){
                 username: $('#lh_username').val(),
                 password: $('#lh_password').val(),
                 remote_base_path: $('#lh_base').val(),
-                public_url_base: $('#lh_public').val()
+                public_url_base: $('#lh_public').val(),
+                is_default: $('#lh_default').is(':checked')
             })
                 .done(function (d) {
                     if (d && d.result === 'success') {
