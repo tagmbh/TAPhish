@@ -241,6 +241,7 @@ if (!function_exists('landing_host_default_upload')) {
         curl_exec($ch);
         $errno = curl_errno($ch);
         $err   = curl_error($ch);
+        curl_close($ch);
         fclose($fh);
         if ($errno !== 0) {
             return ['ok' => false, 'error' => 'cURL ' . $errno . ': ' . $err];
