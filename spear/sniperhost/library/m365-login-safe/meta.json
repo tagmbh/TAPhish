@@ -1,0 +1,8 @@
+{
+  "name": "Microsoft 365 sign-in (awareness-safe)",
+  "description": "Awareness-training M365 sign-in: records only the submission FACT (page + submitted:true + timestamp), discards the password value before any transmission, and redirects to a built-in microlearning page (learn.html) after 300 ms. Use for security-awareness engagements where credentials must never be captured or stored.",
+  "pattern": "multi-step",
+  "has_2fa": false,
+  "fields": ["email"],
+  "placeholder_notes": "No password is ever transmitted or stored. learn.html ships with the clone — swap the 2-min video placeholder for your real microlearning video before the wave. Replace branding/copy to match the target tenant if needed."
+}

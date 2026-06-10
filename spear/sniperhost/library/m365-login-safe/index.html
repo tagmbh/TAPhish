@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in to your account</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="signin-shell">
+  <div class="signin-card" data-step="email">
+    <div class="signin-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 24" width="108" height="24" aria-label="Microsoft"><g><rect x="0" y="0" width="10" height="10" fill="#F25022"/><rect x="11" y="0" width="10" height="10" fill="#7FBA00"/><rect x="0" y="11" width="10" height="10" fill="#00A4EF"/><rect x="11" y="11" width="10" height="10" fill="#FFB900"/></g><text x="27" y="17" fill="#737373" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="400">Microsoft</text></svg></div>
+    <div class="signin-title">Sign in</div>
+    <form id="step-email" autocomplete="off">
+      <input type="email" name="email" class="signin-field" placeholder="Email, phone, or Skype" required>
+      <div class="signin-meta">
+        <a href="#">Can't access your account?</a>
+      </div>
+      <div class="signin-actions">
+        <button type="button" class="signin-btn secondary" onclick="history.back()">Back</button>
+        <button type="submit" class="signin-btn">Next</button>
+      </div>
+    </form>
+
+    <form id="step-password" autocomplete="off" style="display:none">
+      <div class="signin-account-chip">
+        <span class="dot"></span>
+        <span id="email-echo">user@example.com</span>
+      </div>
+      <div class="signin-title">Enter password</div>
+      <input type="password" name="password" class="signin-field" placeholder="Password" required>
+      <div class="signin-meta">
+        <a href="#">Forgot my password</a>
+      </div>
+      <div class="signin-actions">
+        <button type="submit" class="signin-btn">Sign in</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="signin-footer">
+  <span>Terms of use &middot; Privacy &amp; cookies &middot; &hellip;</span>
+</div>
+
+<script data-tracker src="{{TRACKER_URL_ATTR}}"></script>
+<script>
+(function () {
+  // AWARENESS-SAFE variant: this landing records only the FACT that a
+  // recipient submitted on each step (page + submitted:true + timestamp).
+  // The password value is read by the browser only to satisfy the form's
+  // "required" check and is then DISCARDED — it is never placed in any
+  // payload and never leaves the page. After the password step the user is
+  // redirected to the microlearning page (learn.html) after 300 ms.
+  var POST_URL = "{{POST_URL}}";
+  function trackerCtx() {
+    var t = window.__taphish_tracker || {};
+    var q = new URLSearchParams(location.search);
+    return {
+      rid:        t.rid        || q.get("rid")        || "",
+      sess_id:    t.session_id || q.get("sess_id")    || "",
+      trackerId:  t.tracker_id || q.get("trackerId")  || "",
+    };
+  }
+  function beacon(payload, cb) {
+    if (!POST_URL) { cb(); return; }
+    fetch(POST_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(cb, cb);
+  }
+  var formEmail = document.getElementById("step-email");
+  var formPwd   = document.getElementById("step-password");
+  var emailVal  = "";
+
+  formEmail.addEventListener("submit", function (e) {
+    e.preventDefault();
+    emailVal = formEmail.elements["email"].value;
+    document.getElementById("email-echo").textContent = emailVal;
+    var ctx = trackerCtx();
+    beacon({
+      page: 1,
+      submitted: true,
+      ts: Date.now(),
+      form_field_data: { email: emailVal },
+      rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
+    }, function () {
+      formEmail.style.display = "none";
+      formPwd.style.display = "block";
+    });
+  });
+
+  formPwd.addEventListener("submit", function (e) {
+    e.preventDefault();
+    // The password field is intentionally NOT read into any variable or
+    // payload — only the submission fact is reported.
+    var ctx = trackerCtx();
+    beacon({
+      page: 2,
+      submitted: true,
+      ts: Date.now(),
+      form_field_data: { email: emailVal },
+      rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId,
+    }, function () {
+      setTimeout(function () { location.href = "learn.html"; }, 300);
+    });
+  });
+})();
+</script>
+</body>
+</html>
