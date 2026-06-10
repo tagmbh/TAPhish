@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kampagnen-Content-Pack · Textilcolor AG</title>
+<style>
+  :root{--blue:#0067b8;--blue-dark:#004e8c;--ink:#201f1e;--muted:#605e5c;--line:#e6e9ef;--bg:#f3f6fb;--ok:#107c10;--warn:#c19c00}
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--ink);background:var(--bg);margin:0;line-height:1.5}
+  .wrap{max-width:880px;margin:0 auto;padding:32px 22px 80px}
+  h1{color:var(--blue-dark);font-size:28px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px}
+  .toc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:26px}
+  .toc a{color:var(--blue);text-decoration:none;font-weight:600;font-size:14.5px;display:inline-block;margin:4px 14px 4px 0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:22px;box-shadow:0 6px 20px rgba(0,40,90,.05)}
+  .card h2{color:var(--blue-dark);font-size:20px;margin:0 0 2px}
+  .badge{display:inline-block;background:#eaf3fb;color:var(--blue-dark);border-radius:6px;padding:2px 9px;font-size:12.5px;font-weight:600;margin-left:6px}
+  .meta{width:100%;border-collapse:collapse;margin:12px 0}
+  .meta td{border-bottom:1px solid var(--line);padding:6px 8px;font-size:14px;vertical-align:top}
+  .meta td.k{color:var(--muted);width:30%;font-weight:600}
+  .subj{margin:4px 0;padding:7px 12px;background:#f7f9fc;border-left:3px solid var(--blue);border-radius:5px;font-size:14px}
+  pre{background:#1f2733;color:#e7edf5;border-radius:10px;padding:16px 18px;font-family:'Consolas',monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow:auto}
+  .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin:14px 0 4px}
+  code{background:#eef2f7;border-radius:5px;padding:1px 6px;font-family:'Consolas',monospace;font-size:13px;color:var(--blue-dark)}
+  .ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}
+  .note{font-size:13px;color:var(--muted);margin-top:8px}
+  header.top{border-left:5px solid var(--blue);padding-left:14px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Kampagnen-Content-Pack</h1>
+    <div class="sub">Textilcolor AG · alle Wellen druckreif zum Einsetzen in TAPhish · Stand 10.06.2026</div>
+  </header>
+
+  <div class="toc">
+    <b style="display:block;margin-bottom:6px;color:var(--blue-dark)">Inhalt</b>
+    <a href="#how">So nutzt du das Pack</a>
+    <a href="#k1">K1 · M365 Postfach</a>
+    <a href="#k2">K2 · HR/Rechnung</a>
+    <a href="#quish">Quishing · QR</a>
+    <a href="#k3">K3 · OneDrive</a>
+    <a href="#k4">K4 · Mix</a>
+    <a href="#k4sub">K4-Sub · CEO-BEC</a>
+  </div>
+
+  <div class="card" id="how">
+    <h2>So nutzt du das Pack</h2>
+    <p>Jede Welle enthält alle Felder, die der Quick-Start-Wizard bzw. die Manager-Seiten verlangen: <b>Absender</b>, <b>Betreffvarianten</b>, <b>Mailtext</b>, <b>Landing</b>, <b>Web-Tracker</b>, <b>Microlearning</b>, <b>Zeitplan</b>. Reihenfolge im Tool: <code>Empfänger → Web-Tracker → Landing klonen → Mailtemplate → Absender → Pre-flight (Draft bleibt, bis du „Launch" drückst)</code>.</p>
+    <p class="note">Platzhalter <code>[Vorname] [Nachname]</code> werden vom System pro Empfänger ersetzt. Landing-Captures sind <b>awareness-sicher</b> (Template <code>m365-login-safe</code>): kein Passwort wird übertragen oder gespeichert; nach dem Absenden Redirect auf die Microlearning-Seite.</p>
+  </div>
+
+  <!-- K1 -->
+  <div class="card" id="k1">
+    <h2>K1 — Microsoft 365 „Postfach-Speicher voll" <span class="badge">15.06. · Stufe 2 · Baseline</span></h2>
+    <table class="meta">
+      <tr><td class="k">Zielgruppe</td><td>Alle MA · Versand gestaffelt 09:30–11:30</td></tr>
+      <tr><td class="k">Absender (Display)</td><td>Microsoft 365 Mailbox Support</td></tr>
+      <tr><td class="k">Sende-Adresse</td><td><code>mailbox-support@m365-mailbox-ch.com</code> (Look-alike, eigene Auth)</td></tr>
+      <tr><td class="k">Reply-To</td><td><code>noreply@m365-mailbox-ch.com</code></td></tr>
+      <tr><td class="k">Landing</td><td>Library-Template <code>m365-login-safe</code> klonen → Slug <code>k1-m365</code></td></tr>
+      <tr><td class="k">Web-Tracker</td><td><code>TC-K1-M365</code></td></tr>
+    </table>
+    <div class="lbl">Betreffvarianten (A/B/C)</div>
+    <div class="subj">A · Ihr Postfach erreicht das Speicherlimit — Aktion erforderlich</div>
+    <div class="subj">B · Microsoft 365: 95% des Speichers belegt</div>
+    <div class="subj">C · Warnung: Mailbox-Speicher fast voll — bitte erweitern</div>
+    <div class="lbl">Mailtext</div>
+    <pre>Sehr geehrte/r [Vorname] [Nachname],
+
+Ihr Microsoft 365 Postfach hat 95 % des verfügbaren Speicherplatzes erreicht
+(14,3 GB von 15 GB). Sobald die Grenze überschritten ist, können keine neuen
+E-Mails mehr empfangen werden.
+
+Um Ihre Mailbox zu erweitern und Datenverlust zu vermeiden, bestätigen Sie
+bitte Ihr Konto über den nachstehenden Link:
+
+   [Mailbox jetzt erweitern]  →  (CTA-Button auf die Landing-URL)
+
+Diese Aktion ist innerhalb von 24 Stunden erforderlich.
+
+Mit freundlichen Grüssen
+Microsoft 365 Mailbox Support Team
+— Diese Nachricht wurde automatisch generiert. Bitte antworten Sie nicht.</pre>
+    <div class="lbl">Microlearning (nach Klick)</div>
+    <p class="note">Stop-and-Check-Reflex · echte M365-Login = <code>login.microsoftonline.com</code> · 2-Min-Video · 3-Frage-Quiz · Phish-Button · MFA/FIDO2. <span class="ok">Schon im Template <code>m365-login-safe</code> als <code>learn.html</code> enthalten.</span></p>
+  </div>
+
+  <!-- K2 -->
+  <div class="card" id="k2">
+    <h2>K2 — HR-Lohnabrechnung / Lieferantenrechnung <span class="badge">06.07. · Stufe 2 · Split</span></h2>
+    <table class="meta">
+      <tr><td class="k">Zielgruppe</td><td>Alle MA, differenziert: <b>HR-Lohn</b> für Verwaltung/Produktion, <b>Lieferantenrechnung</b> für Einkauf/Finanz</td></tr>
+      <tr><td class="k">Absender (Display)</td><td>Variante 1: „HR / Payroll" · Variante 2: „Buchhaltung Lieferanten"</td></tr>
+      <tr><td class="k">Sende-Adresse</td><td><code>payroll@tc-hr-portal.com</code> bzw. <code>rechnung@tc-lieferanten.com</code> (Look-alike)</td></tr>
+      <tr><td class="k">Landing</td><td><code>m365-login-safe</code> klonen → Slugs <code>k2-hr</code> / <code>k2-rechnung</code></td></tr>
+      <tr><td class="k">Web-Tracker</td><td><code>TC-K2-HR</code> / <code>TC-K2-RG</code></td></tr>
+    </table>
+    <div class="lbl">Betreff — HR-Variante</div>
+    <div class="subj">A · Ihre Lohnabrechnung Juni 2026 steht bereit</div>
+    <div class="subj">B · Aktualisierte Lohndaten — Bestätigung erforderlich</div>
+    <div class="lbl">Mailtext — HR-Variante</div>
+    <pre>Sehr geehrte/r [Vorname] [Nachname],
+
+Ihre Lohnabrechnung für Juni 2026 wurde im Mitarbeiterportal bereitgestellt.
+Aufgrund einer Aktualisierung der Lohndaten ist eine einmalige Bestätigung
+Ihrer Anmeldung nötig.
+
+   [Lohnabrechnung ansehen]  →  (CTA auf Landing-URL)
+
+Bei Fragen wenden Sie sich an die Personalabteilung.
+
+Freundliche Grüsse
+Personalabteilung / Payroll</pre>
+    <div class="lbl">Betreff — Lieferanten-Variante</div>
+    <div class="subj">A · Offene Lieferantenrechnung — Freigabe erforderlich</div>
+    <div class="subj">B · Rechnung 2026-0648 wartet auf Ihre Prüfung</div>
+    <div class="lbl">Mailtext — Lieferanten-Variante</div>
+    <pre>Guten Tag [Vorname] [Nachname],
+
+zur Rechnung 2026-0648 eines Lieferanten liegt eine Freigabeanfrage vor.
+Bitte prüfen und bestätigen Sie den Vorgang im Rechnungsportal:
+
+   [Rechnung prüfen]  →  (CTA auf Landing-URL)
+
+Vielen Dank für die zeitnahe Bearbeitung.
+
+Buchhaltung / Kreditoren</pre>
+  </div>
+
+  <!-- Quishing -->
+  <div class="card" id="quish">
+    <h2>Quishing — QR-Code „Neue MA-App" <span class="badge">17.08. · Stufe 2–3 · QR</span></h2>
+    <table class="meta">
+      <tr><td class="k">Zielgruppe</td><td>Alle MA · Vektor: E-Mail mit QR-Bild (Klick erst am Smartphone)</td></tr>
+      <tr><td class="k">Absender (Display)</td><td>Textilcolor IT-Services</td></tr>
+      <tr><td class="k">Sende-Adresse</td><td><code>it-services@tc-mitarbeiter-app.com</code> (Look-alike)</td></tr>
+      <tr><td class="k">QR-Code</td><td>Im Mailtemplate über den TAPhish-QR-Filter generieren (zeigt auf Landing-URL)</td></tr>
+      <tr><td class="k">Landing</td><td><code>m365-login-safe</code> klonen → Slug <code>quish-app</code></td></tr>
+      <tr><td class="k">Web-Tracker</td><td><code>TC-QUISH-APP</code></td></tr>
+    </table>
+    <div class="lbl">Betreff</div>
+    <div class="subj">A · Neue Mitarbeiter-App — jetzt mit QR-Code aktivieren</div>
+    <div class="subj">B · Zugang zur Textilcolor-App: Scannen &amp; anmelden</div>
+    <div class="lbl">Mailtext</div>
+    <pre>Hallo [Vorname] [Nachname],
+
+ab sofort steht die neue Textilcolor-Mitarbeiter-App zur Verfügung
+(Lohnausweise, Schichtpläne, interne News). Scannen Sie den QR-Code mit
+Ihrem Smartphone, um den Zugang zu aktivieren:
+
+   [ QR-CODE ]   ← im Template per QR-Filter eingefügt
+
+Die Aktivierung ist bis Ende der Woche erforderlich.
+
+Ihr IT-Services-Team</pre>
+    <div class="note">Microlearning-Schwerpunkt: QR-Codes verbergen die Ziel-URL → erst nach dem Scannen prüfen; App-Installation nur über offizielle Stores / Intranet.</div>
+  </div>
+
+  <!-- K3 -->
+  <div class="card" id="k3">
+    <h2>K3 — OneDrive-Sharing „Detlef Fischer hat eine Datei geteilt" <span class="badge">07.09. · Stufe 3 · OSINT</span></h2>
+    <table class="meta">
+      <tr><td class="k">Zielgruppe</td><td>Alle MA · Versand Mo 14:00</td></tr>
+      <tr><td class="k">Absender (Display)</td><td>Detlef Fischer (via OneDrive)</td></tr>
+      <tr><td class="k">Sende-Adresse</td><td><code>notification@textilcolor-share.com</code> (Look-alike)</td></tr>
+      <tr><td class="k">Reply-To</td><td><code>detlef.fischer@textilcolor-share.com</code></td></tr>
+      <tr><td class="k">Landing</td><td><code>m365-login-safe</code> klonen → Slug <code>k3-onedrive</code> · Kontext-Banner „Anmelden, um die geteilte Datei zu öffnen"</td></tr>
+      <tr><td class="k">Web-Tracker</td><td><code>TC-K3-ONEDRIVE</code></td></tr>
+      <tr><td class="k">Freigabe</td><td><span class="warn">CEO-Einverständnis Detlef Fischer (Anhang A.4) vor Versand zwingend</span></td></tr>
+    </table>
+    <div class="lbl">Betreffvarianten</div>
+    <div class="subj">A · Detlef Fischer hat eine Datei mit Ihnen geteilt: Strategie_2026_Schoeller_Integration.xlsx</div>
+    <div class="subj">B · Geteilte Datei zur Einsicht: Strategie_2026_Schoeller_Integration.xlsx</div>
+    <div class="subj">C · Vertraulich — Datei wurde mit Ihnen geteilt</div>
+    <div class="lbl">Mailtext</div>
+    <pre>Detlef Fischer hat eine Datei mit Ihnen geteilt
+
+📊 Strategie_2026_Schoeller_Integration.xlsx
+
+Diese Datei wurde mit Ihnen über OneDrive geteilt. Bitte beachten Sie die
+Vertraulichkeit der enthaltenen Informationen zur laufenden Integration
+von Schoeller Technologies AG.
+
+      [Öffnen]  →  (CTA auf Landing-URL)
+
+Diese Freigabe läuft am 14.09.2026 ab.
+
+Mit freundlichen Grüssen
+Microsoft OneDrive</pre>
+    <div class="note">OSINT-Anker: echter CEO-Name + reale Schoeller-Übernahme (Juli 2025). Microlearning: Absender-Domain prüfen (<code>textilcolor-share.com</code> ≠ <code>textilcolor.ch</code>), OneDrive nur über M365-Portal öffnen.</div>
+  </div>
+
+  <!-- K4 -->
+  <div class="card" id="k4">
+    <h2>K4 — Abteilungs-Mix (REACH / Frachtbrief / Schoeller-Memo) <span class="badge">05.10. · Stufe 3</span></h2>
+    <table class="meta">
+      <tr><td class="k">Zielgruppe</td><td>Differenziert nach Segment S1–S8 (je Abteilung passender Pretext)</td></tr>
+      <tr><td class="k">Beispiele</td><td>REACH-Konformität (QHSE/Labor) · Frachtbrief/Zoll (Logistik) · Schoeller-Memo (GL/Strategie)</td></tr>
+      <tr><td class="k">Sende-Adresse</td><td><code>{thema}@tc-dokumente.com</code> (Look-alike, je Variante)</td></tr>
+      <tr><td class="k">Landing</td><td><code>m365-login-safe</code> klonen → Slugs <code>k4-reach</code> / <code>k4-fracht</code> / <code>k4-memo</code></td></tr>
+      <tr><td class="k">Web-Tracker</td><td><code>TC-K4-REACH</code> / <code>TC-K4-FRACHT</code> / <code>TC-K4-MEMO</code></td></tr>
+    </table>
+    <div class="lbl">Betreff — Beispiel REACH</div>
+    <div class="subj">A · REACH-Konformitätsnachweis — Aktualisierung bis 09.10. erforderlich</div>
+    <div class="lbl">Mailtext — Beispiel REACH</div>
+    <pre>Guten Tag [Vorname] [Nachname],
+
+im Rahmen der jährlichen REACH-Prüfung benötigen wir Ihre Bestätigung der
+aktualisierten Sicherheitsdatenblätter. Bitte öffnen Sie das Dokument und
+bestätigen Sie die Einsicht:
+
+   [Dokument öffnen]  →  (CTA auf Landing-URL)
+
+Frist: 09.10.2026.
+
+Freundliche Grüsse
+QHSE / Compliance</pre>
+    <div class="note">Aufbau identisch zu K1/K3; je Segment Absender, Betreff und Dokumentname anpassen.</div>
+  </div>
+
+  <!-- K4-Sub -->
+  <div class="card" id="k4sub">
+    <h2>K4-Sub — CEO-Fraud (BEC) + Vishing-Follow-up <span class="badge">KW 43 · Stufe 4 · Multi-Channel</span></h2>
+    <table class="meta">
+      <tr><td class="k">Zielgruppe</td><td>CFO Hans-Peter Waibel, Head of Business Administration Shashi Morrogh, Buchhaltung (S2) — max. 4–5 Personen</td></tr>
+      <tr><td class="k">Absender (Display)</td><td>Detlef Fischer</td></tr>
+      <tr><td class="k">Sende-Adresse</td><td><code>d.fischer@textilcolor-ag.ch</code> (Look-alike, KEIN Spoofing der echten Domain)</td></tr>
+      <tr><td class="k">Landing</td><td><span class="warn">KEINE</span> — Erfolg = Antwort/Freigabe; Honeypot-Konto, keine echte Überweisung</td></tr>
+      <tr><td class="k">Web-Tracker</td><td>Nur Öffnungs-/Antwort-Tracking (kein Landing-Tracker)</td></tr>
+      <tr><td class="k">Freigabe</td><td><span class="warn">CEO-Einverständnis (Anhang A.4) zwingend; Briefing CFO/COO NACH der Welle</span></td></tr>
+    </table>
+    <div class="lbl">Betreff</div>
+    <div class="subj">Vertraulich — dringende Überweisung Schoeller-Integration</div>
+    <div class="lbl">Mailtext</div>
+    <pre>Hans-Peter,
+
+ich bin den ganzen Tag in Meetings zur Schoeller-Integration und kann
+nicht ans Telefon. Wir brauchen heute noch eine Überweisung an einen
+neuen Beratungspartner — die Details schickt dir gleich unser Anwalt.
+
+Es ist absolut vertraulich, bitte nichts ans Team weitergeben, bis ich
+zurück bin.
+
+Können wir das bis 16:00 abwickeln? Danke für dein Vertrauen.
+
+Detlef
+— gesendet vom mobilen Gerät</pre>
+    <div class="note">Vishing-Follow-up ~90 Min später (Anwalt-Pretext, Honeypot-IBAN). Erfolgsmetriken: Antwort/Freigabe (negativ) vs. Meldung/Zweitkanal-Verifikation (positiv). Mitschnitt nur mit Zustimmung (Art. 179bis StGB). Debriefing 1:1 nach der Welle.</div>
+  </div>
+
+</div>
+</body>
+</html>
