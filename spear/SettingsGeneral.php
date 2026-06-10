@@ -395,6 +395,19 @@
                         </div>
                      </div>
                      <div class="form-group row">
+                        <div class="col-md-12">
+                           <div class="alert alert-light border small mb-0">
+                              <strong>Getting started — 3 steps</strong>
+                              <ol class="mb-1 pl-3">
+                                 <li>On Hostpoint, add the look-alike sub-domain as its own webspace, enable its Let's-Encrypt cert, and create an FTP account for it.</li>
+                                 <li>Add that FTP account here (one host can be marked <em>default</em>). Hit <em>Test</em> to verify the connection + upload path.</li>
+                                 <li>In the Quick-Start wizard, clone any landing (or pick a ready-to-use template — <em>Microsoft 365</em>, <em>SSO redirect</em>, <em>VPN portal</em>); with a default host set it auto-pushes there in one click.</li>
+                              </ol>
+                              Captures and clicks still post back to this TAPhish host automatically (cross-origin) — no separate webhook needed.
+                           </div>
+                        </div>
+                     </div>
+                     <div class="form-group row">
                         <div class="col-md-12"><div id="lh_list" class="small text-muted">—</div></div>
                      </div>
                      <input type="hidden" id="lh_id">

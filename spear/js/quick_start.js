@@ -739,6 +739,14 @@
         $('#lh_host_block').show();
         persistState();
         unlockNext();
+        // 3.61: one-click rollout — if a default external host is configured
+        // and the operator left auto-push on, push the fresh clone to it now
+        // (the host dropdown is already preselected to the default).
+        if (WZ.lh_default_id && $('#lh_auto_push').is(':checked') && !WZ.lh_auto_push_done) {
+            WZ.lh_auto_push_done = true;
+            $('#lh_wiz_select').val(WZ.lh_default_id);
+            pushToExternalHost();
+        }
     }
 
     // ----- Phase 3.60: optional external self-hosted landing host -----------
@@ -751,11 +759,21 @@
                 // keep the first "TAPhish-hosted" option, append profiles
                 $sel.find('option:gt(0)').remove();
                 var def = '';
+                var defLabel = '';
                 (res.profiles || []).forEach(function (p) {
                     $sel.append($('<option>').val(p.id).text((p.label || p.host) + ' — ' + (p.public_url_base || '')));
-                    if (p.is_default) { def = p.id; }
+                    if (p.is_default) { def = p.id; defLabel = p.label || p.host; }
                 });
                 if (def) { $sel.val(def); }   // P3: preselect the default host
+                // 3.61: surface the one-click auto-push toggle only when a
+                // default host exists; otherwise the wizard stays manual.
+                WZ.lh_default_id = def;
+                if (def) {
+                    $('#lh_auto_push_label').text('Auto-push to "' + defLabel + '" right after cloning');
+                    $('#lh_auto_push_wrap').show();
+                } else {
+                    $('#lh_auto_push_wrap').hide();
+                }
             });
     }
 
@@ -789,6 +807,7 @@
         if (url === '') { if (window.toastr) toastr.warning('Enter a target URL'); return; }
         if (slug === '') { if (window.toastr) toastr.warning('Enter a slug'); return; }
         var trackerUrl = selectedTrackerModUrl();
+        WZ.lh_auto_push_done = false;   // 3.61: allow a fresh auto-push for this clone
         $('#btn_clone_site').prop('disabled', true);
         $('#clone_result').html(skeleton(2));
         $.ajax({
@@ -831,6 +850,7 @@
         if (source === '') { if (window.toastr) toastr.warning('Pick a library template'); return; }
         var slug = slugifyName($('#clone_slug').val() || source);
         if (slug === '') slug = slugifyName(source);
+        WZ.lh_auto_push_done = false;   // 3.61: allow a fresh auto-push for this clone
         $('#btn_lib_clone').prop('disabled', true);
         $('#clone_result').html(skeleton(2));
         post({
