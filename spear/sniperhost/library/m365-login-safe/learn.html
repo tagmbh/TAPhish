@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sicherheitshinweis — Phishing-Simulation</title>
+<style>
+  :root { --bg:#f3f2f1; --card:#fff; --ink:#201f1e; --muted:#605e5c; --line:#edebe9;
+          --brand:#0067b8; --ok:#107c10; --warn:#a4262c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font-family:'Segoe UI',system-ui,-apple-system,sans-serif; line-height:1.55; }
+  .wrap { max-width:720px; margin:0 auto; padding:32px 20px 64px; }
+  .banner { background:var(--warn); color:#fff; border-radius:10px; padding:20px 24px; margin-bottom:24px; }
+  .banner h1 { margin:0 0 6px; font-size:22px; font-weight:600; }
+  .banner p { margin:0; opacity:.95; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:22px 24px; margin-bottom:18px; }
+  .card h2 { margin:0 0 12px; font-size:17px; color:var(--brand); }
+  .reassure { border-left:4px solid var(--ok); background:#f1faf1; }
+  .reassure h2 { color:var(--ok); }
+  ul.checks { list-style:none; margin:0; padding:0; }
+  ul.checks li { padding:8px 0 8px 30px; position:relative; border-bottom:1px solid var(--line); }
+  ul.checks li:last-child { border-bottom:0; }
+  ul.checks li::before { content:"✓"; position:absolute; left:4px; top:8px; color:var(--ok); font-weight:700; }
+  .url-demo { font-family:'Cascadia Code',Consolas,monospace; background:#f8f8f8;
+              border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin:8px 0; word-break:break-all; }
+  .url-demo .bad { color:var(--warn); font-weight:700; }
+  .url-demo .good { color:var(--ok); font-weight:700; }
+  .video { aspect-ratio:16/9; width:100%; background:#201f1e; border-radius:8px;
+           display:flex; align-items:center; justify-content:center; color:#fff; opacity:.85; font-size:15px; }
+  .quiz .q { margin:14px 0; }
+  .quiz .q p { margin:0 0 8px; font-weight:600; }
+  .quiz button.opt { display:block; width:100%; text-align:left; padding:10px 12px; margin:6px 0;
+                     border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer; font-size:15px; }
+  .quiz button.opt:hover { border-color:var(--brand); }
+  .quiz button.opt.correct { border-color:var(--ok); background:#f1faf1; }
+  .quiz button.opt.wrong { border-color:var(--warn); background:#fdf3f4; }
+  .quiz .fb { font-size:14px; margin-top:4px; min-height:18px; }
+  .quiz .fb.ok { color:var(--ok); } .quiz .fb.no { color:var(--warn); }
+  .score { font-weight:600; margin-top:8px; }
+  .pill { display:inline-block; background:#eef3fb; color:var(--brand); border-radius:999px;
+          padding:2px 10px; font-size:12px; font-weight:600; margin-bottom:8px; }
+  footer { color:var(--muted); font-size:12px; text-align:center; margin-top:28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner">
+    <h1>Stop — das war eine Phishing-Simulation</h1>
+    <p>Diese Seite war <strong>nicht</strong> Microsoft. Sie gehört zu einer internen Security-Awareness-Übung Ihres Unternehmens.</p>
+  </div>
+
+  <div class="card reassure">
+    <h2>Keine Sorge — es ist nichts passiert</h2>
+    <p style="margin:0">Ihr Passwort wurde <strong>weder übertragen noch gespeichert</strong>. Erfasst wurde ausschliesslich,
+    <em>dass</em> auf den Link geklickt und das Formular abgeschickt wurde — nie der Passwortwert selbst.
+    Es entsteht Ihnen kein Nachteil; diese Übung dient allein dem Lernen.</p>
+  </div>
+
+  <div class="card">
+    <span class="pill">Der wichtigste Reflex</span>
+    <h2>Stop &amp; Check — bevor Sie Zugangsdaten eingeben</h2>
+    <ul class="checks">
+      <li><strong>Adresse prüfen:</strong> Steht in der Browser-Adresszeile wirklich die echte Domain?</li>
+      <li><strong>Kontext hinterfragen:</strong> Drohung + Zeitdruck (&bdquo;innerhalb 24 Stunden&ldquo;) ist ein klassisches Warnsignal.</li>
+      <li><strong>Direkt statt über Links:</strong> Microsoft 365 immer über ein gespeichertes Lesezeichen / das offizielle Portal öffnen.</li>
+    </ul>
+    <p style="margin:14px 0 4px">So sieht der Unterschied aus:</p>
+    <div class="url-demo">Echt: https://login.<span class="good">microsoftonline.com</span>/</div>
+    <div class="url-demo">Fake: https://login.<span class="bad">m365-mailbox-ch.com</span>/auth/&hellip;</div>
+  </div>
+
+  <div class="card">
+    <h2>2-Minuten-Video</h2>
+    <div class="video">▶  Microlearning-Video (Platzhalter — vor der Welle einbinden)</div>
+  </div>
+
+  <div class="card quiz" id="quiz">
+    <h2>3-Fragen-Check</h2>
+
+    <div class="q" data-correct="1">
+      <p>1. Woran erkennen Sie am sichersten, ob eine Login-Seite echt ist?</p>
+      <button class="opt" data-i="0">Am Microsoft-Logo auf der Seite</button>
+      <button class="opt" data-i="1">An der Domain in der Adresszeile des Browsers</button>
+      <button class="opt" data-i="2">Daran, dass die Seite ein Passwortfeld hat</button>
+      <div class="fb"></div>
+    </div>
+
+    <div class="q" data-correct="2">
+      <p>2. Eine E-Mail setzt Sie mit einer 24-Stunden-Frist unter Druck. Was tun Sie?</p>
+      <button class="opt" data-i="0">Schnell handeln, bevor die Frist abläuft</button>
+      <button class="opt" data-i="1">Auf den Link klicken und die Seite prüfen</button>
+      <button class="opt" data-i="2">Innehalten — Zeitdruck ist ein Warnsignal — und über das offizielle Portal prüfen</button>
+      <div class="fb"></div>
+    </div>
+
+    <div class="q" data-correct="0">
+      <p>3. Was hilft zusätzlich, selbst wenn ein Passwort einmal abhandenkommt?</p>
+      <button class="opt" data-i="0">Mehrstufige Anmeldung (MFA), idealerweise FIDO2-Schlüssel</button>
+      <button class="opt" data-i="1">Ein längeres Passwort</button>
+      <button class="opt" data-i="2">Das Passwort regelmässig per E-Mail an sich selbst senden</button>
+      <div class="fb"></div>
+    </div>
+
+    <div class="score" id="score"></div>
+  </div>
+
+  <div class="card">
+    <h2>Im Ernstfall</h2>
+    <p style="margin:0 0 6px">Verdächtige E-Mail erhalten? Nutzen Sie den <strong>Phish-Melden-Button</strong> in Outlook
+    oder leiten Sie die Nachricht an Ihre Awareness-Mailbox weiter. Lieber einmal zu viel melden als zu wenig.</p>
+    <p style="margin:0"><strong>Tipp:</strong> Aktivieren Sie MFA und — wo möglich — einen FIDO2-Sicherheitsschlüssel.
+    Damit ist ein gestohlenes Passwort allein wertlos.</p>
+  </div>
+
+  <footer>Security-Awareness-Übung &middot; Diese Simulation dient ausschliesslich Schulungszwecken.</footer>
+</div>
+
+<script>
+(function () {
+  var answered = 0, correct = 0, total = document.querySelectorAll('#quiz .q').length;
+  document.querySelectorAll('#quiz .q').forEach(function (q) {
+    var want = parseInt(q.getAttribute('data-correct'), 10);
+    var fb = q.querySelector('.fb');
+    q.querySelectorAll('button.opt').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (q.getAttribute('data-done')) return;
+        q.setAttribute('data-done', '1');
+        answered++;
+        var i = parseInt(btn.getAttribute('data-i'), 10);
+        if (i === want) {
+          btn.classList.add('correct'); fb.textContent = 'Richtig.'; fb.className = 'fb ok'; correct++;
+        } else {
+          btn.classList.add('wrong');
+          q.querySelector('button.opt[data-i="' + want + '"]').classList.add('correct');
+          fb.textContent = 'Nicht ganz — die grün markierte Antwort ist korrekt.'; fb.className = 'fb no';
+        }
+        if (answered === total) {
+          document.getElementById('score').textContent =
+            'Ergebnis: ' + correct + ' von ' + total + ' richtig.' +
+            (correct === total ? ' Stark — genau dieser Reflex schützt Sie.' : ' Schauen Sie sich die Hinweise oben nochmals an.');
+        }
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
