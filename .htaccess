@@ -1,6 +1,26 @@
 Options -Indexes
 RewriteEngine On
 
+# --- Hardening: version header + HTTPS + config protection --------------
+# Strip the version header (belt-and-braces in case expose_php is on).
+<IfModule mod_headers.c>
+  Header always unset X-Powered-By
+</IfModule>
+
+# Force HTTPS — MUST come before the routing rewrites (their [L] would stop
+# processing first). The X-Forwarded-Proto exception prevents a redirect loop
+# when TLS is terminated at a fronting proxy (e.g. Hostpoint) that forwards
+# plain HTTP internally with X-Forwarded-Proto: https.
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Never serve the config dir over HTTP (db.php + secret.key) -> 403.
+# These files are still read server-side via PHP include; only HTTP access
+# is blocked.
+RewriteRule ^spear/config/ - [F,L]
+# ------------------------------------------------------------------------
+
 # Phase 3.55: TAPhish-hosted look-alike vanity paths.
 # /p/<slug>/ serves the cloned landing page at spear/sniperhost/cloned/<slug>/
 # (slug = lower alnum/hyphen, max 41). Must precede the generic clean-URL rule.
