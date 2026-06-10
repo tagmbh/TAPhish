@@ -58,3 +58,4 @@ require_once __DIR__ . '/../../spear/manager/mail_client_detect.php';
 require_once __DIR__ . '/../../spear/manager/ip_info_projection.php';
 require_once __DIR__ . '/../../spear/manager/url_query_parse.php';
 require_once __DIR__ . '/../../spear/manager/wizard_tracker_builder.php';
+require_once __DIR__ . '/../../spear/manager/landing_host.php';
