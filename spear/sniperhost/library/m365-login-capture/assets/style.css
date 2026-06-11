@@ -82,6 +82,13 @@ html, body {
   margin-top: 18px;
   font-size: 13px;
 }
+.signin-meta-block {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 2;
+}
+.signin-meta-block a { color: #0067b8; text-decoration: none; }
+.signin-meta-block a:hover { text-decoration: underline; }
 .signin-meta a {
   color: #0067b8;
   text-decoration: none;
