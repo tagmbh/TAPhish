@@ -58,7 +58,7 @@ if (!function_exists('taphish_wizard_build_minimal_tracker')) {
         // so the report can render a `Field-<name>` column for each captured
         // step (the report reads wf_data.form_fields_and_values[*].idname).
         $formFields = array_values(array_filter(
-            array_map('strval', $formFields),
+            array_map(static fn ($f): string => trim((string) $f), $formFields),
             static fn (string $f): bool => $f !== ''
         ));
 
