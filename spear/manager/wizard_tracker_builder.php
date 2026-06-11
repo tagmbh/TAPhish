@@ -29,9 +29,20 @@ if (!function_exists('taphish_wizard_build_minimal_tracker')) {
      *                             /track.php or slashes are normalized away so
      *                             the JS posts to "<base>/track", as the
      *                             existing generator does)
+     * @param array<int,string> $formFields ordered list of the field names a
+     *                             capture landing collects across its funnel
+     *                             (e.g. ['email','password','code_2fa']). When
+     *                             non-empty, the tracker is built with one
+     *                             cumulative page per field — page 1 declares
+     *                             field[0], page 2 field[0..1], etc. — so each
+     *                             captured step surfaces in the Web-Tracker
+     *                             report as a named `Field-<name>` column
+     *                             instead of being stored but invisible. Empty
+     *                             (default) keeps the original single visit-only
+     *                             page — fully backward compatible.
      * @return array{tracker_step_data:string, content_html:string, content_js:string}
      */
-    function taphish_wizard_build_minimal_tracker(string $tracker_id, string $tracker_name, string $webhook_url): array
+    function taphish_wizard_build_minimal_tracker(string $tracker_id, string $tracker_name, string $webhook_url, array $formFields = []): array
     {
         // Normalize the webhook base the same way the JS generator does:
         // strip a trailing /track.php and any surrounding slashes, then the JS
@@ -41,9 +52,49 @@ if (!function_exists('taphish_wizard_build_minimal_tracker')) {
         $base = rtrim($base, '/');
 
         // --- tracker_step_data: same top-level shape the generator saves ---
-        // ('start' + 'trackers' + 'web_forms'{count,data[]}). A single page
-        // with just a visit (no form fields beyond the implicit submit) keeps
-        // it minimal yet schema-compatible with the editor + report views.
+        // ('start' + 'trackers' + 'web_forms'{count,data[]}). Without declared
+        // capture fields we keep the original single visit-only page (minimal,
+        // schema-compatible). With fields we emit one cumulative page per field
+        // so the report can render a `Field-<name>` column for each captured
+        // step (the report reads wf_data.form_fields_and_values[*].idname).
+        $formFields = array_values(array_filter(
+            array_map('strval', $formFields),
+            static fn (string $f): bool => $f !== ''
+        ));
+
+        if ($formFields === []) {
+            $webFormsData = [[
+                'page_name'              => 'Landing page',
+                'page_url'               => $base . '/#',
+                'link_next_page'         => false,
+                'next_page_url'          => '#',
+                'form_fields_and_values' => new stdClass(),
+            ]];
+        } else {
+            $webFormsData = [];
+            $cumulative   = [];
+            $last         = count($formFields) - 1;
+            foreach ($formFields as $i => $field) {
+                $cumulative[] = $field;
+                // Each declared field becomes {idname:<name>}; the report keys
+                // its column off idname and matches the captured form_field_data
+                // entry of the same name. 'FSB' (form submit button) is the
+                // generator's reserved key and is skipped by the report.
+                $ffv = [];
+                foreach ($cumulative as $f) {
+                    $ffv[$f] = ['idname' => $f];
+                }
+                $ffv['FSB'] = ['idname' => 'submit'];
+                $webFormsData[] = [
+                    'page_name'              => 'Step ' . ($i + 1) . ' (' . $field . ')',
+                    'page_url'               => $i === 0 ? $base . '/#' : '#',
+                    'link_next_page'         => $i !== $last,
+                    'next_page_url'          => '#',
+                    'form_fields_and_values' => $ffv,
+                ];
+            }
+        }
+
         $tracker_step_data = [
             'start' => [
                 'tb_tracker_name'      => $tracker_name,
@@ -53,16 +104,8 @@ if (!function_exists('taphish_wizard_build_minimal_tracker')) {
             ],
             'trackers' => new stdClass(),
             'web_forms' => [
-                'count' => 1,
-                'data'  => [
-                    [
-                        'page_name'              => 'Landing page',
-                        'page_url'               => $base . '/#',
-                        'link_next_page'         => false,
-                        'next_page_url'          => '#',
-                        'form_fields_and_values' => new stdClass(),
-                    ],
-                ],
+                'count' => count($webFormsData),
+                'data'  => $webFormsData,
             ],
         ];
 
@@ -163,8 +206,11 @@ JS;
 
         // content_html mirrors saveWebTracker(): a JSON object keyed by page
         // index holding the per-page HTML preview. Minimal tracker → empty
-        // form HTML for page 0.
-        $content_html = json_encode([0 => ''], JSON_UNESCAPED_SLASHES);
+        // form HTML per page (one entry per web_forms page).
+        $content_html = json_encode(
+            array_fill(0, max(1, count($webFormsData)), ''),
+            JSON_UNESCAPED_SLASHES
+        );
 
         return [
             'tracker_step_data' => (string) json_encode($tracker_step_data, JSON_UNESCAPED_SLASHES),

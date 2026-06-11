@@ -80,6 +80,58 @@ final class WizardTrackerBuilderTest extends TestCase
         self::assertSame('', $html[0]);
     }
 
+    // --- capture-field schema (form fields surface in the report) ---------
+
+    public function testNoFormFieldsKeepsSingleVisitOnlyPage(): void
+    {
+        // Backward compatible: omitting the new arg yields the original shape.
+        $out  = taphish_wizard_build_minimal_tracker('trk', 'T', 'https://host/track.php');
+        $data = json_decode($out['tracker_step_data'], true);
+        self::assertSame(1, $data['web_forms']['count']);
+        self::assertCount(1, $data['web_forms']['data']);
+        // empty stdClass round-trips to an empty array under assoc decode.
+        self::assertSame([], $data['web_forms']['data'][0]['form_fields_and_values']);
+    }
+
+    public function testFormFieldsBuildOneCumulativePagePerField(): void
+    {
+        $out  = taphish_wizard_build_minimal_tracker(
+            'trk', 'M365', 'https://host/track.php', ['email', 'password', 'code_2fa']
+        );
+        $data = json_decode($out['tracker_step_data'], true);
+        self::assertSame(3, $data['web_forms']['count']);
+        $pages = $data['web_forms']['data'];
+        self::assertCount(3, $pages);
+
+        // Page 1 declares email only; page 3 declares the full triple.
+        self::assertArrayHasKey('email', $pages[0]['form_fields_and_values']);
+        self::assertArrayNotHasKey('password', $pages[0]['form_fields_and_values']);
+        foreach (['email', 'password', 'code_2fa'] as $f) {
+            self::assertArrayHasKey($f, $pages[2]['form_fields_and_values']);
+            self::assertSame($f, $pages[2]['form_fields_and_values'][$f]['idname']);
+        }
+
+        // Each page carries the generator's reserved submit-button key.
+        self::assertArrayHasKey('FSB', $pages[0]['form_fields_and_values']);
+        // Linking: every page but the last points to a next page.
+        self::assertTrue($pages[0]['link_next_page']);
+        self::assertTrue($pages[1]['link_next_page']);
+        self::assertFalse($pages[2]['link_next_page']);
+        // content_html gains one (empty) entry per page.
+        $html = json_decode($out['content_html'], true);
+        self::assertCount(3, $html);
+    }
+
+    public function testFormFieldsAreSanitisedAndEmptiesDropped(): void
+    {
+        $out  = taphish_wizard_build_minimal_tracker(
+            'trk', 'T', 'https://host/track.php', ['email', '', '  ', 'password']
+        );
+        $data = json_decode($out['tracker_step_data'], true);
+        // The two blank entries are dropped → 2 real fields → 2 pages.
+        self::assertSame(2, $data['web_forms']['count']);
+    }
+
     public function testEmptyTrackerNameDoesNotBreak(): void
     {
         $out  = taphish_wizard_build_minimal_tracker('trk', '', 'https://host/track.php');
