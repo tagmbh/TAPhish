@@ -1,204 +1,227 @@
-/* Abacus / AbaWeb sign-in — authorised phishing-awareness simulation.
-   Recreates the MyAbacus / AbaWeb ERP login look:
-   light-grey page, white card, grey field labels, blue primary button,
-   red Abacus diamond-grid logo. Mobile-first + responsive. */
+/* MyAbacus ESS sign-in — authorised phishing-awareness simulation.
+   Faithful single-page recreation of the real Abacus ERP OAuth login:
+   light-grey page, "Abacus ERP Login" + ABACUS logo row, centred white card
+   with Benutzername/Passwort and a blue "Anmelden" button (bottom-right),
+   plus a footer row (Check Newsletter / Hilfe / Deutsch language dropup).
+   Mobile-first and fully responsive. Bootstrap-default typography. */
 
 :root {
-  --aba-bg:        #f2f2f2;
+  --aba-bg:        #f4f4f5;  /* page background */
   --aba-card:      #ffffff;
   --aba-ink:       #333333;
+  --aba-title:     #777777;  /* "Abacus ERP Login" grey */
+  --aba-heading:   #404040;  /* card "Bitte anmelden ..." */
+  --aba-label:     #3a5a78;  /* grey-blue field labels (text-primary-2) */
   --aba-muted:     #6f6f6f;
-  --aba-label:     #555555;
-  --aba-line:      #cccccc;
-  --aba-card-line: #e2e2e2;
-  --aba-red:       #de323c;  /* Abacus brand red (logo) */
-  --aba-blue:      #2680c2;  /* primary action / links */
-  --aba-blue-dk:   #1f6ca5;
+  --aba-line:      #cccccc;  /* input border */
+  --aba-card-line: #e7e7e7;  /* card border */
+  --aba-blue:      #2680c2;  /* btn-primary */
+  --aba-blue-dk:   #2069a0;
   --aba-radius:    4px;
 }
 
 * { box-sizing: border-box; }
 
-html, body { height: 100%; }
+html, body { min-height: 100%; }
 
 body {
   margin: 0;
   background: var(--aba-bg);
   color: var(--aba-ink);
-  font-family: "Segoe UI", "Helvetica Neue", Arial, system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.42857143;
   -webkit-font-smoothing: antialiased;
 }
 
-.aba-shell {
+.login-container {
   width: 100%;
-  max-width: 460px;
+  max-width: 440px;
   margin: 0 auto;
-  padding: 28px 16px 40px;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
+  padding: 70px 16px 40px;
 }
 
-/* --- header (title left, logo right) --- */
-.aba-header {
+/* --- top row: "Abacus ERP Login" (left) + ABACUS logo (right) --- */
+.login-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 16px;
+  margin-bottom: 22px;
   flex-wrap: wrap;
 }
-.aba-header-title {
-  font-size: 21px;
-  font-weight: 400;
-  color: var(--aba-muted);
+.login-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 300;
+  color: var(--aba-title);
   letter-spacing: .2px;
 }
-.aba-logo svg { display: block; height: 28px; width: auto; }
+.login-logo {
+  display: block;
+  height: 26px;
+  width: auto;
+}
 
-/* --- card --- */
-.aba-card {
+/* --- white card --- */
+.hpanel {
   background: var(--aba-card);
   border: 1px solid var(--aba-card-line);
   border-radius: var(--aba-radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-  padding: 26px 24px 30px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+.panel-body {
+  padding: 26px 24px 28px;
 }
 
-.aba-card-title {
-  font-size: 16px;
+.login-please {
+  margin: 0 0 24px;
+  font-size: 15px;
   font-weight: 700;
-  color: #404040;
-  margin-bottom: 22px;
+  color: var(--aba-heading);
 }
 
-.aba-account {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.otp-hint {
+  margin: 0 0 20px;
   font-size: 14px;
-  color: var(--aba-ink);
-  background: #f6f6f6;
-  border: 1px solid var(--aba-card-line);
-  border-radius: 999px;
-  padding: 5px 12px 5px 8px;
-  margin-bottom: 20px;
-  max-width: 100%;
-  word-break: break-all;
+  color: var(--aba-muted);
 }
-.aba-account-dot {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: var(--aba-red);
-  flex: 0 0 auto;
-}
+#email-echo-2 { color: var(--aba-ink); font-weight: 600; word-break: break-all; }
 
-.aba-label {
+/* --- form fields --- */
+.form-group { margin-bottom: 18px; }
+
+.control-label {
   display: block;
+  margin-bottom: 5px;
   font-size: 13px;
+  font-weight: 400;
   color: var(--aba-label);
-  margin-bottom: 6px;
 }
 
-.aba-field {
+.form-control {
   display: block;
   width: 100%;
-  height: 42px;
-  padding: 8px 12px;
-  margin-bottom: 20px;
-  font-size: 15px;
+  height: 38px;
+  padding: 7px 12px;
+  font-size: 14px;
   color: var(--aba-ink);
   background: #fff;
   border: 1px solid var(--aba-line);
   border-radius: var(--aba-radius);
   appearance: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
 }
-.aba-field:focus {
+.form-control:focus {
   outline: none;
   border-color: var(--aba-blue);
   box-shadow: 0 0 0 3px rgba(38, 128, 194, .18);
 }
-.aba-field::placeholder { color: #aaa; }
+.form-control::placeholder { color: #aaa; }
 
-.aba-code {
-  letter-spacing: .35em;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.aba-sub {
-  margin: 0 0 18px;
-  font-size: 14px;
-  color: var(--aba-muted);
-}
-
-/* --- action row: link left, button right --- */
-.aba-row {
+/* --- button row: button bottom-right --- */
+.form-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-top: 4px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 26px;
 }
-.aba-row-end { justify-content: flex-end; }
 
-.aba-link {
-  color: var(--aba-blue);
+.btn {
+  display: inline-block;
+  min-height: 34px;
+  padding: 7px 18px;
   font-size: 14px;
-  text-decoration: none;
+  font-weight: 400;
+  line-height: 1.42857143;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--aba-radius);
+  user-select: none;
 }
-.aba-link:hover { text-decoration: underline; }
-
-.aba-btn {
-  min-height: 42px;
-  padding: 9px 26px;
-  font-size: 15px;
-  font-weight: 600;
+.btn-primary {
   color: #fff;
   background: var(--aba-blue);
-  border: 1px solid var(--aba-blue);
-  border-radius: var(--aba-radius);
-  cursor: pointer;
-  transition: background .15s ease, border-color .15s ease;
+  border-color: var(--aba-blue);
 }
-.aba-btn:hover  { background: var(--aba-blue-dk); border-color: var(--aba-blue-dk); }
-.aba-btn:active { background: #1a5d8f; }
+.btn-primary:hover  { background: var(--aba-blue-dk); border-color: var(--aba-blue-dk); }
+.btn-primary:active { background: #1a5d8f; }
 
-/* --- footer --- */
-.aba-footer {
+.btn-default {
+  color: #555;
+  background: #fff;
+  border-color: #cfcfcf;
+}
+.btn-default:hover { background: #f5f5f5; }
+
+/* --- footer row (under the card) --- */
+.language-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 22px;
-  font-size: 13px;
-  color: var(--aba-muted);
+  gap: 16px;
+  margin-top: 18px;
   flex-wrap: wrap;
 }
-.aba-footer-news { color: var(--aba-muted); }
-.aba-footer-lang {
-  border: 1px solid var(--aba-card-line);
-  background: #fff;
-  border-radius: 999px;
-  padding: 4px 14px;
-  color: #444;
+.bar-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.bar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #555;
+  text-decoration: none;
+}
+.bar-link:hover { text-decoration: none; color: #333; }
+.bar-icon {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+.bar-right { margin-left: auto; }
+
+.dropup-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  min-height: 30px;
+}
+.caret {
+  display: inline-block;
+  width: 0; height: 0;
+  margin-left: 4px;
+  vertical-align: middle;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid currentColor; /* dropup: arrow points up */
 }
 
 /* --- responsive: phone --- */
-@media (max-width: 480px) {
-  .aba-shell { padding: 18px 12px 32px; }
-  .aba-header { gap: 8px; }
-  .aba-header-title { font-size: 18px; }
-  .aba-logo svg { height: 24px; }
-  .aba-card {
-    padding: 22px 18px 26px;
-    border-radius: var(--aba-radius);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+@media (max-width: 600px) {
+  .login-container { padding: 28px 12px 32px; max-width: 100%; }
+  .login-head {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
   }
-  .aba-row { gap: 12px; }
-  .aba-btn { flex: 1 1 auto; }   /* full-width tap target on phones */
-  .aba-link { order: 2; }
+  .login-title { font-size: 23px; }
+  .panel-body { padding: 22px 18px 24px; }
+  .form-control { height: 42px; }            /* larger tap targets */
+  .btn { min-height: 42px; padding: 10px 20px; }
+  .form-actions .btn-primary { width: 100%; }
+  .language-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .bar-left { justify-content: center; gap: 20px; }
+  .bar-right { margin-left: 0; text-align: center; }
+  .bar-link { min-height: 40px; }
+  .dropup-btn { width: 100%; min-height: 40px; }
 }

