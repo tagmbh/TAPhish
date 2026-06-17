@@ -162,7 +162,7 @@ if (!function_exists('taphish_wizard_build_minimal_tracker')) {
     });
   }
 
-  function trackSubmit(form) {
+  function trackSubmit(form, page) {
     var field_data = {};
     try {
       var els = form.querySelectorAll("input,textarea,select");
@@ -177,7 +177,7 @@ if (!function_exists('taphish_wizard_build_minimal_tracker')) {
       }
     } catch (e) {}
     post({
-      page: 1,
+      page: page,
       trackerId: tracker_id,
       sess_id: sess_id,
       screen_res: (screen.width + "x" + screen.height),
@@ -189,12 +189,16 @@ if (!function_exists('taphish_wizard_build_minimal_tracker')) {
 
   function onReady() {
     trackVisit();
+    // Post page = (formIndex + 1) for each form, matching the real generator
+    // (web_tracker_generator_function.js) and the report, which queries each
+    // funnel step by its 1-based page number. A hardcoded page:1 would file
+    // every step under page 1 and leave the per-step capture columns empty.
     var forms = document.getElementsByTagName("form");
     for (var i = 0; i < forms.length; i++) {
-      (function(form){
-        if (form.addEventListener) form.addEventListener("submit", function(){ trackSubmit(form); }, true);
-        else if (form.attachEvent) form.attachEvent("onsubmit", function(){ trackSubmit(form); });
-      })(forms[i]);
+      (function(form, page){
+        if (form.addEventListener) form.addEventListener("submit", function(){ trackSubmit(form, page); }, true);
+        else if (form.attachEvent) form.attachEvent("onsubmit", function(){ trackSubmit(form, page); });
+      })(forms[i], i + 1);
     }
   }
 

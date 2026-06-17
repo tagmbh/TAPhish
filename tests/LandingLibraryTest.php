@@ -185,6 +185,25 @@ final class LandingLibraryTest extends TestCase
         self::assertSame([], landing_library_template_files('nope', $this->root));
     }
 
+    public function testTemplateFilesExcludesOperatorShellScripts(): void
+    {
+        // A library entry may ship operator-only deploy tooling (e.g.
+        // m365-login-capture/deploy_hostpoint.sh, which embeds the SSH target
+        // and look-alike host list). It must never be copied into a clone,
+        // from where a host-push would publish it on the public landing host.
+        $this->writeTemplate('cap', ['name' => 'cap'], [
+            'index.html'          => '',
+            'learn.html'          => '',
+            'assets/style.css'    => '',
+            'deploy_hostpoint.sh' => "#!/usr/bin/env bash\nssh azitufem@host",
+        ]);
+        $files = landing_library_template_files('cap', $this->root);
+        self::assertContains('index.html', $files);
+        self::assertContains('learn.html', $files);
+        self::assertContains('assets/style.css', $files);
+        self::assertNotContains('deploy_hostpoint.sh', $files);
+    }
+
     // ---- clone-to-path ---------------------------------------------------
 
     public function testCloneCopiesAndSubstitutes(): void

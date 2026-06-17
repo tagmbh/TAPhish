@@ -71,6 +71,24 @@ final class WizardTrackerBuilderTest extends TestCase
         self::assertStringContainsString('"POST", webhook', $js);
     }
 
+    public function testContentJsPostsPerFormPageNumberNotHardcodedOne(): void
+    {
+        // The generated beacon must post page = (formIndex + 1) for each form,
+        // matching the real generator + the report (which queries each funnel
+        // step by its 1-based page). A hardcoded page:1 filed every step under
+        // page 1 and left the per-step capture columns empty past page 1.
+        $out = taphish_wizard_build_minimal_tracker(
+            'trk', 'M365', 'https://host/track.php', ['email', 'password', 'code_2fa']
+        );
+        $js = $out['content_js'];
+        // trackSubmit carries the page through and posts it (not a literal 1).
+        self::assertStringContainsString('function trackSubmit(form, page)', $js);
+        self::assertStringContainsString('page: page,', $js);
+        self::assertStringNotContainsString('page: 1,', $js);
+        // forms are bound with their 1-based index.
+        self::assertStringContainsString('i + 1', $js);
+    }
+
     public function testContentHtmlIsValidJsonObject(): void
     {
         $out  = taphish_wizard_build_minimal_tracker('trk', 'T', 'https://host/track.php');

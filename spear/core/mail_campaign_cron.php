@@ -205,20 +205,7 @@ function InitMailCampaign($conn, $campaign_id){
 	//----------------------------------------------------------------------------------------
 	
 	$transport = Transport::fromDsn(getMailerDSN($sender_dsn_type, urlencode($sender_acc_username), urlencode($sender_acc_pwd), $sender_SMTP_server, $config_peer_verification));
-	$mailer = new Mailer($transport); 
-	$message = (new Email());
-
-	$message->priority($config_msg_priority); //Msg priority
-
-	//Adding headers
-  	foreach ($cust_headers as $header_name => $header_val) {
-  		if(strcasecmp($header_name, 'return-path') == 0)
-            $message->returnPath($header_val);
-        elseif(strcasecmp($header_name, 'reply-to') == 0)
-            $message->replyTo($header_val);
-        else
-            $message->getHeaders()->addTextHeader($header_name, $header_val);
-	}
+	$mailer = new Mailer($transport);
 
 	foreach ($arr_user_data as $arr_user) {
 		// Phase 3.18: skip recipient if they already have a row for this
@@ -257,6 +244,24 @@ function InitMailCampaign($conn, $campaign_id){
     	$msg_fail_retry_counter = 0;
 	    $RID = generateRID($conn, $campaign_id);
 	    $i++;
+
+	    // Fresh message per recipient. Previously a single $message was built
+	    // once before the loop and reused: attachments + QR/barcode embeds
+	    // accumulated across recipients (recipient N got N copies), and S/MIME
+	    // signing/encryption reassigned $message to a base Mime\Message whose
+	    // next-iteration ->from()/->subject() call fatals — breaking every
+	    // signed/encrypted campaign after the first recipient.
+	    $message = (new Email());
+	    $message->priority($config_msg_priority); //Msg priority
+	    //Adding headers
+	    foreach ($cust_headers as $header_name => $header_val) {
+	        if(strcasecmp($header_name, 'return-path') == 0)
+	            $message->returnPath($header_val);
+	        elseif(strcasecmp($header_name, 'reply-to') == 0)
+	            $message->replyTo($header_val);
+	        else
+	            $message->getHeaders()->addTextHeader($header_name, $header_val);
+	    }
 
 	    $keyword_vals['{{RID}}'] = $RID;
 	    $keyword_vals['{{MID}}'] = $campaign_id;
