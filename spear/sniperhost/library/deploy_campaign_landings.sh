@@ -28,8 +28,8 @@ variant_for() {
   case "$1" in
     owa.texti1color.ch)        echo "owa-exchange-capture" ;; # classic Exchange OWA (real owa design)
     abacus.texti1color.ch)     echo "myabacus-login-capture" ;; # MyAbacus / AbaWeb pretext
-    sharepoint.texti1color.ch) echo "onedrive-share-capture" ;; # K3 OneDrive / SharePoint share
-    feed.msoffice365.ch)       echo "generic-login-capture"  ;; # generic easy-to-recognise tier
+    sharepoint.texti1color.ch) echo "m365-login-capture" ;; # K3 OneDrive -> real Microsoft login
+    feed.msoffice365.ch)       echo "m365-login-capture" ;; # Interne Komm. -> real Microsoft/SharePoint login
     *)                         echo ""                        ;;
   esac
 }
