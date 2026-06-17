@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ooops — das war eine Phishing-Simulation</title>
+<style>
+  :root{ --bg:#f3f2f1; --card:#fff; --ink:#201f1e; --muted:#605e5c; --line:#edebe9;
+         --brand:#2680c2; --ok:#107c10; --warn:#c4314b; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.55}
+  .wrap{max-width:720px;margin:0 auto;padding:32px 20px 64px}
+  .hero{background:var(--warn);color:#fff;border-radius:12px;padding:30px 28px;margin-bottom:22px;text-align:center}
+  .hero .big{font-size:54px;line-height:1;margin-bottom:10px}
+  .hero h1{margin:0 0 6px;font-size:26px;font-weight:700}
+  .hero p{margin:0;opacity:.96;font-size:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin-bottom:16px}
+  .card h2{margin:0 0 10px;font-size:17px;color:var(--brand)}
+  .reassure{border-left:4px solid var(--ok);background:#f1faf1}
+  .reassure h2{color:var(--ok)}
+  ul.checks{list-style:none;margin:0;padding:0}
+  ul.checks li{padding:8px 0 8px 28px;position:relative;border-bottom:1px solid var(--line)}
+  ul.checks li:last-child{border-bottom:0}
+  ul.checks li::before{content:"\2713";position:absolute;left:2px;top:8px;color:var(--ok);font-weight:700}
+  .url{font-family:Consolas,monospace;background:#f8f8f8;border:1px solid var(--line);border-radius:6px;padding:9px 12px;margin:6px 0;word-break:break-all}
+  .url .bad{color:var(--warn);font-weight:700}.url .good{color:var(--ok);font-weight:700}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="big">&#9888;&#65039;</div>
+    <h1>Ooops — du wurdest gephisht!</h1>
+    <p>Diese Seite war <strong>nicht</strong> Abacus / MyAbacus. Das war eine interne Phishing-Simulation deines Unternehmens.</p>
+  </div>
+
+  <div class="card reassure">
+    <h2>Keine Sorge — es ist nichts passiert</h2>
+    <p style="margin:0">Es entsteht dir <strong>kein Nachteil</strong>. Diese Übung dient ausschliesslich dem Lernen und hilft, echte Angriffe künftig zu erkennen. Ändere zur Sicherheit nichts an deinem Passwort wegen dieser Seite — sie war Teil der Schulung.</p>
+  </div>
+
+  <div class="card">
+    <h2>Woran du es hättest erkennen können</h2>
+    <ul class="checks">
+      <li><strong>Absender-Domain &amp; Link prüfen:</strong> die echte Abacus-Anmeldung (AbaWeb) läuft nur über <code>abaweb.abacus.ch</code>.</li>
+      <li><strong>Zeitdruck &amp; Drohung</strong> („innerhalb 24 Stunden", „Konto gesperrt") sind typische Warnsignale.</li>
+      <li><strong>Nie über Links in E-Mails anmelden</strong> — Dienste immer über ein gespeichertes Lesezeichen / das offizielle Portal öffnen.</li>
+    </ul>
+    <p style="margin:14px 0 4px">So sieht der Unterschied aus:</p>
+    <div class="url">Echt: https://<span class="good">abaweb.abacus.ch</span>/</div>
+    <div class="url">Fake: https://<span class="bad">abacus.texti1color.ch</span>/auth/&hellip;</div>
+  </div>
+
+  <div class="card">
+    <h2>Das Wichtigste in einem Satz</h2>
+    <p style="margin:0"><strong>Stop &amp; Check</strong> — kurz innehalten, Adresszeile prüfen, im Zweifel über einen zweiten Weg verifizieren. Verdächtige E-Mails über den <strong>Phish-Melden-Button</strong> melden. Und: <strong>MFA / FIDO2</strong> aktivieren — dann ist selbst ein gestohlenes Passwort wertlos.</p>
+  </div>
+
+  <footer>Security-Awareness-Übung &middot; Diese Simulation dient ausschliesslich Schulungszwecken.</footer>
+</div>
+</body>
+</html>

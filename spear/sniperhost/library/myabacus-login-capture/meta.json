@@ -1,0 +1,8 @@
+{
+  "name": "MyAbacus / AbaWeb sign-in (capture + awareness redirect)",
+  "description": "Authorised-simulation MyAbacus / AbaWeb (Abacus ERP) sign-in for the abacus.texti1color.ch host: records email + password + OTP to the tracker (3-step concept — click recorded by the tracker visit, credentials recorded on submit), then redirects to a built-in 'Ooops, du wurdest gephisht' awareness page (learn.html) instead of the real Abacus login. Captures are stored in plaintext server-side — use only where the engagement consent covers credential capture, and purge after the programme.",
+  "pattern": "multi-step",
+  "has_2fa": true,
+  "fields": ["email", "password", "code_2fa"],
+  "placeholder_notes": "Captures real credentials (DSG/GDPR-sensitive). learn.html ships with the clone — adapt the awareness copy/branding as needed. Brand mark is the official Abacus diamond-grid logo (red #de323c) recreated as inline SVG; the form follows the AbaWeb 'Bitte melden Sie sich bei Abacus an' layout."
+}
