@@ -528,7 +528,10 @@ function getHTMLData(&$arr_odata,&$file_name,&$selected_col,&$dic_all_col){
 //--------------Logger--------
 function logIt($log,$username=null){
     global $conn;
-    $username=$username==null?$_SESSION['username']:$username;
+    // track.php (victim-facing) calls logIt() with no operator session, so
+    // $_SESSION is undefined there — guard it to avoid leaking PHP warnings +
+    // server paths into the capture HTTP response. Sessionless = 'system'.
+    $username = $username !== null ? $username : ($_SESSION['username'] ?? 'system');
     $entry_time=$GLOBALS['entry_time'];
     $public_ip = getPublicIP();
 
