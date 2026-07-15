@@ -303,3 +303,31 @@ if (!function_exists('taphish_capture_summary_for_campaign')) {
         return $out;
     }
 }
+
+if (!function_exists('taphish_tracker_capture_decision')) {
+    /**
+     * Decide what track.php should do with an incoming hit, given the
+     * `SELECT active FROM tb_core_web_tracker_list` row (or null when no such
+     * tracker exists).
+     *
+     *   'drop'           → tracker row exists and active=0 → intentionally
+     *                      paused/stopped, ignore the hit (existing behaviour).
+     *   'record'         → tracker row exists and is active → record normally.
+     *   'record_unknown' → NO tracker row for this id. This is a
+     *                      mis-propagated / wrong trackerId (it used to arrive
+     *                      as the literal 'Failed' when the landing didn't
+     *                      carry it). The old code did `null == 0` → true and
+     *                      silently binned EVERY such capture. We record it
+     *                      anyway so a real victim submission is never lost,
+     *                      and the caller logs it loudly for the operator.
+     *
+     * @param array<string,mixed>|null $trackerRow  fetch_assoc() result or null
+     */
+    function taphish_tracker_capture_decision($trackerRow): string
+    {
+        if (is_array($trackerRow) && array_key_exists('active', $trackerRow)) {
+            return ((int) $trackerRow['active'] === 0) ? 'drop' : 'record';
+        }
+        return 'record_unknown';
+    }
+}

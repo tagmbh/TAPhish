@@ -170,6 +170,55 @@ if (!function_exists('taphish_preflight_http_get')) {
     }
 }
 
+if (!function_exists('taphish_landing_probe_cached')) {
+    /**
+     * Send-loop landing probe with a poison-resistant cache.
+     *
+     * One `InitMailCampaign` process handles the whole recipient batch, so
+     * the naive "probe once, cache the verdict for the tick" approach has a
+     * nasty failure mode: a single transient timeout/5xx while the FIRST
+     * recipient is processed caches a *failure* verdict that then blocks
+     * every remaining recipient — one blip aborts the entire campaign.
+     *
+     * Fix: only SUCCESS verdicts are cached (a known-good host is not
+     * re-probed for each of ~100 recipients). A failing probe is retried a
+     * few times to absorb transient blips and is NEVER cached, so a genuine
+     * outage blocks only the recipients sent during it, and recovery is
+     * picked up automatically on the next recipient.
+     *
+     * @param array $cache   Per-process cache, passed by reference (URL => ok-gate).
+     * @param callable $httpGet  URL => ['ok','status','body','error']; stubbable in tests.
+     * @return array  ['ok' => bool, 'reason' => string|null]
+     */
+    function taphish_landing_probe_cached(
+        string $landingUrl,
+        array &$cache,
+        callable $httpGet,
+        int $attempts = 3,
+        int $retrySleepMs = 200
+    ): array {
+        if (isset($cache[$landingUrl]) && !empty($cache[$landingUrl]['ok'])) {
+            return $cache[$landingUrl];
+        }
+        $gate = ['ok' => false, 'reason' => 'Landing page not probed.'];
+        $attempts = max(1, $attempts);
+        for ($n = 0; $n < $attempts; $n++) {
+            $probeResult = $httpGet($landingUrl);
+            $gate = taphish_preflight_landing_gate($landingUrl, static function () use ($probeResult) {
+                return $probeResult;
+            });
+            if (!empty($gate['ok'])) {
+                $cache[$landingUrl] = $gate;   // cache successes only
+                return $gate;
+            }
+            if ($n < $attempts - 1 && $retrySleepMs > 0) {
+                usleep($retrySleepMs * 1000);
+            }
+        }
+        return $gate;   // failure: not cached — the next recipient re-probes
+    }
+}
+
 if (!function_exists('taphish_landing_url_is_probeable')) {
     /**
      * SSRF guard for the landing probe (F2). The server is about to issue an

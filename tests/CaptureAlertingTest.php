@@ -180,4 +180,25 @@ final class CaptureAlertingTest extends TestCase
     {
         self::assertTrue(function_exists('taphish_capture_summary_for_campaign'));
     }
+
+    // --- F2: unknown trackerId must not silently drop captures -----------
+
+    public function testActiveTrackerRecords(): void
+    {
+        self::assertSame('record', taphish_tracker_capture_decision(['active' => 1]));
+    }
+
+    public function testPausedTrackerDrops(): void
+    {
+        self::assertSame('drop', taphish_tracker_capture_decision(['active' => 0]));
+        self::assertSame('drop', taphish_tracker_capture_decision(['active' => '0']));
+    }
+
+    public function testUnknownTrackerRecordsNotDrops(): void
+    {
+        // No row for this tracker_id (null from fetch_assoc). Previously
+        // `null == 0` → true → every capture silently binned.
+        self::assertSame('record_unknown', taphish_tracker_capture_decision(null));
+        self::assertSame('record_unknown', taphish_tracker_capture_decision([]));
+    }
 }

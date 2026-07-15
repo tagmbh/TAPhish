@@ -384,7 +384,7 @@ function multi_get_mcampinfo_from_mcamp_list_id_get_live_mcamp_data($conn, $POST
 		$colSortString = 'ORDER BY '.$columnName.' '.$columnSortOrder;
 
 	$stmt = $conn->prepare("SELECT COUNT(*) FROM tb_data_mailcamp_live WHERE campaign_id=?");
-	$stmt->bind_param("s", $tracker_id);
+	$stmt->bind_param("s", $campaign_id);   // was $tracker_id (undefined) → recordsTotal always 0
 	$stmt->execute();
 	$row = $stmt->get_result()->fetch_row();
 	$totalRecords = $row[0];

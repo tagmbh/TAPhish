@@ -59,13 +59,19 @@ if(isset($POSTJ['screen_res']))
 else
     $screen_res = 'Failed'; 
 
-//Check tracker stopped/paused
+//Check tracker stopped/paused. A missing row must NOT be treated as
+//"paused" — that used to bin every capture when the landing failed to
+//propagate trackerId (it arrived as the literal 'Failed'), silently losing
+//real victim submissions while still redirecting them to the awareness page.
 $stmt = $conn->prepare("SELECT active FROM tb_core_web_tracker_list WHERE tracker_id = ?");
 $stmt->bind_param("s", $trackerId);
 $stmt->execute();
-$result = $stmt->get_result()->fetch_assoc() ;
-if($result["active"] == 0)
+$tracker_row = $stmt->get_result()->fetch_assoc();
+$tracker_decision = taphish_tracker_capture_decision($tracker_row);
+if ($tracker_decision === 'drop')
   return;
+if ($tracker_decision === 'record_unknown' && function_exists('logIt'))
+  logIt('track.php: capture on UNKNOWN tracker_id="' . $trackerId . '" (rid=' . $rid . ') — recording anyway; check landing trackerId propagation.');
   
 $page = $POSTJ['page'];
 if($page == 0){  //page visit
