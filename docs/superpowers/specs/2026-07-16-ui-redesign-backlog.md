@@ -165,8 +165,9 @@ tracker deploy or authorize separately. Backups staged: `*.bak-audit`.
   emit **one clean column per logical field with the distinct/latest value**.
 - **Repeated rows per rid**: the multi-step landing re-posts, so each victim appears many times.
   → dedup to one per recipient (keep per-hit detail available on drill-down only).
-- **Screen Res = "Failed"** for every hit (screen-resolution capture broken).
-- **Country / geo empty** for every hit (ip_info geo lookup not populating).
+- ~~**Screen Res = "Failed"**~~ / ~~**Country / geo empty**~~ — **INVESTIGATED (P3, 2026-07-17): both CAPTURE/INFRA-side, not display bugs.**
+  - Screen Res: captured client-side by the injected tracker JS (`screen.width+"x"+screen.height`), but the custom m365 landing never POSTs it → stored empty for all 64 hits. **Not backfillable** (the client value is gone). Fix = have the landing send screen_res next round.
+  - Country: the projection (`taphish_ip_info_projection`) is CORRECT for ipapi.co; the geo is empty because **ipapi.co's free/tokenless tier rate-limits under load** (a single lookup works, a batch gets throttled — confirmed: 8.8.8.8 resolves, but 18/18 victim IPs failed). Stored IPs are clean (48 IPv4 + 16 IPv6). **Backfill CLI built + ready** (`spear/manager/cli/backfill_geo.php`, idempotent, dry-run-first) — it works once a **geo API token** (ipapi.co paid / ipinfo) or a **local MaxMind GeoLite2 DB** is configured. Recommend the token/local-DB switch; then run `--commit` to enrich existing hits. No live data modified during investigation (dry-run only).
 
 ## Tracking beacons (landing/template — fix NEXT round, not mid-campaign)
 
