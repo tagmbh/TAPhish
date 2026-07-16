@@ -44,8 +44,10 @@ Suite **1006 green**. This makes "Campaigns under Engagements" real and fixes th
   engagement + a per-row assign. Live: bucket lists 9 web + 3 quick real trackers; a throwaway assigns
   to engagement 3, appears in its hub, leaves the bucket.
 
-Deferred (noted, low priority): per-row **Löschen** in the Unscoped bucket (cross-type delete needs
-per-type cleanup — assign is the value driver); **membership-filtered** `list_engagements` (single-
+~~Deferred: per-row **Löschen** in the Unscoped bucket~~ ✅ **DONE (polish, 2026-07-17):** per-row delete
+dispatched by type to the existing delete actions (which clean up the item's data); the bucket only lists
+unscoped items so live campaigns never appear. Live-verified (create throwaway → delete from bucket → gone).
+Still deferred (low value, single-operator): **membership-filtered** `list_engagements` (single-
 operator today); server-side paging for the hub list (client-side is fine at ~20 campaigns).
 
 ## ✅ SHIPPED — P2.0 tracker bug batch (deployed + live-verified 2026-07-16)
@@ -88,10 +90,10 @@ chooser page). Path-based so the exact-href highlighter works. Live: one group p
 stray leaf gone, /spear/Trackers highlights + expands the Trackers group. Old report/list/builder pages
 stay reachable via the list's per-row links. Guard: `testNavUnifiesTrackersGroup`.
 
-**Pre-existing bug found during P2 health check (NOT introduced):** Home.php throws
-`moment is not defined` — it uses moment (dashboard.js) but never loads `js/libs/moment.min.js`
-(unlike other pages). One-line fix (add the script include); left out of P2 scope. Low impact
-(dashboard graphs on Home).
+~~**Pre-existing bug: Home `moment is not defined`**~~ ✅ **FIXED (polish, 2026-07-17):** the culprit was
+`common_scripts.js`'s Home-guarded login-bar `moment.tz()` call; Home.php now loads moment.min.js +
+moment-timezone before common_scripts.js. Only Home was affected (the moment.tz call is guarded to Home;
+other pages don't hit a moment path). Live: Home loads with zero JS errors.
 
 ## ✅ SHIPPED — P3 core: capture-field de-duplication (deployed + live-verified 2026-07-16)
 The operator-reported field-mapping mess (email ×24, password ×8 in one cell) is fixed. New
