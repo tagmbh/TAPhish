@@ -14,9 +14,9 @@
  *         php backfill_geo.php --commit   (perform the updates)
  */
 
-$root = dirname(__FILE__, 3);            // .../deepaudit.ch
-require_once($root . '/spear/config/db.php');
-require_once($root . '/spear/manager/ip_info_projection.php');
+$spear = dirname(__FILE__, 3);           // .../deepaudit.ch/spear
+require_once($spear . '/config/db.php');
+require_once($spear . '/manager/ip_info_projection.php');
 
 $mode = $argv[1] ?? '--dry';
 $commit = ($mode === '--commit');
