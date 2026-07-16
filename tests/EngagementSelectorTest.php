@@ -39,6 +39,18 @@ final class EngagementSelectorTest extends TestCase
         );
     }
 
+    public function testBuilderReadsEngagementsResponseField(): void
+    {
+        // Regression guard (caught by the live P1.1 demo): list_engagements
+        // returns { result, engagements:[...] }, NOT a bare array — the client
+        // must read data.engagements or the selector renders empty.
+        self::assertStringContainsString(
+            'data.engagements',
+            $this->read('js/mail_campaign.js'),
+            'pullEngagements must read the .engagements field of the response'
+        );
+    }
+
     public function testSavePayloadSendsEngagementId(): void
     {
         // Within the save_campaign_list payload, engagement_id must be sent.

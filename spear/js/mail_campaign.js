@@ -42,11 +42,9 @@ function pullEngagements() {
         contentType: 'application/json; charset=utf-8',
         data: JSON.stringify({ action_type: "list_engagements" })
     }).done(function (data) {
-        var rows = Array.isArray(data)
-            ? data
-            : (data && typeof data === 'object'
-                ? Object.values(data).filter(function (v) { return v && typeof v === 'object' && v.id; })
-                : []);
+        // list_engagements returns { result:'success', engagements:[...] }.
+        var rows = (data && Array.isArray(data.engagements)) ? data.engagements
+            : (Array.isArray(data) ? data : []);
         rows.forEach(function (e) {
             var label = (e.name || e.slug || ('Engagement ' + e.id)) + (e.status ? ' (' + e.status + ')' : '');
             $('#engagementSelector').append($('<option>').attr('value', e.id).text(label));
