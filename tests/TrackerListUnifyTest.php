@@ -54,6 +54,19 @@ final class TrackerListUnifyTest extends TestCase
         self::assertSame([], taphish_tracker_list_normalize([], []));
     }
 
+    public function testScannerHideFilterPredicate(): void
+    {
+        // P2.2a: opt-in scanner-hide for tracker report feeds. A hit is visible
+        // unless we're hiding scanners AND the row is flagged is_scanner=1. A
+        // missing is_scanner (e.g. web page-visits) is treated as human → visible.
+        self::assertTrue(taphish_hit_is_visible(['is_scanner' => 0], true));
+        self::assertTrue(taphish_hit_is_visible(['is_scanner' => 1], false));   // not hiding
+        self::assertFalse(taphish_hit_is_visible(['is_scanner' => 1], true));    // hide + scanner
+        self::assertTrue(taphish_hit_is_visible([], true));                      // no flag → visible
+        self::assertFalse(taphish_hit_is_visible(['is_scanner' => '1'], true));  // string coercion
+        self::assertTrue(taphish_hit_is_visible(['is_scanner' => '0'], true));
+    }
+
     public function testUnifiedPageAndActionAreWired(): void
     {
         $spear = dirname(__DIR__) . '/spear';

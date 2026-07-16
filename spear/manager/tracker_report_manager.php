@@ -132,6 +132,10 @@ function getTableWebpageVisitFormSubmission($conn, &$POSTJ){
 	$selected_col = $POSTJ['selected_col'];
 	$arr_filtered=[];
 	$DTime_info = getTimeInfo($conn);
+	// P2.2a: opt-in scanner-hide. is_scanner exists on tb_data_webform_submit
+	// (page>0); tb_data_webpage_visit (page 0) has no flag → predicate no-ops.
+	require_once(dirname(__FILE__) . '/tracker_unified.php');
+	$hideScanner = filter_var($POSTJ['hide_scanner'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 	if (!in_array($columnName, ['rid','session_id','public_ip','ip_info','user_agent','screen_res','time','browser','platform','device_type']))	//should be db column name
 	    $columnName = '';
@@ -169,6 +173,7 @@ function getTableWebpageVisitFormSubmission($conn, &$POSTJ){
 	$result = $stmt->get_result();
 	$rows = $result->fetch_all(MYSQLI_ASSOC);
 	foreach($rows as $i => $row){
+		if(!taphish_hit_is_visible($row, $hideScanner)) continue;   // P2.2a: hide scanner hits when toggled
 		$tmp = [];
 		$ip_info = json_decode($row['ip_info'],true);
 		$form_field_data = json_decode($row['form_field_data'],true);

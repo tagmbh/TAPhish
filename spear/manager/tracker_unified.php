@@ -34,6 +34,22 @@ if (!function_exists('taphish_tracker_list_normalize')) {
     }
 }
 
+if (!function_exists('taphish_hit_is_visible')) {
+    /**
+     * P2.2a (pure): opt-in scanner-hide for tracker report feeds. A captured hit
+     * is visible unless the operator is hiding scanners AND the row is flagged
+     * is_scanner=1. Rows with no is_scanner column (web page-visits) count as
+     * human → always visible, so the flag is a safe no-op there.
+     */
+    function taphish_hit_is_visible(array $row, bool $hideScanner): bool
+    {
+        if (!$hideScanner) {
+            return true;
+        }
+        return (int) ($row['is_scanner'] ?? 0) !== 1;
+    }
+}
+
 if (!function_exists('taphish_all_trackers')) {
     /**
      * Fetch ALL web + quick trackers (any engagement), type-tagged + localized.

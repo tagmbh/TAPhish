@@ -155,6 +155,9 @@ function getQuickTrackerData($conn, &$POSTJ){
 	$tb_data_single = $POSTJ['tb_data_single'];
 	$arr_filtered = [];
 	$DTime_info = getTimeInfo($conn);
+	// P2.2a: opt-in scanner-hide (default off → unchanged behaviour).
+	require_once(dirname(__FILE__) . '/tracker_unified.php');
+	$hideScanner = filter_var($POSTJ['hide_scanner'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 	if (!in_array($columnName, ['rid','public_ip','ip_info','user_agent','mail_client','platform','all_headers','time']))	//should be db column name
 	    $columnName = '';	
@@ -178,6 +181,7 @@ function getQuickTrackerData($conn, &$POSTJ){
 	$result = $stmt->get_result();
 	$rows = $result->fetch_all(MYSQLI_ASSOC);
 	foreach($rows as $i => $row){
+		if(!taphish_hit_is_visible($row, $hideScanner)) continue;   // P2.2a: hide scanner hits when toggled
 		$tmp = [];
 		$ip_info = json_decode($row['ip_info'],true);
 		$f_found = false;
