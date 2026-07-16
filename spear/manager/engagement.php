@@ -367,6 +367,61 @@ if (!function_exists('taphish_engagement_ensure_campaign_fk_column')) {
     }
 }
 
+if (!function_exists('taphish_tracker_ensure_engagement_column_generic')) {
+    /**
+     * P1.2: shared, idempotent "add nullable engagement_id + index" migration for
+     * the tracker tables, so a web/quick tracker can be scoped to an engagement
+     * (mirrors the 3.45b campaign-FK migration). The table name is whitelisted
+     * (identifiers can't be bound); existing rows stay NULL → visible in the
+     * "Unscoped/Legacy" bucket until an operator assigns them (no auto-backfill:
+     * tracker→engagement linkage is less certain than the user-group case, so we
+     * leave assignment explicit rather than guessing).
+     */
+    function taphish_tracker_ensure_engagement_column_generic(\mysqli $conn, string $table, string $index): void
+    {
+        if (!($conn instanceof \mysqli)) {
+            return;
+        }
+        if (!in_array($table, ['tb_core_web_tracker_list', 'tb_core_quick_tracker_list'], true)) {
+            return; // never interpolate an unwhitelisted identifier
+        }
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND COLUMN_NAME = 'engagement_id'"
+        );
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->bind_param('s', $table);
+        $stmt->execute();
+        $present = (int) $stmt->get_result()->fetch_row()[0];
+        $stmt->close();
+        if ($present > 0) {
+            return;
+        }
+        @$conn->query("ALTER TABLE $table ADD COLUMN engagement_id INT UNSIGNED NULL DEFAULT NULL");
+        @$conn->query("CREATE INDEX $index ON $table(engagement_id)");
+    }
+}
+
+if (!function_exists('taphish_web_tracker_ensure_engagement_column')) {
+    /** P1.2: nullable engagement_id on tb_core_web_tracker_list. */
+    function taphish_web_tracker_ensure_engagement_column(\mysqli $conn): void
+    {
+        taphish_tracker_ensure_engagement_column_generic($conn, 'tb_core_web_tracker_list', 'idx_web_tracker_engagement');
+    }
+}
+
+if (!function_exists('taphish_quick_tracker_ensure_engagement_column')) {
+    /** P1.2: nullable engagement_id on tb_core_quick_tracker_list. */
+    function taphish_quick_tracker_ensure_engagement_column(\mysqli $conn): void
+    {
+        taphish_tracker_ensure_engagement_column_generic($conn, 'tb_core_quick_tracker_list', 'idx_quick_tracker_engagement');
+    }
+}
+
 if (!function_exists('taphish_user_group_backfill_engagement')) {
     /**
      * Phase 3.48b: pure backfill decision. Given the engagement_ids of every

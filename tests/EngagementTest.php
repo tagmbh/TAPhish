@@ -198,6 +198,24 @@ final class EngagementTest extends TestCase
         self::assertTrue(function_exists('taphish_engagement_ensure_campaign_fk_column'));
     }
 
+    public function testWebTrackerEnsureEngagementColumnIsDefined(): void
+    {
+        // P1.2: web trackers must be scopeable to an engagement (idempotent DDL
+        // helper, mirrors the campaign-FK migration; behaviour verified live).
+        self::assertTrue(function_exists('taphish_web_tracker_ensure_engagement_column'));
+        $ref = new \ReflectionFunction('taphish_web_tracker_ensure_engagement_column');
+        self::assertSame(1, $ref->getNumberOfParameters());
+        self::assertSame('conn', $ref->getParameters()[0]->getName());
+    }
+
+    public function testQuickTrackerEnsureEngagementColumnIsDefined(): void
+    {
+        self::assertTrue(function_exists('taphish_quick_tracker_ensure_engagement_column'));
+        $ref = new \ReflectionFunction('taphish_quick_tracker_ensure_engagement_column');
+        self::assertSame(1, $ref->getNumberOfParameters());
+        self::assertSame('conn', $ref->getParameters()[0]->getName());
+    }
+
     public function testTransitionStatusHelperIsDefined(): void
     {
         self::assertTrue(function_exists('taphish_engagement_transition_status'));
