@@ -125,7 +125,13 @@
                               <div class="col-md-1">
                                  <button type="button" class="btn btn-success mdi mdi-reload " data-toggle="tooltip" data-placement="top" title="Refresh table" onclick="loadTableQuickTrackerResult(g_tracker_id)"></button>
                               </div>
-                              <div class="align-items-right ml-auto row">                                  
+                              <div class="col-md-auto d-flex align-items-center">
+                                 <div class="custom-control custom-switch m-t-15" title="Hide scanner / bot-prefetch hits from the report">
+                                    <input type="checkbox" class="custom-control-input" id="cb_hide_scanner">
+                                    <label class="custom-control-label" for="cb_hide_scanner">Hide scanners</label>
+                                 </div>
+                              </div>
+                              <div class="align-items-right ml-auto row">
                                  <button type="button" class="btn btn-success" data-toggle="modal" data-target="#ModalExport"><i class="m-r-10 fas fa-file-export"></i> Export</button>
                               </div>
                            </div><span id="dummy" hidden=""></span>

@@ -43,6 +43,14 @@ $("#tb_report_colums_list").parent().find("ul.select2-selection__rendered").sort
 	}
 });
 
+// P2.2: reload the results when the scanner-hide toggle changes (delegated;
+// tdt only exists once a tracker is selected).
+$(function () {
+    $(document).on('change', '#cb_hide_scanner', function () {
+        try { if (tdt) { tdt.ajax.reload(); } } catch (e) {}
+    });
+});
+
 function getAllReportColListSelected(){
 	var allReportColList=[];
     allReportColListSelected=[];
@@ -197,6 +205,7 @@ function loadTableWebTrackerResult(g_tracker_id) {
                     d.page=web_page;
                     d.tracker_id=g_tracker_id;
                     d.selected_col=allReportColListSelected;
+                    d.hide_scanner = $('#cb_hide_scanner').is(':checked');   // P2.2: scanner-hide toggle
                     return JSON.stringify(d);
                 },
             dataSrc: function ( resp ){

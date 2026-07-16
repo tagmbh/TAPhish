@@ -67,6 +67,17 @@ final class TrackerListUnifyTest extends TestCase
         self::assertTrue(taphish_hit_is_visible(['is_scanner' => '0'], true));
     }
 
+    public function testScannerToggleWiredInBothReportViews(): void
+    {
+        $spear = dirname(__DIR__) . '/spear';
+        foreach (['js/quick_tracker_report.js', 'js/web_tracker_report_functions.js'] as $js) {
+            self::assertStringContainsString('hide_scanner', file_get_contents($spear . '/' . $js), "$js must send hide_scanner");
+        }
+        foreach (['QuickTrackerReport.php', 'TrackerReport.php'] as $php) {
+            self::assertStringContainsString('cb_hide_scanner', file_get_contents($spear . '/' . $php), "$php must have the scanner toggle");
+        }
+    }
+
     public function testUnifiedPageAndActionAreWired(): void
     {
         $spear = dirname(__DIR__) . '/spear';

@@ -123,8 +123,9 @@ function loadTableQuickTrackerResult(tracker_id) {
             contentType: "application/json; charset=utf-8",
             data: function (d) {   //request parameters here
                     d.action_type = 'get_quick_tracker_data';
-                    d.tracker_id = tracker_id;                    
+                    d.tracker_id = tracker_id;
                     d.selected_col = allReportColListSelected;
+                    d.hide_scanner = $('#cb_hide_scanner').is(':checked');   // P2.2: scanner-hide toggle
                     return JSON.stringify(d);
                 },
             dataSrc: function ( resp ){
@@ -148,6 +149,14 @@ function loadTableQuickTrackerResult(tracker_id) {
         }
     });
 }
+
+// P2.2: reload the results when the scanner-hide toggle changes (delegated so it
+// survives table re-inits; tdt only exists once a tracker is selected).
+$(function () {
+    $(document).on('change', '#cb_hide_scanner', function () {
+        try { if (tdt) { tdt.ajax.reload(); } } catch (e) {}
+    });
+});
 
 function exportReportAction(e) {
     if(tdt.rows().count() > 0){
