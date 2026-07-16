@@ -70,7 +70,15 @@ quick in one table with a Type badge + Web/Quick/All filter. `tracker_unified.ph
 (authz operator+), `Trackers.php` + `trackers_unified.js`. Live: 12 trackers (9 web + 3 quick),
 type-badged, filter works, # renumbers, Report/Edit deep-link to existing pages. Read-only aggregation;
 mutations still on the old pages. NOT yet in nav (that's P2.4). Guard: `TrackerListUnifyTest`.
-Still open: P2.2 Reports · P2.3 New · P2.4 Nav swap.
+
+**P2.2 · Reports scanner-hide** (deployed + live-verified 2026-07-16): `taphish_hit_is_visible` (pure/TDD)
++ opt-in `hide_scanner` on both report feeds (default off → unchanged), surfaced as a "Hide scanners"
+toggle on QuickTrackerReport + TrackerReport. Live: default==off; tracker x7xow0 54→36, xs7n6u 316→280
+scanner hits filtered; toggle present on both pages. **Scope note:** did NOT do a single-page
+render-merge of the two report clients — they have hard global collisions (g_tracker_id/dic_all_col/
+getAllReportColListSelected/exportReportAction), so merging = a large risky rewrite of the dynamic
+web-column logic (deferred, do attended). The cross-type report ENTRY is already served by P2.1's
+Trackers.php per-row Report links. Still open: P2.4 Nav swap (absorbs P2.3 as two "New" items).
 
 ### ⚠️ Deploy-discipline note (2026-07-16, during P1.3)
 A tar-deploy of `userlist_campaignlist_mailtemplate_manager.php` overwrote a server copy whose
