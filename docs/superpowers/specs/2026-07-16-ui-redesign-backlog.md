@@ -62,6 +62,16 @@ it**; (2) **the live server is likely behind the branch on other un-redeployed f
 `sha256` audit of server-vs-HEAD is worth doing before the P2+ consolidations. Backup of the deployed
 file: `…manager.php.bak-p13-deployed`.
 
+**Server-vs-HEAD audit (done before P2, 2026-07-16):** of 182 code files (manager/core/js/top-level
+views), only **4 differ**, and all 4 are cleanly *behind* the branch (each matches an older commit —
+no untracked hotfixes): `cli/seed_demo_campaigns.php`, `landing_host.php`, `landing_library.php`,
+`wizard_tracker_builder.php`. None are breaking. Note: the P1.3 deploy of `userlist_…manager.php`
+(post-#170, 4-arg `taphish_wizard_build_minimal_tracker`) now sits over the server's pre-#170 builder
+(3-arg) — PHP ignores the extra arg, so nothing breaks; #170's *optional* named-capture-field columns
+just stay inactive on deepaudit. **PENDING (needs explicit operator go — out of P0/P1 scope):**
+forward-upgrade those 4 files to HEAD to fully align the server + enable #170. Fold into the P2
+tracker deploy or authorize separately. Backups staged: `*.bak-audit`.
+
 ## Information architecture (menu reorg)
 
 - **Engagements** only lists engagements created from scratch, NOT the campaigns; can't delete them;
