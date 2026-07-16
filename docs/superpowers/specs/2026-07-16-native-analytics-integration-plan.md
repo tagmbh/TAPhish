@@ -74,3 +74,37 @@ Plus a **feature flag** (constant or `tb_main_variables` row) gating the nav ite
 3. **Page shell + JS** rendering selector + funnel/KPIs/charts from `analytics_summary` (flag OFF); confirm `/spear/EngagementAnalytics` loads and matches the old donuts.
 4. Add `analytics_recipients` (+ column picker/forensics/`Field-<name>`/open telemetry), `analytics_hits` (page-segmented raw), then `analytics_export`, then reply/bounce.
 5. **Last**: flag-gated nav entry in `z_menu.php`, flag on for operators; keep all 3 legacy menus intact.
+
+## Next-round tracking fixes (observed live in the Textilcolor run — integrate for the NEXT round, not mid-campaign)
+
+The 2026-07-16 slot-1 run surfaced three tracking gaps. The **rid linkage is correct** (captures
+join to recipients), so the DATA is sound — but two telemetry beacons don't fire and one dashboard
+query errors. Fix these at the landing/template/endpoint layer so the native page shows the full
+funnel (opens + pure-clicks + captures), not just captures.
+
+- **Open tracking = 0% (pixel dead).** Every recipient shows Mail-Open ✗ even when they clicked +
+  submitted. Root: the `{{TRACKER}}` open-pixel was neutralized to a hidden 1×1 (to fix an iOS
+  broken-"?" render) and no longer hits `tmail.php`. **Fix:** restore a real open pixel
+  (`<img src="{{BASEURL}}/tmail?mid={{MID}}&rid={{RID}}">`) that `tmail.php` serves with a proper
+  1×1 image content-type, so it renders clean AND records the open. Verify in iOS Mail.
+- **Visit/click beacon = 0 (page-0 stripped).** `tb_data_webpage_visit` is empty for every tracker
+  → the Web-Tracker-Report's default "Page Visit" view is blank and "clicked-but-didn't-submit" is
+  unmeasurable (the core then derives clicked==credentials). Root: `deploy_hostpoint.sh` drops the
+  `{{TRACKER_URL_ATTR}}` beacon line. **Fix:** re-enable a page-0 POST to `track.php` on landing
+  load (rid/trackerId already come from the URL) so a CTA click registers a visit before any submit.
+- **"Email Replied: Loading error!"** on the campaign dashboard — the IMAP reply check errors.
+  **Fix:** make `getMailReplied`/`analytics_reply_scan` fail soft (return 0 replies + a status flag,
+  never a hard error), and only run it on explicit click (never in auto-refresh).
+
+- **Report defaults to the empty "Page Visit" view (UX bug + directive).** Because visit-tracking
+  never fired, the Web-Tracker-Report's default page-0 view is always blank, so the operator must
+  manually switch to the login/submit page every time to see captures. **Directive:** the native
+  hits/report view **defaults to ALL** (every captured hit across pages, most-recent first), with
+  page/wave/tracker as OPTIONAL manual filters — never an empty default. (The cockpit already
+  behaves this way: all captures shown by default, no page-segment trap. The legacy report has only
+  per-page tabs and no "ALL" mode, so this is built into the native `analytics_hits`, not retrofitted
+  mid-campaign.)
+
+**This round:** no live-landing changes — the dynamic cockpit already merges captures↔recipients by
+rid (the manual-merge view). Opens + pure-clicks stay unavailable this round; credentials/OTP
+captures are complete and correctly attributed.
