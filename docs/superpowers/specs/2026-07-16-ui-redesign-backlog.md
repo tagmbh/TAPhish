@@ -47,10 +47,15 @@ Living list of bugs + requirements gathered from the Textilcolor live run (2026-
   re-enable a page-0 POST to track.php on landing load.
 - **"Email Replied: Loading error!"** on the campaign dashboard (IMAP reply check hard-errors). → fail soft.
 
-## Privacy (open decision)
+## Privacy — DECIDED
 
-- Captured plaintext passwords/OTP are shown raw in the legacy report. For the redesign: **mask by
-  default, reveal on click + audit**, or never show plaintext? (awaiting operator decision)
+- **Captured passwords / OTP: shown in PLAINTEXT** (operator decision, 2026-07-16). Rationale:
+  authorized awareness engagement — the operator needs the actual captured value for the follow-up
+  ("this is the real password you gave away"). Guardrail: plaintext lives only in the **operator-tier**
+  views (`analytics_recipients` / `analytics_hits`, RBAC `['super-admin','operator']`); the aggregate /
+  `'*'` tier (`analytics_summary`) stays PII-free (funnel counts only, no values, email scrubbed).
+  The pure core still reads only stage booleans; `decode_fields` (the report projection) surfaces the
+  plaintext email/password/OTP for the operator report.
 
 ## What the interim dynamic cockpit already solves
 
