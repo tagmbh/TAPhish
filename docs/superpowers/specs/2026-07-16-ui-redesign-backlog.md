@@ -26,6 +26,18 @@ Full suite **989 green**.
 
 Everything below is still open (P1+).
 
+### ⚠️ Deploy-discipline note (2026-07-16, during P1.3)
+A tar-deploy of `userlist_campaignlist_mailtemplate_manager.php` overwrote a server copy whose
+sha256 (`d5dc0bf…`) matched no commit → looked like a clobbered hotfix. **Investigated & resolved
+BENIGN**: the identical hash was found on the sister host `ptbe.autodiscover.li`; diffing it showed
+the server was simply running the **pre-#170** version (3-arg `taphish_wizard_build_minimal_tracker`),
+i.e. deepaudit was *behind* the branch. My deploy was a clean forward-upgrade (deepaudit now also has
+the #170 capture-field-schema fix). Nothing lost. Lessons locked in: (1) **always `cp .bak` before
+overwriting** (the tar path skipped it) and **stop on a base-check DRIFT instead of deploying through
+it**; (2) **the live server is likely behind the branch on other un-redeployed files** — a full
+`sha256` audit of server-vs-HEAD is worth doing before the P2+ consolidations. Backup of the deployed
+file: `…manager.php.bak-p13-deployed`.
+
 ## Information architecture (menu reorg)
 
 - **Engagements** only lists engagements created from scratch, NOT the campaigns; can't delete them;
