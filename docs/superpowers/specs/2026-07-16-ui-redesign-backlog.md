@@ -62,7 +62,15 @@ HEAD incl. `wizard_tracker_builder.php` for #170 consistency). Suite 1021 green.
 - **Malformed sort** → `order:[[N,'desc']]`; web list Date `data-order` moved to Date Created (col 4).
 - **Quick "Stop" `fale` typo** → `false` (Stop now records stop_time). Live: no `fale`, buttons emit false.
 - **Dead pause handler** removed; **ignored 2nd `.DataTable()` arg** dropped.
-Guarded by `TrackerBugBatchTest` + `UrlFetchGuardTest`. Still open: P2.1–P2.4 (unified List/Reports/New/Nav).
+Guarded by `TrackerBugBatchTest` + `UrlFetchGuardTest`.
+
+**P2.1 · Unified Tracker List** (deployed + live-verified 2026-07-16): new `/spear/Trackers` lists web +
+quick in one table with a Type badge + Web/Quick/All filter. `tracker_unified.php`
+(`taphish_tracker_list_normalize` pure/TDD + `taphish_all_trackers`), `list_all_trackers` action
+(authz operator+), `Trackers.php` + `trackers_unified.js`. Live: 12 trackers (9 web + 3 quick),
+type-badged, filter works, # renumbers, Report/Edit deep-link to existing pages. Read-only aggregation;
+mutations still on the old pages. NOT yet in nav (that's P2.4). Guard: `TrackerListUnifyTest`.
+Still open: P2.2 Reports · P2.3 New · P2.4 Nav swap.
 
 ### ⚠️ Deploy-discipline note (2026-07-16, during P1.3)
 A tar-deploy of `userlist_campaignlist_mailtemplate_manager.php` overwrote a server copy whose
