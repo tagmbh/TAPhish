@@ -62,5 +62,6 @@ require_once __DIR__ . '/../../spear/manager/ip_info_projection.php';
 require_once __DIR__ . '/../../spear/manager/url_query_parse.php';
 require_once __DIR__ . '/../../spear/manager/url_fetch_guard.php';
 require_once __DIR__ . '/../../spear/manager/tracker_unified.php';
+require_once __DIR__ . '/../../spear/manager/capture_fields.php';
 require_once __DIR__ . '/../../spear/manager/wizard_tracker_builder.php';
 require_once __DIR__ . '/../../spear/manager/landing_host.php';

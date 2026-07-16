@@ -382,7 +382,9 @@ function multi_get_live_campaign_data_web_mail($conn, $POSTJ){
 						$ocol=substr($col, 6);	//removes Field-
 						if(!isset($tmp[$col]))	//else can overwrites with empty value
 							$tmp[$col]=[];
-						if($form_field_data->$ocol != null)
+						// P3: DISTINCT per field (was one push per submission → email ×24,
+						// password ×8). See taphish_decode_capture_fields / CaptureFieldsTest.
+						if($form_field_data->$ocol != null && !in_array($form_field_data->$ocol, $tmp[$col], true))
 							array_push($tmp[$col],$form_field_data->$ocol);
 						$tmp['SPPage-'.$hit_entry['page']] = true;
 					}
@@ -562,7 +564,9 @@ function downloadReport($conn,$campaign_id,$tracker_id,$selected_col,$dic_all_co
 						$ocol=substr($col, 6);	//removes Field-
 						if(!isset($tmp[$col]))	//else can overwrites with empty value
 							$tmp[$col]=[];
-						if($form_field_data->$ocol != null)
+						// P3: DISTINCT per field (was one push per submission). Mirrors
+						// taphish_decode_capture_fields / CaptureFieldsTest.
+						if($form_field_data->$ocol != null && !in_array($form_field_data->$ocol, $tmp[$col], true))
 							array_push($tmp[$col],$form_field_data->$ocol);
 						$tmp['SPPage-'.$hit_entry['page']] = 'Yes';
 					}
