@@ -211,7 +211,8 @@ if (isset($_POST)) {
 					echo json_encode([
 						'result' => 'success',
 						'engagement' => $eng,
-						'campaigns' => taphish_engagement_campaigns($conn, $id),
+						// P1.3: all of the engagement's work (mail + web + quick), type-tagged.
+						'campaigns' => taphish_engagement_campaigns_all($conn, $id),
 					]);
 				}
 			}

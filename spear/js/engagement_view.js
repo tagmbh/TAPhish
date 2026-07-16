@@ -126,26 +126,46 @@
         }
     }
 
+    // P1.3: campaigns arrive type-tagged (mail | web | quick) in the normalized
+    // shape { type, id, name, date, camp_status?, scheduled_time?, active? }.
+    var CAMPAIGN_TYPE = {
+        mail:  { label: 'Mail',  cls: 'badge-primary', action: 'Dashboard',
+                 link: function (id) { return 'MailCmpDashboard?campaign_id=' + encodeURIComponent(id); } },
+        web:   { label: 'Web',   cls: 'badge-info',    action: 'Report',
+                 link: function (id) { return 'TrackerReport?tracker=' + encodeURIComponent(id); } },
+        quick: { label: 'Quick', cls: 'badge-warning', action: 'Report',
+                 link: function (id) { return 'QuickTrackerReport?tracker=' + encodeURIComponent(id); } }
+    };
+
     function renderCampaigns(campaigns) {
         var $body = $('#eng_campaigns_table tbody').empty();
         if (!campaigns.length) {
-            $body.append('<tr><td colspan="4" class="text-muted">No campaigns linked yet. Run a campaign from <a href="QuickStart?engagement_id=' + ($('#eng_view_id').val()) + '">Quick Start</a> with this engagement selected.</td></tr>');
+            $body.append('<tr><td colspan="4" class="text-muted">Nothing linked yet. Run a campaign or tracker from <a href="QuickStart?engagement_id=' + ($('#eng_view_id').val()) + '">Quick Start</a> with this engagement selected, or scope one from the campaign builder / Unscoped bucket.</td></tr>');
             return;
         }
         campaigns.forEach(function (c) {
+            var t = CAMPAIGN_TYPE[c.type] || { label: c.type || '?', cls: 'badge-secondary', action: 'Open', link: function () { return '#'; } };
+            var href = t.link(c.id);
             var $tr = $('<tr>');
+
+            var $name = $('<td>');
+            $('<span>').addClass('badge ' + t.cls + ' mr-1').text(t.label).appendTo($name);
+            $('<a>').attr('href', href).text(c.name || c.id).appendTo($name);
+            $tr.append($name);
+
+            $tr.append($('<td>').addClass('small').text((c.type === 'mail' ? c.scheduled_time : c.date) || '—'));
+
+            var $status;
+            if (c.type === 'mail') {
+                $status = $('<span>').addClass('badge badge-secondary').text(campStatusLabel(c.camp_status));
+            } else {
+                $status = $('<span>').addClass('badge ' + (c.active ? 'badge-success' : 'badge-secondary'))
+                    .text(c.active ? 'Active' : 'Inactive');
+            }
+            $tr.append($('<td>').append($status));
+
             $tr.append($('<td>').append(
-                $('<a>').attr('href', 'MailCmpDashboard?campaign_id=' + encodeURIComponent(c.campaign_id))
-                    .text(c.campaign_name || c.campaign_id)
-            ));
-            $tr.append($('<td>').addClass('small').text(c.scheduled_time || '—'));
-            $tr.append($('<td>').append(
-                $('<span>').addClass('badge badge-secondary').text(campStatusLabel(c.camp_status))
-            ));
-            $tr.append($('<td>').append(
-                $('<a class="btn btn-sm btn-outline-info">')
-                    .attr('href', 'MailCmpDashboard?campaign_id=' + encodeURIComponent(c.campaign_id))
-                    .text('Dashboard')
+                $('<a class="btn btn-sm btn-outline-info">').attr('href', href).text(t.action)
             ));
             $body.append($tr);
         });

@@ -594,6 +594,90 @@ if (!function_exists('taphish_engagement_campaigns')) {
     }
 }
 
+if (!function_exists('taphish_engagement_campaigns_normalize')) {
+    /**
+     * P1.3 (pure): merge an engagement's mail campaigns + web trackers + quick
+     * trackers into one uniform, type-tagged list. Each row carries a common
+     * {type,id,name,date} shape plus type-specific fields (mail: camp_status,
+     * scheduled_time; trackers: active). Concatenated mail→web→quick, each
+     * already date-desc from its SQL ORDER BY; cross-type date sorting is left
+     * to the client DataTable so this stays free of tz/format parsing.
+     */
+    function taphish_engagement_campaigns_normalize(array $mail, array $web, array $quick): array
+    {
+        $out = [];
+        foreach ($mail as $r) {
+            $out[] = [
+                'type'           => 'mail',
+                'id'             => (string) ($r['campaign_id'] ?? ''),
+                'name'           => (string) ($r['campaign_name'] ?? ''),
+                'camp_status'    => $r['camp_status'] ?? null,
+                'scheduled_time' => $r['scheduled_time'] ?? null,
+                'date'           => $r['date'] ?? null,
+            ];
+        }
+        foreach (['web' => $web, 'quick' => $quick] as $type => $rows) {
+            foreach ($rows as $r) {
+                $out[] = [
+                    'type'   => $type,
+                    'id'     => (string) ($r['tracker_id'] ?? ''),
+                    'name'   => (string) ($r['tracker_name'] ?? ''),
+                    'active' => isset($r['active']) ? (int) $r['active'] : null,
+                    'date'   => $r['date'] ?? null,
+                ];
+            }
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('taphish_tracker_rows_by_engagement')) {
+    /**
+     * P1.3: fetch tracker rows scoped to an engagement, or (when $id === null)
+     * the UNSCOPED ones (engagement_id IS NULL) for the Legacy bucket. Table is
+     * whitelisted — the identifier can't be bound.
+     */
+    function taphish_tracker_rows_by_engagement(\mysqli $conn, string $table, ?int $id): array
+    {
+        if (!in_array($table, ['tb_core_web_tracker_list', 'tb_core_quick_tracker_list'], true)) {
+            return [];
+        }
+        if ($id === null) {
+            $res = @$conn->query("SELECT tracker_id, tracker_name, active, date FROM $table WHERE engagement_id IS NULL ORDER BY date DESC");
+        } else {
+            $stmt = $conn->prepare("SELECT tracker_id, tracker_name, active, date FROM $table WHERE engagement_id = ? ORDER BY date DESC");
+            if ($stmt === false) {
+                return [];
+            }
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $res = $stmt->get_result();
+        }
+        $out = [];
+        if ($res instanceof \mysqli_result) {
+            while ($r = $res->fetch_assoc()) {
+                $out[] = $r;
+            }
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('taphish_engagement_campaigns_all')) {
+    /**
+     * P1.3: everything scoped to an engagement — mail campaigns + web + quick
+     * trackers — as one type-tagged list for the hub.
+     */
+    function taphish_engagement_campaigns_all(\mysqli $conn, int $id): array
+    {
+        return taphish_engagement_campaigns_normalize(
+            taphish_engagement_campaigns($conn, $id),
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_web_tracker_list', $id),
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_quick_tracker_list', $id)
+        );
+    }
+}
+
 if (!function_exists('taphish_engagement_delete')) {
     /**
      * Delete an engagement. Linked campaigns are NOT deleted — their
