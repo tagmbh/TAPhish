@@ -93,6 +93,20 @@ stay reachable via the list's per-row links. Guard: `testNavUnifiesTrackersGroup
 (unlike other pages). One-line fix (add the script include); left out of P2 scope. Low impact
 (dashboard graphs on Home).
 
+## ✅ SHIPPED — P3 core: capture-field de-duplication (deployed + live-verified 2026-07-16)
+The operator-reported field-mapping mess (email ×24, password ×8 in one cell) is fixed. New
+`capture_fields.php`: `taphish_decode_capture_fields` (pure, TDD 8 tests incl. the exact 24×→1 case) =
+the canonical decoder (DISTINCT non-empty values per field, first-seen order) + `taphish_capture_field_display`.
+The web-mail dashboard's two Field- projection sites (feed + download_report) now push DISTINCT values —
+strictly no data loss (every unique value kept, only exact repeats dropped). Deployed (sha256==HEAD, lint
+clean); WebMailCmp dashboard loads clean. Verified behaviourally via TDD (NOT by pulling live credentials —
+sensitive plaintext protected). Suite 1037 green.
+
+**P3 still open (larger consolidation, needs operator go):** unified Reports/Analytics generator (default
+ALL, one column-picker, one download_report on the tested engagement_analytics core); per-victim row dedup
+on the WEB TRACKER report (currently one row per submission → victim repeats); Screen Res "Failed" + Country
+empty (likely capture-side — needs its own investigation, may not be display-fixable).
+
 ### ✅ P2 (Trackers unified) COMPLETE — all increments deployed + live-verified 2026-07-16. Suite 1029 green.
 Deferred (noted): single-page report render-merge (hard client global collisions → risky); topbar
 "Create New" tracker shortcuts left as-is; the two campaign dashboards (P4) untouched.
