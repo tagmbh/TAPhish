@@ -1,5 +1,9 @@
 var globalModalValue = '';
 var dt_mail_campaign_list;
+// P1.1: engagement currently selected for the campaign being edited. Applied by
+// whichever of pullEngagements()/the campaign-load handler finishes last (avoids
+// a race between the options loading and the campaign's engagement_id arriving).
+var g_selectedEngagementId = '';
 
 $(function() {
     $("#userGroupSelector").select2({
@@ -25,7 +29,32 @@ $(function() {
             down: "fa fa-arrow-down"
         },
     });
+
+    pullEngagements();
 });
+
+// P1.1: populate the engagement selector from the engagements list. Engagements
+// live on their own manager; the "— Unscoped (legacy) —" option (value "") is
+// already in the markup, so a campaign can deliberately stay unscoped.
+function pullEngagements() {
+    $.post({
+        url: "manager/userlist_campaignlist_mailtemplate_manager",
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({ action_type: "list_engagements" })
+    }).done(function (data) {
+        var rows = Array.isArray(data)
+            ? data
+            : (data && typeof data === 'object'
+                ? Object.values(data).filter(function (v) { return v && typeof v === 'object' && v.id; })
+                : []);
+        rows.forEach(function (e) {
+            var label = (e.name || e.slug || ('Engagement ' + e.id)) + (e.status ? ' (' + e.status + ')' : '');
+            $('#engagementSelector').append($('<option>').attr('value', e.id).text(label));
+        });
+        // Apply any pending selection (set by the campaign-load handler on edit).
+        $('#engagementSelector').val(g_selectedEngagementId || '');
+    });
+}
 
 function pullMailCampaignFieldData() {
     $.post({
@@ -75,6 +104,11 @@ function getMailCampaignFromCampaignListId(id) {
         }).done(function (data) {
             if(!data.result){  // if not error response
                 $('#mail_campaign_name').val(data.campaign_name);
+
+                // P1.1: preselect the campaign's engagement (options may still be
+                // loading; pullEngagements() re-applies g_selectedEngagementId).
+                g_selectedEngagementId = (data.engagement_id != null && data.engagement_id !== '') ? String(data.engagement_id) : '';
+                $('#engagementSelector').val(g_selectedEngagementId);
 
                 try {
                     $("#userGroupSelector").val(data.campaign_data.user_group.id);
@@ -195,7 +229,8 @@ function saveMailCampaignAction() {
             campaign_name: campaign_name,
             scheduled_time: scheduled_time,
             campaign_data: campaignData,
-            camp_status: cb_act_deact_campaign
+            camp_status: cb_act_deact_campaign,
+            engagement_id: ($('#engagementSelector').val() || null)
          }),
     }).done(function (response) {
         if(response.result == "success"){ 

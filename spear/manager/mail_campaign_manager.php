@@ -170,7 +170,7 @@ function getCampaignFromCampaignListId($conn, $campaign_id){
 	$resp['live_mcamp_data']['timestamp_conv'] = $scatter_data_mail_full['timestamp_conv'];
 
 	//-------------------
-	$stmt = $conn->prepare("SELECT campaign_name,campaign_data,date,scheduled_time,camp_status FROM tb_core_mailcamp_list WHERE campaign_id = ?");
+	$stmt = $conn->prepare("SELECT campaign_name,campaign_data,date,scheduled_time,camp_status,engagement_id FROM tb_core_mailcamp_list WHERE campaign_id = ?");
 	$stmt->bind_param("s", $campaign_id);
 	$stmt->execute();
 	$result = $stmt->get_result();
@@ -180,6 +180,7 @@ function getCampaignFromCampaignListId($conn, $campaign_id){
 		$resp['date'] = getInClientTime_FD($DTime_info,$row['date'],null,'d-m-Y h:i A');
 		$resp['scheduled_time'] = getInClientTime_FD($DTime_info,$row['scheduled_time'],null,'d-m-Y h:i A');
 		$resp['camp_status'] = $row['camp_status'];
+		$resp['engagement_id'] = $row['engagement_id'];   // P1.1: preselect in the builder
 		echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);
 	}
 	else
