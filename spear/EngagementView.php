@@ -47,6 +47,20 @@
                         </div>
                      </div>
                   </div>
+                  <div class="col-12">
+                     <div class="card">
+                        <div class="card-body">
+                           <h5 class="card-title">Unscoped / Legacy</h5>
+                           <p class="text-muted small">Campaigns and trackers not linked to any engagement. Assign one to an engagement so it appears in that engagement's hub.</p>
+                           <div class="table-responsive">
+                              <table class="table table-sm table-striped" id="eng_unscoped_table">
+                                 <thead><tr><th>Type</th><th>Name</th><th>When</th><th>Assign to engagement</th></tr></thead>
+                                 <tbody></tbody>
+                              </table>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
                </div>
 
                <div class="row" id="eng_header_wrap" style="display:none;">

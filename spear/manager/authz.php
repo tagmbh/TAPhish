@@ -207,6 +207,10 @@ if (!defined('TAPHISH_POLICY')) {
         'get_engagement_view'                => ['engagement_member'],
         'engagement_transition_status'       => ['super-admin', 'engagement_owner'],
         'delete_engagement'                  => ['super-admin', 'engagement_owner'],
+        // P1.4b: Unscoped/Legacy bucket — list unscoped campaigns/trackers and
+        // assign one to an engagement (operator work).
+        'list_unscoped_campaigns'            => ['super-admin', 'operator'],
+        'assign_engagement'                  => ['super-admin', 'operator'],
         // wizard steps (operator work; launch is engagement-scoped)
         'wizard_generate_dkim'               => ['super-admin', 'operator'],
         'wizard_list_landing_options'        => ['super-admin', 'operator'],

@@ -678,6 +678,71 @@ if (!function_exists('taphish_engagement_campaigns_all')) {
     }
 }
 
+if (!function_exists('taphish_engagement_assign_target')) {
+    /**
+     * P1.4b (pure): map a campaign/tracker `type` to its [table, id-column]. This
+     * is the ONLY place a table/column name is chosen for the assign UPDATE, and
+     * it is a strict whitelist — any unknown/injection type returns null so the
+     * UPDATE is never constructed from caller-supplied identifiers.
+     */
+    function taphish_engagement_assign_target(string $type): ?array
+    {
+        $map = [
+            'mail'  => ['tb_core_mailcamp_list', 'campaign_id'],
+            'web'   => ['tb_core_web_tracker_list', 'tracker_id'],
+            'quick' => ['tb_core_quick_tracker_list', 'tracker_id'],
+        ];
+        return $map[$type] ?? null;
+    }
+}
+
+if (!function_exists('taphish_campaigns_unscoped')) {
+    /**
+     * P1.4b: the Unscoped/Legacy bucket — every mail campaign / web tracker /
+     * quick tracker with engagement_id IS NULL, type-tagged via the shared
+     * normalizer, so the operator can assign them to an engagement.
+     */
+    function taphish_campaigns_unscoped(\mysqli $conn): array
+    {
+        $mail = [];
+        $res = @$conn->query("SELECT campaign_id, campaign_name, scheduled_time, camp_status, date FROM tb_core_mailcamp_list WHERE engagement_id IS NULL ORDER BY date DESC");
+        if ($res instanceof \mysqli_result) {
+            while ($r = $res->fetch_assoc()) {
+                $mail[] = $r;
+            }
+        }
+        return taphish_engagement_campaigns_normalize(
+            $mail,
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_web_tracker_list', null),
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_quick_tracker_list', null)
+        );
+    }
+}
+
+if (!function_exists('taphish_assign_engagement')) {
+    /**
+     * P1.4b: scope a single campaign/tracker to an engagement. Table + id-column
+     * come from the whitelisted target map (never from caller input); the id and
+     * engagement_id are bound. Returns true on a successful UPDATE.
+     */
+    function taphish_assign_engagement(\mysqli $conn, string $type, string $id, int $engagementId): bool
+    {
+        $target = taphish_engagement_assign_target($type);
+        if ($target === null || $id === '' || $engagementId <= 0) {
+            return false;
+        }
+        [$table, $idcol] = $target;
+        $stmt = $conn->prepare("UPDATE $table SET engagement_id = ? WHERE $idcol = ?");
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('is', $engagementId, $id);
+        $ok = $stmt->execute();
+        $stmt->close();
+        return (bool) $ok;
+    }
+}
+
 if (!function_exists('taphish_engagement_delete')) {
     /**
      * Delete an engagement. Linked campaigns are NOT deleted — their

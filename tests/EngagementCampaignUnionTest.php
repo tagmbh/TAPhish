@@ -57,6 +57,26 @@ final class EngagementCampaignUnionTest extends TestCase
         self::assertSame([], taphish_engagement_campaigns_normalize([], [], []));
     }
 
+    /**
+     * P1.4b: the assign target map is the SQL-injection guard for the Unscoped
+     * bucket's "Zuordnen" — only these three types resolve to a (table, id-col),
+     * everything else is null so the UPDATE is never built from caller input.
+     */
+    public function testAssignTargetWhitelistsKnownTypes(): void
+    {
+        self::assertSame(['tb_core_mailcamp_list', 'campaign_id'], taphish_engagement_assign_target('mail'));
+        self::assertSame(['tb_core_web_tracker_list', 'tracker_id'], taphish_engagement_assign_target('web'));
+        self::assertSame(['tb_core_quick_tracker_list', 'tracker_id'], taphish_engagement_assign_target('quick'));
+    }
+
+    public function testAssignTargetRejectsUnknownOrInjection(): void
+    {
+        self::assertNull(taphish_engagement_assign_target(''));
+        self::assertNull(taphish_engagement_assign_target('other'));
+        self::assertNull(taphish_engagement_assign_target('mail; DROP TABLE x'));
+        self::assertNull(taphish_engagement_assign_target('MAIL'));
+    }
+
     public function testEveryRowHasTheCommonShape(): void
     {
         $out = taphish_engagement_campaigns_normalize(

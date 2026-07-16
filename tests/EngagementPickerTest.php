@@ -46,4 +46,22 @@ final class EngagementPickerTest extends TestCase
             'Picker must refresh the list after a successful delete'
         );
     }
+
+    public function testUnscopedBucketIsWiredToAssign(): void
+    {
+        // P1.4b: the picker view must render the Unscoped bucket and its
+        // "Zuordnen" must go through the assign_engagement action.
+        $js = $this->js();
+        self::assertStringContainsString('loadUnscoped', $js, 'Picker view must load the unscoped bucket');
+        self::assertMatchesRegularExpression(
+            '/assignItem[\s\S]{0,400}assign_engagement/',
+            $js,
+            'Assign must call the assign_engagement action'
+        );
+        self::assertStringContainsString(
+            'eng_unscoped_table',
+            file_get_contents(dirname(__DIR__) . '/spear/EngagementView.php'),
+            'EngagementView must contain the unscoped bucket table'
+        );
+    }
 }

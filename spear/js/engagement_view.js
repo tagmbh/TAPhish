@@ -75,6 +75,66 @@
         });
     }
 
+    // P1.4b: the Unscoped/Legacy bucket. Lists campaigns/trackers with no
+    // engagement, each with a per-row engagement dropdown + "Zuordnen" (assign).
+    function loadUnscoped() {
+        var $body = $('#eng_unscoped_table tbody').empty();
+        $.when(
+            post({ action_type: 'list_unscoped_campaigns' }),
+            post({ action_type: 'list_engagements' })
+        ).done(function (uRes, eRes) {
+            var items = (uRes && uRes[0] && uRes[0].campaigns) || [];
+            var engs = (eRes && eRes[0] && eRes[0].engagements) || [];
+            renderUnscoped(items, engs);
+        }).fail(function () {
+            $body.append('<tr><td colspan="4" class="text-muted">Could not load the unscoped list.</td></tr>');
+        });
+    }
+
+    function renderUnscoped(items, engagements) {
+        var $body = $('#eng_unscoped_table tbody').empty();
+        if (!items.length) {
+            $body.append('<tr><td colspan="4" class="text-muted">Nothing unscoped — every campaign and tracker is linked to an engagement.</td></tr>');
+            return;
+        }
+        items.forEach(function (c) {
+            var t = CAMPAIGN_TYPE[c.type] || { label: c.type || '?', cls: 'badge-secondary' };
+            var $tr = $('<tr>');
+            $tr.append($('<td>').append($('<span>').addClass('badge ' + t.cls).text(t.label)));
+            $tr.append($('<td>').text(c.name || c.id));
+            $tr.append($('<td>').addClass('small').text((c.type === 'mail' ? c.scheduled_time : c.date) || '—'));
+
+            var $sel = $('<select class="form-control form-control-sm d-inline-block" style="width:auto;max-width:16rem;">');
+            $('<option>').attr('value', '').text('— choose engagement —').appendTo($sel);
+            engagements.forEach(function (e) {
+                $('<option>').attr('value', e.id).text((e.name || e.slug) + (e.status ? ' (' + e.status + ')' : '')).appendTo($sel);
+            });
+            var $btn = $('<button type="button" class="btn btn-sm btn-outline-primary ml-1">').text('Zuordnen')
+                .on('click', function () { assignItem(c.type, c.id, $sel.val(), $(this)); });
+            $tr.append($('<td>').append($sel).append($btn));
+            $body.append($tr);
+        });
+    }
+
+    function assignItem(type, id, engagementId, $btn) {
+        if (!engagementId) {
+            if (window.toastr) { toastr.warning('Pick an engagement first'); }
+            return;
+        }
+        $btn.prop('disabled', true);
+        post({ action_type: 'assign_engagement', type: type, id: id, engagement_id: parseInt(engagementId, 10) })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    if (window.toastr) { toastr.success('Assigned to engagement'); }
+                    loadUnscoped();   // row leaves the bucket
+                } else {
+                    $btn.prop('disabled', false);
+                    if (window.toastr) { toastr.error((res && res.error) || 'Assignment failed'); }
+                }
+            })
+            .fail(function () { $btn.prop('disabled', false); if (window.toastr) { toastr.error('Assignment failed (network)'); } });
+    }
+
     // P1.4a: delete an engagement straight from the picker list (works for
     // drafts too). Reuses the server delete_engagement action, which unlinks
     // linked campaigns rather than destroying them.
@@ -260,6 +320,7 @@
             $('#btn_refresh_eng_view').on('click', function () { loadView(id); });
         } else {
             loadPicker();
+            loadUnscoped();
         }
     });
 })();
