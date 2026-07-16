@@ -24,7 +24,31 @@ Full suite **989 green**.
   locks map completeness + delegation. **Live proof**: `campStatus.label(5)==='Deferred'`, no label
   renders "undefined", unknown code → safe "Status N" fallback. Commit f2754d7.
 
-Everything below is still open (P1+).
+## ✅ SHIPPED — P1 Engagements = hub (deployed + live-verified 2026-07-16)
+
+All five P1 increments are committed, deployed, and demo-verified against the live engagement.
+Suite **1006 green**. This makes "Campaigns under Engagements" real and fixes the
+"can't delete engagements / no all-campaigns view" complaints.
+
+- **P1.1 — engagement selector in the builder** (commit c85ec29, cf79d0a). The classic builder now
+  sends `engagement_id` (server already persisted it). Live: save engagement_id=3 → read back 3 →
+  deleted. (Live demo caught a `{engagements:[…]}` parse bug, fixed + guarded.)
+- **P1.2 — engagement_id on the tracker tables** (ea181fd). Idempotent, whitelisted migration on both
+  tracker tables via the lazy session-init call site. Live: both columns present after init.
+- **P1.3 — unified hub list** (dbc8c7b). `taphish_engagement_campaigns_normalize` (pure, TDD) merges
+  mail + web + quick, type-tagged; `get_engagement_view` returns the union; the client renders a Type
+  badge + per-type link + status. Live: engagement 3 shows 16 Mail-tagged rows with canonical status.
+- **P1.4a — picker Open + Delete** (bdd5aa4). Every engagement row (drafts included) gets Open + Delete
+  → fixes undeletable abandoned drafts. Live: a draft renders Continue+Open+Delete; delete works.
+- **P1.4b — Unscoped/Legacy bucket + Zuordnen** (3f6c704). Lists every campaign/tracker with no
+  engagement + a per-row assign. Live: bucket lists 9 web + 3 quick real trackers; a throwaway assigns
+  to engagement 3, appears in its hub, leaves the bucket.
+
+Deferred (noted, low priority): per-row **Löschen** in the Unscoped bucket (cross-type delete needs
+per-type cleanup — assign is the value driver); **membership-filtered** `list_engagements` (single-
+operator today); server-side paging for the hub list (client-side is fine at ~20 campaigns).
+
+Everything below is still open (P2+).
 
 ### ⚠️ Deploy-discipline note (2026-07-16, during P1.3)
 A tar-deploy of `userlist_campaignlist_mailtemplate_manager.php` overwrote a server copy whose

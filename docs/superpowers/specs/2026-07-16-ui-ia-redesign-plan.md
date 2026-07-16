@@ -34,13 +34,16 @@
     Locked by `NavBootstrapTest`. Live: sidebarmenu.js on all 5 pages.
   - ✅ One `camp_status` decoder (`js/camp_status.js`); both JS decoders delegate. Locked by
     `CampStatusDecoderTest`. Live: label(5)="Deferred", no "undefined". (code 6 never set; 3 overloaded → backlog.)
-- **P1 · Engagements = hub** ← **NEXT** (demo APPROVED — [mockup](../../..)):
-  - Add an **engagement selector** to the campaign builder (mail_campaign.js → send engagement_id; server
-    already accepts it at mail_campaign_manager.php:85-110). Add `engagement_id` columns to the quick/web
-    tracker tables + backfill. `getCampaignList` UNIONs mail+web+quick, membership-scoped, server-side paged.
-  - List-level **Open + Delete** actions in renderPicker; drafts get both "Continue setup" AND Open/Delete
-    (fixes undeletable abandoned drafts). Filter `list_engagements` by membership.
-  - Explicit **Unscoped/Legacy** bucket for `engagement_id IS NULL`; per-row Zuordnen/Löschen.
+- **P1 · Engagements = hub** — ✅ **DONE, deployed + live-verified 2026-07-16** (commits c85ec29,
+  cf79d0a, ea181fd, dbc8c7b, bdd5aa4, 3f6c704; suite 1006 green):
+  - ✅ **engagement selector** in the builder (mail_campaign.js sends engagement_id; server persisted it
+    already). ✅ `engagement_id` columns on quick/web tracker tables (idempotent migration). Hub list is
+    a mail+web+quick UNION via a pure TDD normalizer — kept **client-side** (not server-paged: ~20
+    campaigns, and the list was already client-side; server-paging would be a risky rewrite for no gain).
+  - ✅ List-level **Open + Delete** in renderPicker (drafts too) → fixes undeletable abandoned drafts.
+    Membership-filtered `list_engagements` deferred (single-operator today).
+  - ✅ Explicit **Unscoped/Legacy** bucket for `engagement_id IS NULL` with per-row **Zuordnen** (assign).
+    Per-row **Löschen** deferred (cross-type delete needs per-type cleanup; assign is the value driver).
 - **P2 · Trackers unified** — one list (Type: open-pixel/web-form), per-row Report drawer; retire the stray
   "Web Tracker Report" leaf + the Select-Tracker modal; unify the 5 naming variants.
 - **P3 · Reports/Analytics consolidated** — one generator on the tested `engagement_analytics` core (give
