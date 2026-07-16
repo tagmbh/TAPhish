@@ -47,6 +47,18 @@ final class EngagementPickerTest extends TestCase
         );
     }
 
+    public function testUnscopedBucketHasPerTypeDelete(): void
+    {
+        // Polish: per-row Löschen dispatches to each type's existing delete
+        // action (which cleans up the item's data). The bucket only lists
+        // engagement_id IS NULL items, so live scoped campaigns never appear.
+        $js = $this->js();
+        self::assertStringContainsString('deleteUnscopedItem', $js, 'bucket must offer a delete');
+        self::assertStringContainsString('delete_campaign_from_campaign_id', $js, 'mail delete dispatch');
+        self::assertStringContainsString('delete_web_tracker', $js, 'web delete dispatch');
+        self::assertStringContainsString('delete_quick_tracker', $js, 'quick delete dispatch');
+    }
+
     public function testUnscopedBucketIsWiredToAssign(): void
     {
         // P1.4b: the picker view must render the Unscoped bucket and its

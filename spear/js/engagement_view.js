@@ -111,9 +111,44 @@
             });
             var $btn = $('<button type="button" class="btn btn-sm btn-outline-primary ml-1">').text('Zuordnen')
                 .on('click', function () { assignItem(c.type, c.id, $sel.val(), $(this)); });
-            $tr.append($('<td>').append($sel).append($btn));
+            var $del = $('<button type="button" class="btn btn-sm btn-outline-danger ml-1" title="Delete this unscoped item">')
+                .html('<i class="fa fa-trash"></i>')
+                .on('click', function () { deleteUnscopedItem(c.type, c.id, c.name || c.id, $(this)); });
+            $tr.append($('<td>').append($sel).append($btn).append($del));
             $body.append($tr);
         });
+    }
+
+    // P3 polish: delete an unscoped campaign/tracker straight from the bucket,
+    // dispatched by type to the existing per-type delete actions (which clean up
+    // the item's data). The bucket only ever lists engagement_id IS NULL items,
+    // so live scoped campaigns (e.g. the running engagement's) never appear here.
+    var UNSCOPED_DELETE = {
+        mail:  { url: 'manager/mail_campaign_manager',              body: function (id) { return { action_type: 'delete_campaign_from_campaign_id', campaign_id: id }; } },
+        web:   { url: 'manager/web_tracker_generator_list_manager', body: function (id) { return { action_type: 'delete_web_tracker', tracker_id: id }; } },
+        quick: { url: 'manager/quick_tracker_manager',              body: function (id) { return { action_type: 'delete_quick_tracker', tracker_id: id }; } }
+    };
+
+    function deleteUnscopedItem(type, id, name, $btn) {
+        var d = UNSCOPED_DELETE[type];
+        if (!d) { return; }
+        if (!window.confirm('Delete ' + type + ' "' + name + '"?\n\nThis removes it and its captured data. This cannot be undone.')) {
+            return;
+        }
+        $btn.prop('disabled', true);
+        $.ajax({ url: d.url, method: 'POST', contentType: 'application/json; charset=utf-8', data: JSON.stringify(d.body(id)) })
+            .done(function (raw) {
+                var res; try { res = (typeof raw === 'string') ? JSON.parse(raw) : raw; } catch (e) { res = raw; }
+                var ok = (res && res.result === 'success') || res === 'success';
+                if (ok) {
+                    if (window.toastr) { toastr.success('Deleted'); }
+                    loadUnscoped();
+                } else {
+                    $btn.prop('disabled', false);
+                    if (window.toastr) { toastr.error((res && res.error) || 'Delete failed'); }
+                }
+            })
+            .fail(function () { $btn.prop('disabled', false); if (window.toastr) { toastr.error('Delete failed (network)'); } });
     }
 
     function assignItem(type, id, engagementId, $btn) {

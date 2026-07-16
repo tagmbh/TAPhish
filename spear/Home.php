@@ -225,6 +225,9 @@
       <!--Custom JavaScript -->
       <script src="js/libs/custom.min.js"></script>
       <!--This page JavaScript -->
+      <!-- common_scripts.js renders the Home login-bar timezone via moment.tz(); load moment first. -->
+      <script src="js/libs/moment.min.js"></script>
+      <script src="js/libs/moment-timezone-with-data.min.js"></script>
       <script src="js/common_scripts.js"></script>
       <script src="js/dashboard.js"></script>
       <script src="js/home_beef.js"></script>
