@@ -1,5 +1,6 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
+require_once(dirname(__FILE__) . '/datatables_helper.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 if(isSessionValid() == false)
 	die("Access denied");
@@ -150,15 +151,18 @@ function getTableWebpageVisitFormSubmission($conn, &$POSTJ){
 	$stmt->execute();
 	$row = $stmt->get_result()->fetch_row();
 	$totalRecords = $row[0];
-	$totalRecords_with_filter = $totalRecords;//will be updated from below
 
+	// No SQL LIMIT/OFFSET: the search filter below spans JSON/computed columns
+	// (ip_info, form_field_data, client-tz time) that SQL LIKE can't reach, so we
+	// must build the FULL filtered set, count it, then slice the page in PHP.
+	// Row count is bounded per tracker (same fetch downloadReport already does).
 	if($page == 0){
-		$stmt = $conn->prepare("SELECT * FROM tb_data_webpage_visit WHERE tracker_id=? ".$colSortString." LIMIT ? OFFSET ?");
-		$stmt->bind_param("sss", $tracker_id,$limit,$offset);
+		$stmt = $conn->prepare("SELECT * FROM tb_data_webpage_visit WHERE tracker_id=? ".$colSortString);
+		$stmt->bind_param("s", $tracker_id);
 	}
 	else{
-		$stmt = $conn->prepare("SELECT * FROM tb_data_webform_submit WHERE tracker_id=? AND page=? ".$colSortString." LIMIT ? OFFSET ?");
-		$stmt->bind_param("ssss", $tracker_id,$page,$limit,$offset);
+		$stmt = $conn->prepare("SELECT * FROM tb_data_webform_submit WHERE tracker_id=? AND page=? ".$colSortString);
+		$stmt->bind_param("ss", $tracker_id,$page);
 	}
 
 	$stmt->execute();
@@ -202,19 +206,20 @@ function getTableWebpageVisitFormSubmission($conn, &$POSTJ){
 			if(empty($search_value) || (!empty($search_value) && $f_found == true))
 				array_push($arr_filtered,$tmp);
 	}
-	$totalRecords_with_filter = sizeof($arr_filtered);
 	$stmt->close();
-	$resp = array(
-		  "draw" => intval($draw),
-		  "recordsTotal" => intval($totalRecords),
-		  "recordsFiltered" => intval($totalRecords_with_filter),
-		  "data" => $arr_filtered
-		);
+	// recordsFiltered is the FULL filtered count (gates the Next button); data is
+	// only the requested page, sliced AFTER counting.
+	$resp = taphish_dt_envelope(
+		intval($draw),
+		intval($totalRecords),
+		sizeof($arr_filtered),
+		taphish_dt_slice($arr_filtered, $offset, $limit)
+	);
 
 	echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);
 }
 
-function getWebTrackerFromId($conn, $tracker_id){	
+function getWebTrackerFromId($conn, $tracker_id){
 	$stmt = $conn->prepare("SELECT * FROM tb_core_web_tracker_list WHERE tracker_id = ?");
 	$stmt->bind_param("s", $tracker_id);
 	$stmt->execute();

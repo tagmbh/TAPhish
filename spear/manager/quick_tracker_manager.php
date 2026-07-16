@@ -1,6 +1,7 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/common_functions.php');
+require_once(dirname(__FILE__) . '/datatables_helper.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 
 if(isSessionValid() == false)
@@ -167,10 +168,12 @@ function getQuickTrackerData($conn, &$POSTJ){
 	$stmt->execute();
 	$row = $stmt->get_result()->fetch_row();
 	$totalRecords = $row[0];
-	$totalRecords_with_filter = $totalRecords;//will be updated from below
 
-	$stmt = $conn->prepare("SELECT * FROM tb_data_quick_tracker_live WHERE tracker_id=? ".$colSortString." LIMIT ? OFFSET ?");
-	$stmt->bind_param("sss", $tracker_id,$limit,$offset);
+	// No SQL LIMIT/OFFSET: search spans JSON/computed columns (ip_info, client-tz
+	// time) SQL LIKE can't reach, so build the FULL filtered set, count it, then
+	// slice the page in PHP. Bounded per tracker (same fetch downloadReport does).
+	$stmt = $conn->prepare("SELECT * FROM tb_data_quick_tracker_live WHERE tracker_id=? ".$colSortString);
+	$stmt->bind_param("s", $tracker_id);
 	$stmt->execute();
 	$result = $stmt->get_result();
 	$rows = $result->fetch_all(MYSQLI_ASSOC);
@@ -205,13 +208,13 @@ function getQuickTrackerData($conn, &$POSTJ){
 				array_push($arr_filtered,$tmp);		
 	}
 
-	$totalRecords_with_filter = sizeof($arr_filtered);
 	$stmt->close();
-	$resp = array(
-		"draw" => intval($draw),
-		"recordsTotal" => intval($totalRecords),
-		"recordsFiltered" => intval($totalRecords_with_filter),
-		"data" => $arr_filtered
+	// recordsFiltered is the FULL filtered count (gates Next); data is the page.
+	$resp = taphish_dt_envelope(
+		intval($draw),
+		intval($totalRecords),
+		sizeof($arr_filtered),
+		taphish_dt_slice($arr_filtered, $offset, $limit)
 	);
 
 	echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);

@@ -72,3 +72,24 @@ if (!function_exists('taphish_dt_limit')) {
         return [$start, $length];
     }
 }
+
+if (!function_exists('taphish_dt_slice')) {
+    /**
+     * Return one DataTables page from an ALREADY-FILTERED, already-ordered array.
+     * The 4 tracker/campaign managers filter in PHP over JSON/computed columns
+     * (rid, ip_info, form_field_data, client-tz time) that SQL LIKE can't reach,
+     * so they must count sizeof(full filtered set) and slice the page HERE —
+     * never let SQL LIMIT pre-truncate the set the count is derived from.
+     *
+     * length === -1 is DataTables "All" → whole tail from $start. $start clamps
+     * to >= 0. A $start past the end yields [].
+     */
+    function taphish_dt_slice(array $rows, $start, $length): array
+    {
+        [$start, $length] = taphish_dt_limit($start, $length);
+        if ($length < 0) {
+            return array_slice($rows, $start);
+        }
+        return array_slice($rows, $start, $length);
+    }
+}

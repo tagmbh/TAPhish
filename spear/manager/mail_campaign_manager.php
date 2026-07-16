@@ -1,5 +1,6 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
+require_once(dirname(__FILE__) . '/datatables_helper.php');
 require_once(dirname(__FILE__) . '/bounce_poll.php');
 require_once(dirname(__FILE__) . '/customer_report_aggregator.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
@@ -388,10 +389,12 @@ function multi_get_mcampinfo_from_mcamp_list_id_get_live_mcamp_data($conn, $POST
 	$stmt->execute();
 	$row = $stmt->get_result()->fetch_row();
 	$totalRecords = $row[0];
-	$totalRecords_with_filter = $totalRecords;//will be updated from below
 
-	$stmt = $conn->prepare("SELECT * FROM tb_data_mailcamp_live WHERE campaign_id=? ".$colSortString." LIMIT ? OFFSET ?");
-	$stmt->bind_param("sss", $campaign_id,$limit,$offset);
+	// No SQL LIMIT/OFFSET: search spans computed columns (mail_open aggregation,
+	// client-tz times, ip_info) SQL LIKE can't reach, so build the FULL filtered
+	// set, count it, then slice the page in PHP. Bounded per campaign.
+	$stmt = $conn->prepare("SELECT * FROM tb_data_mailcamp_live WHERE campaign_id=? ".$colSortString);
+	$stmt->bind_param("s", $campaign_id);
 	$stmt->execute();
 	$result = $stmt->get_result();
 	$rows = $result->fetch_all(MYSQLI_ASSOC);
@@ -452,14 +455,14 @@ function multi_get_mcampinfo_from_mcamp_list_id_get_live_mcamp_data($conn, $POST
 				array_push($arr_filtered,$tmp);
 	}
 
-	$totalRecords_with_filter = sizeof($arr_filtered);
 	$stmt->close();
-	$resp = array(
-		  "draw" => intval($draw),
-		  "recordsTotal" => intval($totalRecords),
-		  "recordsFiltered" => intval($totalRecords_with_filter),
-		  "data" => $arr_filtered
-		);
+	// recordsFiltered is the FULL filtered count (gates Next); data is the page.
+	$resp = taphish_dt_envelope(
+		intval($draw),
+		intval($totalRecords),
+		sizeof($arr_filtered),
+		taphish_dt_slice($arr_filtered, $offset, $limit)
+	);
 
 	echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);
 }
