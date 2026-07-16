@@ -88,6 +88,11 @@ chooser page). Path-based so the exact-href highlighter works. Live: one group p
 stray leaf gone, /spear/Trackers highlights + expands the Trackers group. Old report/list/builder pages
 stay reachable via the list's per-row links. Guard: `testNavUnifiesTrackersGroup`.
 
+**Pre-existing bug found during P2 health check (NOT introduced):** Home.php throws
+`moment is not defined` — it uses moment (dashboard.js) but never loads `js/libs/moment.min.js`
+(unlike other pages). One-line fix (add the script include); left out of P2 scope. Low impact
+(dashboard graphs on Home).
+
 ### ✅ P2 (Trackers unified) COMPLETE — all increments deployed + live-verified 2026-07-16. Suite 1029 green.
 Deferred (noted): single-page report render-merge (hard client global collisions → risky); topbar
 "Create New" tracker shortcuts left as-is; the two campaign dashboards (P4) untouched.
