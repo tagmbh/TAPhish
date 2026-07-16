@@ -78,7 +78,19 @@ scanner hits filtered; toggle present on both pages. **Scope note:** did NOT do 
 render-merge of the two report clients — they have hard global collisions (g_tracker_id/dic_all_col/
 getAllReportColListSelected/exportReportAction), so merging = a large risky rewrite of the dynamic
 web-column logic (deferred, do attended). The cross-type report ENTRY is already served by P2.1's
-Trackers.php per-row Report links. Still open: P2.4 Nav swap (absorbs P2.3 as two "New" items).
+Trackers.php per-row Report links.
+
+**P2.3 + P2.4 · Nav swap** (deployed + live-verified 2026-07-16): one **Trackers** sidebar group
+(`z_menu.php`) replaces the two old groups (Quick Tracker, Web Tracker) + the stray "Web Tracker Report"
+leaf → **All Trackers** (/spear/Trackers, the unified list), **New Web Tracker** (/spear/TrackerGenerator),
+**New Quick Tracker** (/spear/QuickTracker). P2.3 delivered as the two explicit New items (cleaner than a
+chooser page). Path-based so the exact-href highlighter works. Live: one group present, old groups +
+stray leaf gone, /spear/Trackers highlights + expands the Trackers group. Old report/list/builder pages
+stay reachable via the list's per-row links. Guard: `testNavUnifiesTrackersGroup`.
+
+### ✅ P2 (Trackers unified) COMPLETE — all increments deployed + live-verified 2026-07-16. Suite 1029 green.
+Deferred (noted): single-page report render-merge (hard client global collisions → risky); topbar
+"Create New" tracker shortcuts left as-is; the two campaign dashboards (P4) untouched.
 
 ### ⚠️ Deploy-discipline note (2026-07-16, during P1.3)
 A tar-deploy of `userlist_campaignlist_mailtemplate_manager.php` overwrote a server copy whose

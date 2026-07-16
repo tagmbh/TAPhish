@@ -44,8 +44,11 @@
     Membership-filtered `list_engagements` deferred (single-operator today).
   - ✅ Explicit **Unscoped/Legacy** bucket for `engagement_id IS NULL` with per-row **Zuordnen** (assign).
     Per-row **Löschen** deferred (cross-type delete needs per-type cleanup; assign is the value driver).
-- **P2 · Trackers unified** — one list (Type: open-pixel/web-form), per-row Report drawer; retire the stray
-  "Web Tracker Report" leaf + the Select-Tracker modal; unify the 5 naming variants.
+- **P2 · Trackers unified** — ✅ **DONE, deployed + live-verified 2026-07-16** (suite 1029): P2.0 bug batch
+  (SSRF guard, #-col/sort, Quick Stop, dead handler); P2.1 unified list `/spear/Trackers` (web+quick, Type
+  filter); P2.2 scanner-hide toggle on both report views; P2.3+P2.4 nav → one **Trackers** group (All
+  Trackers / New Web / New Quick), stray "Web Tracker Report" leaf retired. Deferred (noted): single-page
+  report render-merge (client global collisions). See `2026-07-16-p2-trackers-unified-plan.md`.
 - **P3 · Reports/Analytics consolidated** — one generator on the tested `engagement_analytics` core (give
   it a dispatcher action): default **ALL**, one column-picker, one `download_report`; **one clean column
   per logical field** (`decode_fields`, distinct/latest value — fixes the 24×-concatenation + duplicate
