@@ -23,15 +23,18 @@
 
 ## Roadmap (each point verified by a demo/TDD before locking)
 
-- **P0 · Foundation (this step)** — shared platform layer, TDD:
-  - `dt_server_response()` helper enforcing the DataTables contract (recordsTotal = unfiltered COUNT;
-    **recordsFiltered = real filtered COUNT** [the Next bug]; data = LIMIT/OFFSET slice; search+sort in SQL).
-    Route the 4 broken managers (quick_tracker:208, tracker_report:205, web_mail_campaign:436,
-    mail_campaign:455) through it. Correct reference: settings_manager:867.
-  - Nav bootstrap (sidebarmenu.js + custom.min.js + common_scripts.js) into the shared `z_footer` partial
-    → fixes the "click Home first" dead-click on the 5 pages missing the include.
-  - One `camp_status` label helper (replaces the 3 divergent decoders; covers status 5/6).
-- **P1 · Engagements = hub** (demo APPROVED — [mockup](../../..)):
+- **P0 · Foundation** — ✅ **DONE, deployed + live-verified 2026-07-16** (commits b524beb, 38c9431,
+  73a6910, f2754d7; suite 989 green):
+  - ✅ `datatables_helper.php` (envelope/search/order/limit/**slice**) — 4 managers rewired so
+    **recordsFiltered = real filtered COUNT** (the Next bug). Implementation note: search spans
+    JSON/computed columns SQL LIKE can't reach, so the fix filters the full set in PHP and slices the
+    page via `taphish_dt_slice` (rather than moving search to SQL). Live proof: 27-recipient campaign
+    pages to page 2, disjoint rows, search count correct.
+  - ✅ Nav bootstrap → shared **`z_navboot.php`** partial (NOT z_footer — it renders before jQuery loads).
+    Locked by `NavBootstrapTest`. Live: sidebarmenu.js on all 5 pages.
+  - ✅ One `camp_status` decoder (`js/camp_status.js`); both JS decoders delegate. Locked by
+    `CampStatusDecoderTest`. Live: label(5)="Deferred", no "undefined". (code 6 never set; 3 overloaded → backlog.)
+- **P1 · Engagements = hub** ← **NEXT** (demo APPROVED — [mockup](../../..)):
   - Add an **engagement selector** to the campaign builder (mail_campaign.js → send engagement_id; server
     already accepts it at mail_campaign_manager.php:85-110). Add `engagement_id` columns to the quick/web
     tracker tables + backfill. `getCampaignList` UNIONs mail+web+quick, membership-scoped, server-side paged.

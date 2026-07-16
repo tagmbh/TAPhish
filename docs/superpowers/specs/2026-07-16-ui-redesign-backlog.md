@@ -1,7 +1,30 @@
 # TAPhish UI / IA redesign — operator-reported backlog
 
 Living list of bugs + requirements gathered from the Textilcolor live run (2026-07-16), feeding the
-`feature/ui-ia-redesign` analysis + plan. Nothing here is fixed yet — captured so it isn't lost.
+`feature/ui-ia-redesign` analysis + plan.
+
+## ✅ SHIPPED — P0 foundation (deployed + live-verified 2026-07-16)
+
+All three P0 structural fixes are committed on `feature/ui-ia-redesign`, deployed to the live server
+(15 files, sha256-verified == HEAD, `php -l` clean), and demo-verified against the running engagement.
+Full suite **989 green**.
+
+- **P0a — DataTables "Next" (all 4 tables).** `datatables_helper.php` (`taphish_dt_envelope` /
+  `_search_clause` / `_order_clause` / `_limit` / **`_slice`**, TDD). The 4 managers now drop SQL
+  `LIMIT/OFFSET`, build the FULL PHP-filtered set, count it, and slice the page via `taphish_dt_slice`,
+  returning through `taphish_dt_envelope`. **Live proof** (campaign 1784124533380, 27 recipients):
+  page-1 `recordsFiltered=27` (was 20 → Next dead), page-2 returns the remaining 7 rows fully disjoint,
+  search "a" → `recordsFiltered=16` (full filtered count, not per-page). Commits b524beb, 38c9431.
+- **P0b — nav dead-click.** Shared `z_navboot.php` partial (loads `sidebarmenu.js`, guarded) included
+  before `</body>` on the 5 pages that were missing it. `NavBootstrapTest` locks the invariant (every
+  page including `z_menu.php` must load the nav bootstrap). **Live proof**: `sidebarmenu.js` now present
+  on all 5 pages. Commit 73a6910.
+- **P0c — status "undefined".** `js/camp_status.js` = single canonical decoder (codes read from the
+  scheduler's own setters); `mail_campaign.js` + `engagement_view.js` delegate. `CampStatusDecoderTest`
+  locks map completeness + delegation. **Live proof**: `campStatus.label(5)==='Deferred'`, no label
+  renders "undefined", unknown code → safe "Status N" fallback. Commit f2754d7.
+
+Everything below is still open (P1+).
 
 ## Information architecture (menu reorg)
 
@@ -59,18 +82,15 @@ Living list of bugs + requirements gathered from the Textilcolor live run (2026-
 
 ## Root causes (from deep analysis, 7-agent workflow 2026-07-16)
 
-- **Nav dead-click**: `js/libs/sidebarmenu.js` (binds the collapsible-group expand/collapse) is MISSING
-  from EngagementView.php, PretextLibrary.php, SenderToolkit.php, ToolsetChecker.php, QuickStart.php →
-  groups inert there; clicking Home re-binds it. Fix: add the include; better, move nav bootstrap
-  (sidebarmenu.js + custom.min.js + common_scripts.js) into the shared `z_footer` partial.
-- **DataTables "Next" dead**: Next is gated by `recordsFiltered`, and 4 managers set
-  `recordsFiltered = sizeof($arr_filtered)` where the rows were ALREADY `LIMIT`-sliced to ~20 →
-  ceil(20/20)=1 page. Managers: quick_tracker_manager:208, tracker_report_manager:205,
-  web_mail_campaign_manager:436, mail_campaign_manager:455. ⚠️ **My earlier "fix #6" corrected
-  `recordsTotal` only — WRONG gate; Next is still broken.** Also: search filtered in PHP AFTER the
-  LIMIT (matches only current page); sort whitelists exclude JSON-derived cols. Fix: one shared
-  `dt_server_response()` helper (correct pattern already in settings_manager:867 + userlist
-  getUserGroupFromGroupIdTable:1221) doing real filtered COUNT + SQL search/sort/LIMIT.
+- ~~**Nav dead-click**: `js/libs/sidebarmenu.js` MISSING from 5 pages.~~ ✅ **DONE (P0b).** Fixed via
+  shared `z_navboot.php` partial (NOT `z_footer` — that partial is emitted inside the content area
+  before jQuery loads, so it can't carry JS). Locked by `NavBootstrapTest`.
+- ~~**DataTables "Next" dead**: `recordsFiltered = sizeof($arr_filtered)` on LIMIT-sliced rows in 4
+  managers.~~ ✅ **DONE (P0a).** Root cause confirmed exactly as analysed (Next gated by
+  `recordsFiltered`; my earlier "fix #6" on `recordsTotal` was the wrong gate — corrected). Fix chosen:
+  drop SQL LIMIT/OFFSET, filter the full set in PHP (search spans JSON/computed cols SQL LIKE can't
+  reach — that's WHY the count was wrong), count it, slice via `taphish_dt_slice`. Shared helper is
+  `datatables_helper.php`. Live-verified (see SHIPPED above).
 - **Engagements listing/delete**: (1) area is a view over `tb_core_engagement` only; the classic
   Email Campaign builder saves `engagement_id=NULL` (mail_campaign.js never sends it), and Quick/Web
   trackers live in separate tables with no engagement_id column → non-wizard campaigns invisible.
@@ -88,8 +108,14 @@ Living list of bugs + requirements gathered from the Textilcolor live run (2026-
   Created sorts lexicographically. Same in quick_tracker.js / quick_tracker_report.js.
 - **Engagement→dashboard deep-link opens empty**: engagement_view.js builds `?campaign_id=` but
   MailCmpDashboard reads only `?mcamp=` → picker always pops.
-- **Status "undefined"**: mail_campaign.js label switch only handles camp_status 0–4; 5 (tz-deferred)
-  and 6 fall through → literal "undefined". camp_status has THREE divergent decoders (list/engagement/home).
+- ~~**Status "undefined"**: mail_campaign.js switch only handles 0–4; 5 falls through.~~ ✅ **DONE (P0c).**
+  Note from the fix: code **6 is never set by any code path** (engagement_view.js had invented it);
+  real codes are 0–5. NEW backlog item surfaced ↓.
+- **NEW — camp_status 3 is overloaded** (found during P0c): status 3 means manual-stop AND
+  failure-auto-pause AND auto-complete-terminal (4→3) — three different situations share one code, so
+  the decoder can't tell "Completed" from "Error-paused". Kept the dominant "Completed" label (the
+  failure case is already alerted via the send watchdog/Telegram). Proper fix (later phase): add a
+  distinct error/stopped status so the list can show it honestly.
 - **Import-HTML modal fatal + SSRF**: web_tracker_generator_list_manager.php:182 error branch calls
   `$stmt->error()` with no `$stmt` (fatal); the fetch is an unauth SSRF (VERIFYPEER off, follows redirects).
 - **Dead handler**: web_tracker_generator_function.js posts `pause_stop_tracker_tracking` (manager
