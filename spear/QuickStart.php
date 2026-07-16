@@ -582,5 +582,6 @@
       <script src="js/wizard_pure.js"></script>
       <script src="js/quick_start.js"></script>
       <script src="js/wizard_stepflow.js"></script>
+      <?php include_once 'z_navboot.php' ?>
    </body>
 </html>

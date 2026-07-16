@@ -77,5 +77,6 @@
       <script src="js/libs/toastr.min.js"></script>
       <script src="js/common_scripts.js"></script>
       <script src="js/pretext_library.js"></script>
+      <?php include_once 'z_navboot.php' ?>
    </body>
 </html>
