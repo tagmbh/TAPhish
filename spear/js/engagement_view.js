@@ -49,18 +49,51 @@
                 $('<span>').addClass('badge ' + statusBadgeClass(e.status)).text(e.status || 'draft')
             ));
             // Phase 3.56: resumable drafts deep-link back into the wizard.
+            // P1.4a: EVERY row (drafts included) also gets Open + Delete, so an
+            // abandoned draft is no longer stuck on "Continue setup" with no way
+            // to reach the detail view's delete button — the operator-reported
+            // "can't delete engagements" bug.
             var resumable = (e.status || 'draft') === 'draft' && ((parseInt(e.wizard_step, 10) || 1) < 7);
-            $tr.append($('<td>').append(
-                resumable
-                    ? $('<a class="btn btn-sm btn-info">')
-                        .attr('href', 'QuickStart?engagement_id=' + e.id)
-                        .html('<i class="fa fa-play"></i> Continue setup')
-                    : $('<a class="btn btn-sm btn-info">')
-                        .attr('href', 'EngagementView?engagement_id=' + e.id)
-                        .text('Open')
-            ));
+            var $actions = $('<td>');
+            if (resumable) {
+                $('<a class="btn btn-sm btn-info mr-1 mb-1">')
+                    .attr('href', 'QuickStart?engagement_id=' + e.id)
+                    .html('<i class="fa fa-play"></i> Continue')
+                    .appendTo($actions);
+            }
+            $('<a class="btn btn-sm btn-outline-info mr-1 mb-1">')
+                .attr('href', 'EngagementView?engagement_id=' + e.id)
+                .text('Open')
+                .appendTo($actions);
+            $('<button type="button" class="btn btn-sm btn-outline-danger mb-1">')
+                .attr('title', 'Delete engagement')
+                .html('<i class="fa fa-trash"></i>')
+                .on('click', function () { deleteEngagementFromPicker(e.id, e.name || e.slug); })
+                .appendTo($actions);
+            $tr.append($actions);
             $body.append($tr);
         });
+    }
+
+    // P1.4a: delete an engagement straight from the picker list (works for
+    // drafts too). Reuses the server delete_engagement action, which unlinks
+    // linked campaigns rather than destroying them.
+    function deleteEngagementFromPicker(id, name) {
+        if (!window.confirm('Delete engagement "' + name + '"?\n\nLinked campaigns are kept but unlinked. This cannot be undone.')) {
+            return;
+        }
+        post({ action_type: 'delete_engagement', engagement_id: id })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    if (window.toastr) {
+                        toastr.success('Engagement deleted' + (res.unlinked ? ' (' + res.unlinked + ' campaign(s) unlinked)' : ''));
+                    }
+                    loadPicker();
+                } else if (window.toastr) {
+                    toastr.error((res && res.error) || 'Delete failed');
+                }
+            })
+            .fail(function () { if (window.toastr) { toastr.error('Delete failed (network)'); } });
     }
 
     function renderHeader(eng) {
