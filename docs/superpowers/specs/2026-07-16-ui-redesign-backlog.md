@@ -48,7 +48,21 @@ Deferred (noted, low priority): per-row **Löschen** in the Unscoped bucket (cro
 per-type cleanup — assign is the value driver); **membership-filtered** `list_engagements` (single-
 operator today); server-side paging for the hub list (client-side is fine at ~20 campaigns).
 
-Everything below is still open (P2+).
+## ✅ SHIPPED — P2.0 tracker bug batch (deployed + live-verified 2026-07-16)
+
+First P2 increment (operator chose bug-batch-first). 10 files deployed (6 fixes + 4 server-realign to
+HEAD incl. `wizard_tracker_builder.php` for #170 consistency). Suite 1021 green. Capture path untouched.
+- **Import-HTML SSRF + fatal** (`web_tracker_generator_list_manager.php` getHTMLContent) — new
+  `url_fetch_guard.php` (`taphish_fetch_url_precheck` + `taphish_ip_is_public`, TDD 10 tests): http(s)
+  only, reject private/reserved literal IPs + localhost, DNS-resolve every A record + require public;
+  curl hardened (no FOLLOWLOCATION, http/https only, VERIFYPEER on, timeouts); fatal replaced with clean
+  JSON. Live: `169.254.169.254`/`127.0.0.1`/`192.168.x`/`localhost`/`file://`/garbage all refused.
+- **`#`-col namespace** (`web_tracker_list.js`, `quick_tracker.js`, `quick_tracker_report.js`) → `order.dt`.
+  Live: web (9 rows) + quick (3 rows) renumber 1,2,3….
+- **Malformed sort** → `order:[[N,'desc']]`; web list Date `data-order` moved to Date Created (col 4).
+- **Quick "Stop" `fale` typo** → `false` (Stop now records stop_time). Live: no `fale`, buttons emit false.
+- **Dead pause handler** removed; **ignored 2nd `.DataTable()` arg** dropped.
+Guarded by `TrackerBugBatchTest` + `UrlFetchGuardTest`. Still open: P2.1–P2.4 (unified List/Reports/New/Nav).
 
 ### ⚠️ Deploy-discipline note (2026-07-16, during P1.3)
 A tar-deploy of `userlist_campaignlist_mailtemplate_manager.php` overwrote a server copy whose
