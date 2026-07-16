@@ -363,23 +363,9 @@ function loadTableCampaignList() {
                                 <a class="dropdown-item" href="#" onClick="promptMailCampaignCopy('` + value.campaign_id + `','` + value.campaign_name + `')">Copy</a>
                         </div></div></div>`;
     
-                    switch (value.camp_status) {
-                        case "0":
-                            var camp_status = `<span class="ff badge badge-pill badge-dark" data-toggle="tooltip" title="Not scheduled"><i class="mdi mdi-alert"></i> Inactive</span>`;
-                            break;
-                        case "1":
-                            var camp_status = `<span class="badge badge-pill badge-warning" data-toggle="tooltip" title="Scheduled"><i class="mdi mdi-timer"></i> Scheduled</span>`;
-                            break;
-                        case "2":
-                            var camp_status = `<span class="badge badge-pill badge-primary" data-toggle="tooltip" title="Phishing status"><i class="mdi mdi-fish"></i> In-progress</span> <span class="badge badge-pill badge-primary" data-toggle="tooltip" title="Mail sending status"><i class="mdi mdi-email"></i> In-progress</span>`;
-                            break;
-                        case "3":
-                            var camp_status = `<span class="badge badge-pill badge-success" data-toggle="tooltip" title="Phishing status"><i class="mdi mdi-fish"></i> Completed</span>`;
-                            break;
-                        case "4":
-                            var camp_status = `<span class="badge badge-pill badge-success" data-toggle="tooltip" title="Mail sending status"><i class="mdi mdi-email"></i> Completed</span> <span class="badge badge-pill badge-primary" data-toggle="tooltip" title="Phishing status"><i class="mdi mdi-fish"></i> In-progress</span>`;
-                            break;
-                    }                
+                    // Canonical decoder (js/camp_status.js) — covers 5=Deferred,
+                    // which this switch used to miss (badge rendered "undefined").
+                    var camp_status = campStatus.badge(value.camp_status);                
                     
                     $("#table_mail_campaign_list tbody").append("<tr><td></td><td>" + value.campaign_name + "</td><td>" + value.campaign_data.user_group.name + "</td><td>" + value.campaign_data.mail_template.name + "</td><td>" + value.campaign_data.mail_sender.name + "</td><td>" + value.campaign_data.mail_config.name+ "</td><td data-order=\"" + getTimestamp(value.date) + "\">" + (value.date==null?'-':value.date) + "</td><td data-order=\"" + getTimestamp(value.scheduled_time) + "\">" + (value.scheduled_time==null?'-':value.scheduled_time) + "</td><td data-order=\"" + getTimestamp(value.stop_time) + "\">" + (value.stop_time==null?'-':value.stop_time) + "</td><td>"+ camp_status + "</td><td>" + action_items_campaign_table + "</td></tr>");
                 });

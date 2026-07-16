@@ -28,16 +28,10 @@
         })[status] || 'badge-secondary';
     }
 
+    // Delegate to the canonical decoder (js/camp_status.js) so the campaign
+    // status labels can't diverge from the campaign-list view again.
     function campStatusLabel(s) {
-        return ({
-            0: 'created',
-            1: 'queued',
-            2: 'sending',
-            3: 'completed',
-            4: 'auto-complete',
-            5: 'deferred',
-            6: 'stopped'
-        })[parseInt(s, 10)] || ('status ' + s);
+        return window.campStatus ? window.campStatus.label(s) : ('status ' + s);
     }
 
     function renderPicker(engagements) {

@@ -311,7 +311,8 @@
       <script src="js/libs/custom.min.js"></script>
       <!-- this page js -->   
       <script src="js/common_scripts.js"></script>
-      <script src="js/mail_campaign.js"></script> 
+      <script src="js/camp_status.js"></script>
+      <script src="js/mail_campaign.js"></script>
       <?php
          echo '<script>';
          if(isset($_GET['action'])){

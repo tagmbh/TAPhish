@@ -129,6 +129,7 @@
       <script src="js/libs/custom.min.js"></script>
       <script src="js/libs/toastr.min.js"></script>
       <script src="js/common_scripts.js"></script>
+      <script src="js/camp_status.js"></script>
       <script src="js/engagement_view.js"></script>
       <?php include_once 'z_navboot.php' ?>
    </body>
