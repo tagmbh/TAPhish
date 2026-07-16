@@ -141,7 +141,7 @@ function loadTableQuickTrackerList() {
                 var action_items = `<div class="d-flex no-block"><button type="button" class="btn btn-warning btn-sm" data-toggle="tooltip" title="Report" onClick="document.location='QuickTrackerReport?tracker=` + value.tracker_id + `'"><i class="mdi mdi-book-open"></i></button>`;
 
                 if (value.active == true)
-                    action_items += `<button type="button" class="btn btn-danger btn-sm" data-toggle="tooltip" title="Pause/Stop Tracking" data-tracker_id="` + value.tracker_id + `" data-status_value=fale name="quick_tracker_status_button"><i class="mdi mdi-stop"></i></button>`;
+                    action_items += `<button type="button" class="btn btn-danger btn-sm" data-toggle="tooltip" title="Pause/Stop Tracking" data-tracker_id="` + value.tracker_id + `" data-status_value=false name="quick_tracker_status_button"><i class="mdi mdi-stop"></i></button>`;
                 else
                     action_items += `<button type="button" class="btn btn-success btn-sm" data-toggle="tooltip" title="Start/Resume Tracking" data-tracker_id="` + value.tracker_id + `" data-status_value=true name="quick_tracker_status_button"><i class="mdi mdi-play"></i></button>`;
 
@@ -159,7 +159,7 @@ function loadTableQuickTrackerList() {
         
         dt_quick_tracker_list = $('#table_quick_tracker_list').DataTable({
             "bDestroy": true,
-            "aaSorting": [3, 'desc'],
+            "order": [[3, 'desc']],
             'pageLength': 20,
             'lengthMenu': [[20, 50, 100, -1], [20, 50, 100, 'All']],
             'columnDefs': [{
@@ -180,7 +180,7 @@ function loadTableQuickTrackerList() {
             }
         });
 
-        dt_quick_tracker_list.on('order.dt_quick_tracker_list search.dt_quick_tracker_list', function() {
+        dt_quick_tracker_list.on('order.dt search.dt', function() {   // real .dt events (a per-table namespace here never fired → blank # column)
             dt_quick_tracker_list.column(0, {
                 search: 'applied',
                 order: 'applied'
