@@ -220,6 +220,8 @@ if (!defined('TAPHISH_POLICY')) {
         // Phase 3.57: full-funnel wizard helpers (auto-tracker, recipient commit).
         'wizard_create_web_tracker'          => ['super-admin', 'operator'],
         'wizard_list_web_trackers'           => ['super-admin', 'operator'],
+        // P2.1: unified tracker list (web + quick) — read, operator+.
+        'list_all_trackers'                  => ['super-admin', 'operator'],
         'wizard_commit_recipients'           => ['super-admin', 'operator'],
         'wizard_launch_campaign'             => ['super-admin', 'engagement_owner'],
 

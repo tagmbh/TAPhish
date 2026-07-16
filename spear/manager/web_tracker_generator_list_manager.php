@@ -39,7 +39,19 @@ if (isset($_POST)) {
 
 		if($POSTJ['action_type'] == "get_link_to_web_tracker")		//from mail template
 			getLinktoWebTracker($conn);
+		if($POSTJ['action_type'] == "list_all_trackers")		// P2.1 unified list (web + quick)
+			getAllTrackers($conn);
 	}
+}
+
+// P2.1: unified tracker list feed — web + quick, type-tagged, times localized.
+function getAllTrackers($conn){
+	require_once(dirname(__FILE__) . '/tracker_unified.php');
+	$DTime_info = getTimeInfo($conn);
+	$localize = function($t) use ($DTime_info) {
+		return getInClientTime_FD($DTime_info, $t, null, 'd-m-Y h:i A');
+	};
+	echo json_encode(['result' => 'success', 'trackers' => taphish_all_trackers($conn, $localize)], JSON_INVALID_UTF8_IGNORE);
 }
 
 //-----------------------------
