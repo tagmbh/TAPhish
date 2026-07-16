@@ -67,6 +67,19 @@ final class TrackerListUnifyTest extends TestCase
         self::assertTrue(taphish_hit_is_visible(['is_scanner' => '0'], true));
     }
 
+    public function testNavUnifiesTrackersGroup(): void
+    {
+        // P2.4: one Trackers group replaces the Quick + Web groups + the stray
+        // Web Tracker Report leaf. The unified list is in nav; the old fragmented
+        // destinations are removed from the sidebar (pages still reachable via
+        // the list's per-row links).
+        $menu = file_get_contents(dirname(__DIR__) . '/spear/z_menu.php');
+        self::assertStringContainsString('/spear/Trackers"', $menu, 'unified All-Trackers list must be in nav');
+        self::assertStringNotContainsString('/spear/TrackerList"', $menu, 'old Web Tracker list nav removed');
+        self::assertStringNotContainsString('/spear/QuickTrackerReport"', $menu, 'old Quick Reports nav removed');
+        self::assertStringNotContainsString('/spear/TrackerReport"', $menu, 'stray Web Tracker Report leaf removed');
+    }
+
     public function testScannerToggleWiredInBothReportViews(): void
     {
         $spear = dirname(__DIR__) . '/spear';

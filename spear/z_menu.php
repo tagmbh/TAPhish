@@ -144,21 +144,17 @@
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/Home" aria-expanded="false"><i class="mdi mdi-home"></i><span class="hide-menu">Home</span></a></li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/QuickStart" aria-expanded="false"><i class="mdi mdi-rocket-launch"></i><span class="hide-menu">Quick Start</span></a></li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/EngagementView" aria-expanded="false"><i class="mdi mdi-target"></i><span class="hide-menu">Engagements</span></a></li>
+            <!-- P2.4: one unified Trackers group (was Quick Tracker + Web Tracker groups + a
+                 stray Web Tracker Report leaf). All Trackers = the unified list (web+quick),
+                 whose per-row Report/Edit links reach the existing report/builder pages. -->
             <li class="sidebar-item">
-               <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-watch-vibrate"></i><span class="hide-menu">Quick Tracker </span></a>
+               <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-radar"></i><span class="hide-menu">Trackers </span></a>
                <ul aria-expanded="false" class="collapse  first-level">
-                  <li class="sidebar-item"><a href="/spear/QuickTracker" class="sidebar-link"><i class="mdi mdi-playlist-plus"></i><span class="hide-menu"> Tracker List</span></a></li>
-                  <li class="sidebar-item"><a href="/spear/QuickTrackerReport" class="sidebar-link"><i class="mdi mdi-book-open"></i><span class="hide-menu"> Reports </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/Trackers" class="sidebar-link"><i class="fas fa-th-list"></i><span class="hide-menu"> All Trackers </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/TrackerGenerator" class="sidebar-link"><i class="mdi mdi-web"></i><span class="hide-menu"> New Web Tracker </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/QuickTracker" class="sidebar-link"><i class="mdi mdi-watch-vibrate"></i><span class="hide-menu"> New Quick Tracker </span></a></li>
                </ul>
             </li>
-            <li class="sidebar-item">
-               <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-web"></i><span class="hide-menu">Web Tracker </span></a>
-               <ul aria-expanded="false" class="collapse  first-level">
-                  <li class="sidebar-item"><a href="/spear/TrackerList" class="sidebar-link"><i class="fas fa-th-list"></i><span class="hide-menu"> Tracker List </span></a></li>
-                  <li class="sidebar-item"><a href="/spear/TrackerGenerator" class="sidebar-link"><i class="fas fa-plus"></i><span class="hide-menu"> New Tracker </span></a></li>
-               </ul>
-            </li>
-            <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/TrackerReport" aria-expanded="false"><i class="mdi mdi-laptop-windows"></i><span class="hide-menu">Web Tracker Report</span></a></li>
             <li class="sidebar-item">
                <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-email"></i><span class="hide-menu">Email Campaign </span></a>
                <ul aria-expanded="false" class="collapse  first-level">
