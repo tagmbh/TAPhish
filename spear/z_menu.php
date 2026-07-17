@@ -167,8 +167,17 @@
                   <li class="sidebar-item"><a href="/spear/MailConfig" class="sidebar-link"><i class="fas fa-cogs"></i><span class="hide-menu"> Configuration</span></a></li>
                </ul>
             </li>
-            <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/MailCmpDashboard" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><i class="icon-right-corn mdi mdi-email-outline"></i><span class="hide-menu">Email Campaign Dashboard</span></a></li>
-            <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/WebMailCmpDashboard" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><i class="icon-bottom mdi mdi-email-outline"></i><i class="icon-right mdi mdi-web"></i><span class="hide-menu">Web-MailCamp Dashboard</span></a></li>
+            <!-- P4: one "Campaign Dashboard" group with two views (was two separate
+                 top-level dashboard leaves). A single-page fold of the two clients is
+                 a large rewrite (hard JS global conflicts + dynamic columns/charts) —
+                 tracked as an attended task. -->
+            <li class="sidebar-item">
+               <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><span class="hide-menu">Campaign Dashboard </span></a>
+               <ul aria-expanded="false" class="collapse  first-level">
+                  <li class="sidebar-item"><a href="/spear/MailCmpDashboard" class="sidebar-link"><i class="mdi mdi-email-outline"></i><span class="hide-menu"> Email view </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/WebMailCmpDashboard" class="sidebar-link"><i class="mdi mdi-web"></i><span class="hide-menu"> Web-tracker view </span></a></li>
+               </ul>
+            </li>
             <li class="sidebar-section">Toolkit</li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/ToolsetChecker" aria-expanded="false"><i class="mdi mdi-stethoscope"></i><span class="hide-menu">Toolset Checker</span></a></li>
             <li class="sidebar-item">

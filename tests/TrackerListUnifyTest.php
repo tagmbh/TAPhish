@@ -80,6 +80,18 @@ final class TrackerListUnifyTest extends TestCase
         self::assertStringNotContainsString('/spear/TrackerReport"', $menu, 'stray Web Tracker Report leaf removed');
     }
 
+    public function testNavGroupsTheTwoDashboards(): void
+    {
+        // P4: one "Campaign Dashboard" group replaces the two separate dashboard
+        // leaves; both views still reachable underneath.
+        $menu = file_get_contents(dirname(__DIR__) . '/spear/z_menu.php');
+        self::assertStringContainsString('Campaign Dashboard ', $menu, 'one Campaign Dashboard group');
+        self::assertStringContainsString('/spear/MailCmpDashboard', $menu, 'Email view still linked');
+        self::assertStringContainsString('/spear/WebMailCmpDashboard', $menu, 'Web-tracker view still linked');
+        self::assertStringNotContainsString('Email Campaign Dashboard', $menu, 'old standalone leaf removed');
+        self::assertStringNotContainsString('Web-MailCamp Dashboard', $menu, 'old standalone leaf removed');
+    }
+
     public function testScannerToggleWiredInBothReportViews(): void
     {
         $spear = dirname(__DIR__) . '/spear';
