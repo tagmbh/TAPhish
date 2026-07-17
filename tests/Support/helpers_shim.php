@@ -66,3 +66,5 @@ require_once __DIR__ . '/../../spear/manager/capture_fields.php';
 require_once __DIR__ . '/../../spear/manager/geo_lookup.php';
 require_once __DIR__ . '/../../spear/manager/wizard_tracker_builder.php';
 require_once __DIR__ . '/../../spear/manager/landing_host.php';
+require_once __DIR__ . '/../../spear/manager/dashboard_view.php';
+require_once __DIR__ . '/../../spear/manager/report_config.php';

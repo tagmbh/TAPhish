@@ -67,8 +67,19 @@ $('#modal_web_tracker_selector').on('change', function() {
             $('#modal_table_webtracker_info > tbody > tr:eq(1) > td:eq(1)').text(webtracker['tracker_name']);
             $('#modal_table_webtracker_info > tbody > tr:eq(2) > td:eq(1)').text(webtracker['date']);
             $('#modal_table_webtracker_info > tbody > tr:eq(3) > td:eq(1)').text(webtracker['start_time']!=''?webtracker['start_time']:"NA");
-        }            
+        }
     });
+});
+
+// "Show web tracker" toggle: reveal/hide the web-tracker picker in the Select
+// modal. Off = email-only view (the tracker choice is cleared).
+$('#cb_show_web').on('change', function() {
+    if ($(this).is(':checked')) {
+        $('#web_tracker_selector_col, #modal_webtracker_info_col').show();
+    } else {
+        $('#web_tracker_selector_col, #modal_webtracker_info_col').hide();
+        $('#modal_web_tracker_selector').val('').trigger('change');
+    }
 });
 
 //------------------------------------------------
@@ -142,10 +153,16 @@ function getAllReportColListSelected(){
 //----------------------------------------------
 
 function refreshDashboard(f_refresh=false) {
-    if (g_campaign_id != '' && g_tracker_id != '')
+    if (g_campaign_id != '')
         campaignSelected(g_campaign_id, g_tracker_id, f_refresh);
     else
         toastr.error('', 'Campaign not selected');
+}
+
+// Show/hide the web-tracker-only cards (page-visit/form-submission pies, web
+// overview, web tracker info) for the email-only vs full Campaign Dashboard.
+function toggleWebSections(show) {
+    show ? $('.web-only-section').show() : $('.web-only-section').hide();
 }
 
 function startLoaders() {
@@ -181,15 +198,20 @@ function loadTableCampaignList() {
                     $("#ModalCampaignList").modal("toggle");
                 else{
                     $("#modal_mailcamp_selector").val(g_campaign_id).trigger("change");
-                    $("#modal_web_tracker_selector").val(g_tracker_id).trigger("change");
+                    if (g_tracker_id != '') {
+                        $('#cb_show_web').prop('checked', true).trigger('change');
+                        $("#modal_web_tracker_selector").val(g_tracker_id).trigger("change");
+                    }
                 }
             }
         }
     }); 
 }
 
-function campaignSelectedValidation(){    
+function campaignSelectedValidation(){
     var f_error=false;
+    var showWeb = $('#cb_show_web').is(':checked');
+
     $("#modal_mailcamp_selector").data('select2').$selection.addClass("select2-selection");
     $("#modal_mailcamp_selector").data('select2').$selection.removeClass("select2-is-invalid");
     $("#modal_web_tracker_selector").data('select2').$selection.addClass("select2-selection");
@@ -199,22 +221,32 @@ function campaignSelectedValidation(){
         $("#modal_mailcamp_selector").data('select2').$selection.removeClass("select2-selection");
         $("#modal_mailcamp_selector").data('select2').$selection.addClass("select2-is-invalid");
         f_error = true;
-    }   
-    if($("#modal_web_tracker_selector").val() == ''){
+    }
+    // Web tracker is required only when "Show web tracker" is on; otherwise the
+    // dashboard renders email-only.
+    if(showWeb && $("#modal_web_tracker_selector").val() == ''){
         $("#modal_web_tracker_selector").data('select2').$selection.removeClass("select2-selection");
         $("#modal_web_tracker_selector").data('select2').$selection.addClass("select2-is-invalid");
         f_error = true;
-    }   
+    }
     if(!f_error){
-        campaignSelected($("#modal_mailcamp_selector").val(),$("#modal_web_tracker_selector").val(),false);
+        var sel_tracker = showWeb ? $("#modal_web_tracker_selector").val() : '';
+        campaignSelected($("#modal_mailcamp_selector").val(), sel_tracker, false);
         $('#ModalCampaignList').modal('toggle');
-        window.history.replaceState(null,null, location.pathname + '?mcamp=' + $("#modal_mailcamp_selector").val() + '&tracker=' + $("#modal_web_tracker_selector").val());
+        var qs = '?mcamp=' + $("#modal_mailcamp_selector").val() + (sel_tracker ? '&tracker=' + sel_tracker : '');
+        window.history.replaceState(null,null, location.pathname + qs);
     }
 }
 
-function campaignSelected(campaign_id,tracker_id,f_refresh=false) {
+function campaignSelected(campaign_id,tracker_id='',f_refresh=false) {
     g_campaign_id = campaign_id;
     g_tracker_id = tracker_id;
+    var hasTracker = (g_tracker_id !== '' && g_tracker_id != null);
+
+    // One Campaign Dashboard: email metrics always render; the web-tracker
+    // sections render only when a tracker is selected (mirrors the pure
+    // taphish_dashboard_sections decision).
+    toggleWebSections(hasTracker);
 
     $('input[name="radio_table_data"]:checked').val() == "radio_table_data_single"?g_tb_data_single=true:g_tb_data_single=false;
 
@@ -242,13 +274,10 @@ function campaignSelected(campaign_id,tracker_id,f_refresh=false) {
         })
     }).done(function (data) {
         $("#disp_camp_name").text(data.mailcamp_info.campaign_name);
-        $("#disp_web_tracker_name").text(data.webtracker_info.tracker_name);   
         $('#disp_camp_status').html(camp_status_def[data.mailcamp_info.camp_status]);
         $('#disp_camp_start').text(data.mailcamp_info.scheduled_time);
         $('#disp_camp_end').text(data.mailcamp_info.stop_time=='-'?' In-progress':data.mailcamp_info.stop_time);
         $('#Modal_export_file_name').val(data.mailcamp_info.campaign_name);
-        g_page_count = data.webtracker_info.tracker_step_data.web_forms.count;
-        var tracker_step_data = data.webtracker_info.tracker_step_data;
 
         $('#table_campaign_info > tbody > tr:eq(0) > td:eq(1)').text(campaign_id);
         $('#table_campaign_info > tbody > tr:eq(1) > td:eq(1)').text(data.mailcamp_info.date);
@@ -256,31 +285,45 @@ function campaignSelected(campaign_id,tracker_id,f_refresh=false) {
         $('#table_campaign_info > tboDy > tr:eq(3) > td:eq(1)').text(data.mailcamp_info.campaign_data.mail_template.name + " (ID: " + data.mailcamp_info.campaign_data.mail_template.id + ")");
         $('#table_campaign_info > tbody > tr:eq(4) > td:eq(1)').text(data.mailcamp_info.campaign_data.mail_sender.name + " (ID: " + data.mailcamp_info.campaign_data.mail_sender.id + ")");
 
-        $('#table_web_tracker_info > tbody > tr:eq(0) > td:eq(1)').text(tracker_id);
-        $('#table_web_tracker_info > tbody > tr:eq(1) > td:eq(1)').text(data.webtracker_info.date);
-        $('#table_web_tracker_info > tbody > tr:eq(2) > td:eq(1)').text("Yes");
-        $('#table_web_tracker_info > tbody > tr:eq(3) > td:eq(1)').text(g_page_count>0?"Yes":"No");
-        $('#table_web_tracker_info > tbody > tr:eq(4) > td:eq(1)').text(g_page_count);
+        if (hasTracker && data.webtracker_info) {
+            g_page_count = data.webtracker_info.tracker_step_data.web_forms.count;
+            var tracker_step_data = data.webtracker_info.tracker_step_data;
 
-        if(f_refresh == false){
-            $("#tb_camp_result_colums_list_wfs_data").empty();        
-        
-            for (var i=1; i<=g_page_count; i++)
-                $("#tb_camp_result_colums_list_wfs").append(`<option value="SPPage-` + i + `" selected>Page-` + i + ` Submission</option>`);
+            $("#disp_web_tracker_name").text(data.webtracker_info.tracker_name);
+            $('#table_web_tracker_info > tbody > tr:eq(0) > td:eq(1)').text(tracker_id);
+            $('#table_web_tracker_info > tbody > tr:eq(1) > td:eq(1)').text(data.webtracker_info.date);
+            $('#table_web_tracker_info > tbody > tr:eq(2) > td:eq(1)').text("Yes");
+            $('#table_web_tracker_info > tbody > tr:eq(3) > td:eq(1)').text(g_page_count>0?"Yes":"No");
+            $('#table_web_tracker_info > tbody > tr:eq(4) > td:eq(1)').text(g_page_count);
 
-            $.each(tracker_step_data.web_forms.data, function(i, page_n) {
-                $.each(page_n.form_fields_and_values, function(field_type, form_field) {
-                    if(field_type != "FSB"){
-                        $("#tb_camp_result_colums_list_wfs_data").append('<option value="Field-' + form_field.idname + '" selected>Field-' + form_field.idname + '</option>');
-                        form_field_cols.push('Field-' + form_field.idname);
-                    }
+            if(f_refresh == false){
+                $("#tb_camp_result_colums_list_wfs_data").empty();
+
+                for (var i=1; i<=g_page_count; i++)
+                    $("#tb_camp_result_colums_list_wfs").append(`<option value="SPPage-` + i + `" selected>Page-` + i + ` Submission</option>`);
+
+                $.each(tracker_step_data.web_forms.data, function(i, page_n) {
+                    $.each(page_n.form_fields_and_values, function(field_type, form_field) {
+                        if(field_type != "FSB"){
+                            $("#tb_camp_result_colums_list_wfs_data").append('<option value="Field-' + form_field.idname + '" selected>Field-' + form_field.idname + '</option>');
+                            form_field_cols.push('Field-' + form_field.idname);
+                        }
+                    });
                 });
-            });
-            $("#tb_camp_result_colums_list_wfs").trigger("change");
-            $('#tb_camp_result_colums_list_wfs_data').trigger("change");
+                $("#tb_camp_result_colums_list_wfs").trigger("change");
+                $('#tb_camp_result_colums_list_wfs_data').trigger("change");
+            }
+
+            updateWebCampGraphs(data.mailcamp_info.campaign_data.user_group.id);
+        } else {
+            // Email-only view: no tracker → clear the web-tracker display + the
+            // dynamic capture columns so only mail data is shown.
+            g_page_count = 0;
+            $("#disp_web_tracker_name").text('NA');
+            $("#tb_camp_result_colums_list_wfs_data").empty();
+            form_field_cols = [];
         }
 
-        updateWebCampGraphs(data.mailcamp_info.campaign_data.user_group.id);
         getTimelineData(data.mailcamp_info.campaign_data.user_group.id);
         loadTableCampaignResult();
     }); 
@@ -1014,9 +1057,16 @@ function loadTableCampaignResult() {
 
 
     getAllReportColListSelected();
+    // Email-only (no tracker): drop web-derived columns so the result table
+    // shows mail data only (the server returns web columns blank otherwise).
+    if (g_tracker_id === '' || g_tracker_id == null) {
+        allReportColListSelected = allReportColListSelected.filter(function(c){
+            return !(c && (c.indexOf('wcm_')===0 || c.indexOf('wpv_')===0 || c.indexOf('wfs_')===0 || c.indexOf('Field-')===0 || c.indexOf('SPPage-')===0));
+        });
+    }
     $('input[name="radio_table_data"]:checked').val() == "radio_table_data_single"?g_tb_data_single=true:g_tb_data_single=false;
 
-    var arr_tb_heading=[];  
+    var arr_tb_heading=[];
     arr_tb_heading.push({ data: 'sn', title: "SN" });
 
     $.each(allReportColListSelected, function(index, item) {
