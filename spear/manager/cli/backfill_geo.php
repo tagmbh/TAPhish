@@ -16,7 +16,7 @@
 
 $spear = dirname(__FILE__, 3);           // .../deepaudit.ch/spear
 require_once($spear . '/config/db.php');
-require_once($spear . '/manager/ip_info_projection.php');
+require_once($spear . '/manager/geo_lookup.php');   // local mmdb — no rate limit
 
 $mode = $argv[1] ?? '--dry';
 $commit = ($mode === '--commit');
@@ -25,21 +25,10 @@ $tables = ['tb_data_webform_submit', 'tb_data_webpage_visit'];
 $geoCache = [];                          // public_ip => projected geo (or null)
 $scanned = 0; $needGeo = 0; $updated = 0; $resolved = 0; $lookupFail = 0;
 
-function ipapi_lookup(string $ip): ?array
+function geo_of(string $ip): ?array
 {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://ipapi.co/' . rawurlencode($ip) . '/json/');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:85.0) Gecko/20100101 Firefox/85.0');
-    $raw = curl_exec($ch);
-    curl_close($ch);
-    $out = json_decode((string) $raw, true);
-    if (!is_array($out) || !empty($out['error'])) {
-        return null;
-    }
-    return taphish_ip_info_projection($out);
+    $g = taphish_geo_lookup($ip);          // local mmdb → 6-field ip_info shape
+    return empty($g['country']) ? null : $g;
 }
 
 foreach ($tables as $t) {
@@ -61,9 +50,8 @@ foreach ($tables as $t) {
         $needGeo++;
 
         if (!array_key_exists($ip, $geoCache)) {
-            $geoCache[$ip] = ipapi_lookup($ip);
+            $geoCache[$ip] = geo_of($ip);   // local mmdb — no rate limit, no sleep
             if ($geoCache[$ip] === null) { $lookupFail++; } else { $resolved++; }
-            sleep(1);                    // rate-limit ipapi.co
         }
         $fresh = $geoCache[$ip];
         if ($fresh === null || empty($fresh['country'])) {

@@ -262,6 +262,13 @@ function getIPInfo($conn, $public_ip) {
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         if (empty($result['ip_info'])) {
+            // P3: local mmdb geo first (no external call, no rate limit).
+            require_once(__DIR__ . '/geo_lookup.php');
+            $geo = taphish_geo_lookup((string) $public_ip);
+            if (!empty($geo['country'])) {
+                return json_encode($geo);
+            }
+            // Fallback: ipapi.co (rate-limited) only if the local DB has no answer.
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);

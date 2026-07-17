@@ -19,3 +19,6 @@
 # Playwright MCP scratch artifacts
 .playwright-mcp/
 *-desktop.png
+
+# Local IP-geo DB (deployed directly, not committed; refresh: see spear/config/geo/README)
+spear/config/geo/*.mmdb
