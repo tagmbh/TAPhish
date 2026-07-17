@@ -4,6 +4,35 @@ Prepared + tested 2026-07-17 (branch `feature/ui-ia-redesign`), **not deployed**
 recipient-facing capture path. `#4` (mail-reply) is already live (read-only, safe). Guarded by
 `NextRoundCaptureFixesTest`.
 
+## ★ READINESS RE-VERIFIED 2026-07-17 15:42 UTC (deploy still PENDING — operator go + wave timing)
+- **Timing:** scheduler alive; **nothing in-flight** (0 campaigns at st=2). **12 campaigns armed (st=1)**,
+  next wave **20-07-2026 07:15 UTC ≈ 09:15 Europe/Zurich (CEST)** … through 24-07. 4 fired 16-07 (st=4).
+  → Deploy in the quiet window BEFORE the 20-07 wave (e.g. 19-07, or 20-07 before 07:15 UTC). Because the
+  campaign is ARMED and these touch the send/capture path, **this deploy needs explicit operator go** — do
+  NOT deploy autonomously.
+- **Prep intact + tested:** `NextRoundCaptureFixesTest` 4/4 green (page-0 beacon, `screen_res`×4,
+  getMailReplied soft-fail, cron pixel-guarantee).
+- **Cron deploy is a CLEAN forward-add:** server `spear/core/mail_campaign_cron.php` == clean base
+  `51a3306` (sha `866ef63…`); target == HEAD (sha `7115902…`). The diff is exactly the 10-line
+  `timage_type===1 && strpos(...'{{TRACKER}}')===false → $_body.='{{TRACKER}}'` block. No server-only edits
+  to preserve. (An earlier full-history search *looked* like drift — that was a shell-loop artifact; the
+  direct `diff` confirms a clean base.)
+- **m365 landing prep present:** `spear/sniperhost/library/m365-login-capture/index.html` has the page-0
+  visit beacon + `screen_res` on all 4 posts; `deploy_hostpoint.sh` ready.
+
+### Wave-time deploy commands (run with operator go, in the pre-wave quiet window)
+```
+# 1) send cron (clean forward-add of the pixel guarantee)
+SSHK=~/.ssh/taphish_hostpoint_ed25519; HOST=azitufem@sl2084.web.hostpoint.ch; ROOT=/home/azitufem/www/deepaudit.ch
+ssh -i $SSHK $HOST "cd $ROOT && sha256sum spear/core/mail_campaign_cron.php"   # expect 866ef63… (base 51a3306)
+ssh -i $SSHK $HOST "cd $ROOT && cp -p spear/core/mail_campaign_cron.php spear/core/mail_campaign_cron.php.bak-\$(date +%Y%m%d)"
+scp -i $SSHK -q spear/core/mail_campaign_cron.php $HOST:$ROOT/spear/core/mail_campaign_cron.php
+ssh -i $SSHK $HOST "cd $ROOT && /usr/local/php83/bin/php -l spear/core/mail_campaign_cron.php && sha256sum spear/core/mail_campaign_cron.php"  # expect 7115902…
+# 2) m365 landing (page-0 beacon + screen_res) — redeploy to the look-alike host(s)
+bash spear/sniperhost/library/m365-login-capture/deploy_hostpoint.sh
+# 3) after the first post-deploy hits: tb_data_webpage_visit gains page-0 rows; tb_data_webform_submit.screen_res is a real WxH (not "Failed")
+```
+
 ## ✅ Already live
 - **#4 mail-reply "Loading error!"** — `spear/manager/common_functions.php` `getMailReplied` fails soft
   (guarded `imap_open`, no `error` key). Deployed + verified (`get_mail_replied` → `{reply_count_unique,
