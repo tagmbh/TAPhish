@@ -56,9 +56,9 @@
             <div class="page-breadcrumb breadcrumb-withbutton">
                <div class="row">
                   <div class="col-12 d-flex no-block align-items-center">
-                     <h4 class="page-title">Web-Email Campaign Dashboard</h4>
+                     <h4 class="page-title">Campaign Dashboard</h4>
                      <div class="ml-auto text-right">
-                        <button type="button" class="btn btn-info btn-sm item_private" data-toggle="modal" data-target="#ModalCampaignList"><i class="mdi mdi-hand-pointing-right" title="Select web & mail campaigns" data-toggle="tooltip" data-placement="bottom"></i> Select Campaign</button>
+                        <button type="button" class="btn btn-info btn-sm item_private" data-toggle="modal" data-target="#ModalCampaignList"><i class="mdi mdi-hand-pointing-right" title="Select a mail campaign (web tracker optional)" data-toggle="tooltip" data-placement="bottom"></i> Select Campaign</button>
                         <div class="btn-group">
                             <button type="button" class="btn btn-info btn-sm" onclick="refreshDashboard(true)" title="Refresh dashboard" data-toggle="tooltip" data-placement="bottom"><i class="mdi mdi-refresh"></i></button>
                             <button type="button" class="btn btn-info btn-sm dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -132,7 +132,7 @@
                                  </div>
                                  <div class="col-md-4 text-center m-t-5 m-l-20" id="disp_camp_status">                                       
                                  </div>
-                                 <div class="row col-md-4 ml-auto">
+                                 <div class="row col-md-4 ml-auto web-only-section">
                                     <div class="panel-group box bg-dark text-white accordion ml-auto">
                                        <div class="panel panel-default">
                                          <div class="panel-heading card-hover">
@@ -226,7 +226,7 @@
                                        <div id="piechart_mail_total_replied" class="center"></div>
                                     </div>
                                  </div>
-                                 <div class="row m-t-30">
+                                 <div class="row m-t-30 web-only-section">
                                     <div class="col-md-4">
                                        <h5 class="card-title text-center"><span>Page Visit</span></h5>
                                        <div id="piechart_total_pv" ></div>
@@ -241,7 +241,7 @@
                                     </div>
                                  </div>
                               </div>
-                              <div class="col-md-3 m-t-30">
+                              <div class="col-md-3 m-t-30 web-only-section">
                                  <h5 class="card-title text-center"><span>Web Overview</span></h5>
                                  <div id="radialchart_overview_webcamp" ></div>
                               </div>
@@ -304,13 +304,21 @@
                      </div>
                      <div class="modal-body">
                         <div class="form-group row">
+                           <div class="col-md-12">
+                              <div class="custom-control custom-switch">
+                                 <input type="checkbox" class="custom-control-input" id="cb_show_web">
+                                 <label class="custom-control-label" for="cb_show_web">Show web tracker <small class="text-muted">(page-visit / form-capture metrics — leave off for an email-only view)</small></label>
+                              </div>
+                           </div>
+                        </div>
+                        <div class="form-group row">
                            <div class="col-md-6">
                               <label for="modal_mailcamp_selector" class="control-label col-form-label">Mail Campaign:</label>
                               <select class="select2 form-control custom-select" id="modal_mailcamp_selector" style="width: 100%; height:36px;">
                                  <option></option>
                               </select>
                            </div>
-                           <div class="col-md-6">
+                           <div class="col-md-6" id="web_tracker_selector_col" style="display:none;">
                               <label for="modal_web_tracker_selector" class="control-label col-form-label">Web Tracker:</label>
                               <select class="select2 form-control custom-select" id="modal_web_tracker_selector" style="width: 100%; height:36px;">
                                  <option></option>
@@ -342,7 +350,7 @@
                                  </table>
                               </div>
                            </div>
-                           <div class="col-md-6">
+                           <div class="col-md-6" id="modal_webtracker_info_col" style="display:none;">
                               <div class="table-responsive">
                                  <table class="table" id="modal_table_webtracker_info">
                                     <tbody>
@@ -650,9 +658,12 @@
       <?php
          echo '<script>';
 
-         if(isset($_GET['mcamp']) && isset($_GET['tracker']))
-            echo 'var g_campaign_id ="'.doFilter($_GET['mcamp'],'ALPHA_NUM').'", g_tracker_id="'.doFilter($_GET['tracker'],'ALPHA_NUM').'";
-                  campaignSelected("' . doFilter($_GET['mcamp'],'ALPHA_NUM') . '","' . doFilter($_GET['tracker'],'ALPHA_NUM') . '",false);';
+         if(isset($_GET['mcamp'])){
+            $mcamp_dl = doFilter($_GET['mcamp'],'ALPHA_NUM');
+            $trk_dl = isset($_GET['tracker']) ? doFilter($_GET['tracker'],'ALPHA_NUM') : '';
+            echo 'var g_campaign_id ="'.$mcamp_dl.'", g_tracker_id="'.$trk_dl.'";
+                  campaignSelected("'.$mcamp_dl.'","'.$trk_dl.'",false);';
+         }
          else
             echo 'var g_campaign_id ="", g_tracker_id="";
                   $(function() { $("#ModalCampaignList").modal("toggle"); });';

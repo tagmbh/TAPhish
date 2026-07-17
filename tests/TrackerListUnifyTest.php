@@ -80,16 +80,18 @@ final class TrackerListUnifyTest extends TestCase
         self::assertStringNotContainsString('/spear/TrackerReport"', $menu, 'stray Web Tracker Report leaf removed');
     }
 
-    public function testNavGroupsTheTwoDashboards(): void
+    public function testNavFoldsToOneCampaignDashboard(): void
     {
-        // P4: one "Campaign Dashboard" group replaces the two separate dashboard
-        // leaves; both views still reachable underneath.
+        // Phase 1: the two dashboard views fold into ONE "Campaign Dashboard"
+        // leaf → /spear/WebMailCmpDashboard (email metrics always, web tracker
+        // optional via the in-page "Show web tracker" toggle). The old Email-only
+        // leaf is removed from nav (MailCmpDashboard stays reachable by direct URL
+        // for one release).
         $menu = file_get_contents(dirname(__DIR__) . '/spear/z_menu.php');
-        self::assertStringContainsString('Campaign Dashboard ', $menu, 'one Campaign Dashboard group');
-        self::assertStringContainsString('/spear/MailCmpDashboard', $menu, 'Email view still linked');
-        self::assertStringContainsString('/spear/WebMailCmpDashboard', $menu, 'Web-tracker view still linked');
-        self::assertStringNotContainsString('Email Campaign Dashboard', $menu, 'old standalone leaf removed');
-        self::assertStringNotContainsString('Web-MailCamp Dashboard', $menu, 'old standalone leaf removed');
+        self::assertStringContainsString('Campaign Dashboard', $menu, 'one Campaign Dashboard entry');
+        self::assertStringContainsString('/spear/WebMailCmpDashboard', $menu, 'the folded dashboard is linked');
+        self::assertStringNotContainsString('/spear/MailCmpDashboard', $menu, 'the email-only leaf is removed from nav');
+        self::assertStringNotContainsString('Web-tracker view', $menu, 'the two-view submenu is gone');
     }
 
     public function testScannerToggleWiredInBothReportViews(): void
