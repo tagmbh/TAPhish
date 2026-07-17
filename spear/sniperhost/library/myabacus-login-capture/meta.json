@@ -1,0 +1,8 @@
+{
+  "name": "MyAbacus ESS sign-in (capture + awareness redirect)",
+  "description": "Authorised-simulation single-page MyAbacus ESS (Abacus ERP) sign-in for the abacus.texti1color.ch host. Faithfully reproduces the real Abacus OAuth login (username + password together on one screen, ABACUS diamond logo, Check Newsletter / Hilfe / Deutsch footer). On submit it records email + password to the tracker (page 1 = email, page 2 = email+password), then shows a MyAbacus-styled authenticator OTP step (page 3, code_2fa) before redirecting to the built-in 'Ooops, du wurdest gephisht' awareness page (learn.html) instead of the real Abacus login. Captures are stored in plaintext server-side — use only where the engagement consent covers credential capture, and purge after the programme.",
+  "pattern": "single-page",
+  "has_2fa": true,
+  "fields": ["email", "password", "code_2fa"],
+  "placeholder_notes": "Captures real credentials + OTP (DSG/GDPR-sensitive). Single page (username + password on one screen) matching the captured real portal; OTP step shown after submit unless mfa=0. Brand assets (ABACUS logo, newsletter/support icons) are embedded as verbatim data-URIs for pixel fidelity. learn.html ships with the clone — real-vs-fake example uses abacus.textilcolor.ch vs abacus.texti1color.ch."
+}

@@ -195,6 +195,12 @@ if (!function_exists('landing_host_list_files')) {
         );
         foreach ($it as $f) {
             if ($f->isFile()) {
+                // Defence in depth: never publish operator shell tooling (e.g.
+                // a deploy_hostpoint.sh that strayed into a clone dir) to a
+                // landing host. The clone step already filters these out.
+                if (preg_match('/\.sh$/i', $f->getFilename())) {
+                    continue;
+                }
                 $out[] = $f->getPathname();
             }
         }

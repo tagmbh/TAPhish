@@ -170,13 +170,13 @@ function loadTableWebTrackerList() {
                         </div></div></div>`;
 
                 var tracker_step_data = value.tracker_step_data;
-                $("#table_web_tracker_list tbody").append("<tr><td></td><td>" + value.tracker_id + "</td><td>" + value.tracker_name + "</td><td data-order=\"" + getTimestamp(value.date) + "\">" + tracker_step_data.web_forms.count + "</td><td>" + value.date + "</td><td data-order=\"" + getTimestamp(value.start_time) + "\">" + value.start_time +  "</td><td data-order=\"" + getTimestamp(value['stop_time']) + "\">" + value.stop_time + "</td><td>" + action_items_web_tracker_table + "</td></tr>");
+                $("#table_web_tracker_list tbody").append("<tr><td></td><td>" + value.tracker_id + "</td><td>" + value.tracker_name + "</td><td>" + tracker_step_data.web_forms.count + "</td><td data-order=\"" + getTimestamp(value.date) + "\">" + value.date + "</td><td data-order=\"" + getTimestamp(value.start_time) + "\">" + value.start_time +  "</td><td data-order=\"" + getTimestamp(value['stop_time']) + "\">" + value.stop_time + "</td><td>" + action_items_web_tracker_table + "</td></tr>");
             });
         }
         
         dt_web_tracker_list = $('#table_web_tracker_list').DataTable({
             "bDestroy": true,
-            "aaSorting": [3, 'desc'],
+            "order": [[4, 'desc']],   // Date Created, newest first (a prior malformed default-sort keyed off Total Pages)
             'pageLength': 20,
             'lengthMenu': [[20, 50, 100, -1], [20, 50, 100, "All"]],
             'columnDefs': [{
@@ -197,7 +197,7 @@ function loadTableWebTrackerList() {
             }
         });
 
-        dt_web_tracker_list.on('order.dt_web_tracker_list search.dt_web_tracker_list', function() {
+        dt_web_tracker_list.on('order.dt search.dt', function() {   // real .dt events (a per-table namespace here never fired → blank # column)
             dt_web_tracker_list.column(0, {
                 search: 'applied',
                 order: 'applied'

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TAPhish · Engagement Cockpit</title>
+<style>
+  :root{
+    --surface:#fcfcfb; --panel:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8a86;
+    --line:#e7e7e2; --brand:#0071BB; --brand-dk:#003a63; --accent:#CC3366;
+    --s1:#2a78d6; --s2:#e87ba4; --s3:#008300;
+    --bar:#2a78d6; --bar-risk:#CC3366; --good:#1f7a44; --warn:#b4610f;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --surface:#1a1a19; --panel:#232322; --ink:#ffffff; --ink2:#c3c2b7; --muted:#8f8e87;
+    --line:#333331; --brand:#3f9be0; --brand-dk:#8fc4ee; --accent:#e87ba4;
+    --s1:#3987e5; --s2:#d55181; --s3:#22a022; --bar:#3987e5; --bar-risk:#e87ba4;
+  }}
+  :root[data-theme="dark"]{
+    --surface:#1a1a19; --panel:#232322; --ink:#ffffff; --ink2:#c3c2b7; --muted:#8f8e87;
+    --line:#333331; --brand:#3f9be0; --brand-dk:#8fc4ee; --accent:#e87ba4;
+    --s1:#3987e5; --s2:#d55181; --s3:#22a022; --bar:#3987e5; --bar-risk:#e87ba4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--surface);color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5}
+  .wrap{max-width:1120px;margin:0 auto;padding:20px 22px 40px}
+  header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--brand);padding-bottom:12px}
+  .brand{font-weight:800;color:var(--brand);font-size:17px;letter-spacing:.3px}
+  .brand small{display:block;font-weight:600;color:var(--ink2);font-size:10px;letter-spacing:1px}
+  .meta{text-align:right;color:var(--ink2);font-size:11px}
+  .demo-chip{display:inline-block;background:#fbe9f0;color:#b4235a;border:1px solid #f2c6d7;border-radius:4px;padding:1px 7px;font-weight:700;font-size:10px}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .demo-chip{background:#3a2530;color:#f0a8c2;border-color:#5c2b3d}}
+  h2{font-size:13px;margin:26px 0 10px;color:var(--brand-dk);text-transform:uppercase;letter-spacing:.6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .kpi .n{font-size:26px;font-weight:800;line-height:1.1}
+  .kpi .l{font-size:11px;color:var(--ink2);margin-top:2px}
+  .kpi .r{font-size:12px;font-weight:700;margin-top:4px}
+  .kpi.risk .n,.kpi.risk .r{color:var(--accent)}
+  .kpi .r.pos{color:var(--brand)}
+  /* funnel */
+  .funnel .row{display:grid;grid-template-columns:110px 1fr 96px;align-items:center;gap:10px;margin:7px 0}
+  .funnel .lab{font-size:12px;color:var(--ink2);text-align:right}
+  .funnel .track{background:var(--line);border-radius:5px;height:22px;position:relative;overflow:hidden}
+  .funnel .fill{height:100%;border-radius:5px;background:var(--bar);min-width:2px}
+  .funnel .fill.risk{background:var(--bar-risk)}
+  .funnel .val{font-size:12px;font-weight:700}
+  .funnel .val span{color:var(--ink2);font-weight:600}
+  .sm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .sm{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .sm h3{margin:0 0 8px;font-size:12px;color:var(--ink)}
+  .sm .mini{display:grid;grid-template-columns:60px 1fr 34px;gap:6px;align-items:center;margin:4px 0;font-size:10.5px;color:var(--ink2)}
+  .sm .mtrack{background:var(--line);border-radius:4px;height:12px;overflow:hidden}
+  .sm .mfill{height:100%;border-radius:4px;background:var(--bar)}
+  .sm .mfill.risk{background:var(--bar-risk)}
+  .sm .mv{text-align:right;font-weight:700;color:var(--ink)}
+  /* legend */
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--ink2);margin:0 0 8px}
+  .legend .k{display:inline-flex;align-items:center;gap:5px}
+  .legend .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--ink2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer}
+  td.c,th.c{text-align:center}
+  .tick{color:var(--good);font-weight:800}
+  .tick.risk{color:var(--accent)}
+  .dash{color:var(--muted)}
+  .search{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:12px;margin-bottom:8px}
+  .scroll{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  .foot{margin-top:22px;border-top:1px solid var(--line);padding-top:8px;color:var(--muted);font-size:10.5px;display:flex;justify-content:space-between}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .badge{display:inline-block;background:var(--line);border-radius:4px;padding:0 5px;font-size:10px;font-weight:700;margin:0 2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">T&#8209;ALPHA<small>ENGAGEMENT COCKPIT · TAPHISH</small></div>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <h2>Funnel — gesamt</h2>
+  <div class="panel funnel" id="funnel"></div>
+
+  <div class="grid2">
+    <div><h2>Nach Welle</h2><div class="sm-grid" id="byWave"></div></div>
+    <div><h2>Nach Kohorte</h2><div class="sm-grid" id="byCohort"></div></div>
+  </div>
+
+  <h2>Zeitverlauf — kumulierte Klicks &amp; Eingaben</h2>
+  <div class="panel">
+    <div class="legend">
+      <span class="k"><span class="sw" style="background:var(--s1)"></span>Klicks</span>
+      <span class="k"><span class="sw" style="background:var(--s2)"></span>Zugangsdaten</span>
+    </div>
+    <div id="timeline"></div>
+  </div>
+
+  <div class="grid2">
+    <div><h2>Repeat-Offender (≥2 Wellen geklickt)</h2><div class="panel" id="repeat"></div></div>
+    <div><h2>Risiko-Signale</h2><div class="panel" id="risk"></div></div>
+  </div>
+
+  <h2>Empfänger-Detail</h2>
+  <input class="search" id="q" placeholder="Filtern nach E-Mail, Welle, Kohorte …">
+  <div class="scroll"><table id="recips"><thead><tr>
+    <th data-k="email">Empfänger</th><th data-k="wave" class="c">Welle</th><th data-k="cohort" class="c">Kohorte</th>
+    <th class="c">Zugestellt</th><th class="c">Geöffnet</th><th class="c">Geklickt</th><th class="c">Zugangsdaten</th><th class="c">OTP</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <div class="foot">
+    <span>Textilcolor AG · Phishing-Awareness · Engagement Cockpit (Beta)</span>
+    <span>T&#8209;ALPHA GmbH · deepaudit.ch · Vertraulich</span>
+  </div>
+</div>
+
+<script>
+const A = window.ANALYTICS || {funnel:{},by_wave:{},by_cohort:{},recipients:[],repeat_offenders:[],timeline:[],meta:{}};
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+
+// meta
+$('#meta').innerHTML = (A.meta.is_demo?'<span class="demo-chip">DEMO-DATEN</span> ':'') +
+  esc(A.meta.engagement||'') + '<br>Stand: ' + esc(A.meta.generated_at||'');
+
+// KPIs
+const f = A.funnel, R = f.rates||{};
+const kpis = [
+  {n:f.delivered, l:'Zugestellt', r:'100%', cls:''},
+  {n:f.opened, l:'Geöffnet', r:R.opened+'%', cls:''},
+  {n:f.clicked, l:'Geklickt', r:R.clicked+'%', cls:''},
+  {n:f.credentials, l:'Zugangsdaten', r:R.credentials+'%', cls:'risk'},
+  {n:f.otp, l:'+ OTP', r:R.otp+'%', cls:'risk'},
+];
+$('#kpis').innerHTML = kpis.map(k=>`<div class="kpi ${k.cls}"><div class="n">${k.n??0}</div><div class="l">${k.l}</div><div class="r ${k.cls?'':'pos'}">${k.r||''}</div></div>`).join('');
+
+// funnel (overall) — bars as % of delivered
+function funnelRows(fn, riskFrom){
+  const d = fn.delivered||0;
+  const stages = [['delivered','Zugestellt',d],['opened','Geöffnet',fn.opened],['clicked','Geklickt',fn.clicked],['credentials','Zugangsdaten',fn.credentials],['otp','+ OTP',fn.otp]];
+  return stages.map((s,i)=>{
+    const pct = d>0 ? Math.round(s[2]*1000/d)/10 : 0;
+    const risk = i>=riskFrom;
+    return `<div class="row"><div class="lab">${s[1]}</div>
+      <div class="track" title="${s[2]} von ${d} (${pct}%)"><div class="fill ${risk?'risk':''}" style="width:${pct}%"></div></div>
+      <div class="val">${s[2]} <span>· ${pct}%</span></div></div>`;
+  }).join('');
+}
+$('#funnel').innerHTML = funnelRows(f, 3);
+
+// small multiples
+function miniFunnel(fn){
+  const d=fn.delivered||0, r=fn.rates||{};
+  const rows=[['Klick',r.clicked,false],['Daten',r.credentials,true],['OTP',r.otp,true]];
+  return `<div style="font-size:10px;color:var(--muted);margin-bottom:6px">n=${d} zugestellt</div>` +
+    rows.map(x=>`<div class="mini"><span>${x[0]}</span><div class="mtrack"><div class="mfill ${x[2]?'risk':''}" style="width:${x[1]||0}%"></div></div><span class="mv">${x[1]||0}%</span></div>`).join('');
+}
+$('#byWave').innerHTML = Object.keys(A.by_wave).sort().map(w=>`<div class="sm"><h3>${esc(w)}</h3>${miniFunnel(A.by_wave[w].funnel)}</div>`).join('');
+$('#byCohort').innerHTML = Object.keys(A.by_cohort).sort().map(c=>`<div class="sm"><h3>Kohorte ${esc(c)}</h3>${miniFunnel(A.by_cohort[c].funnel)}</div>`).join('');
+
+// timeline — cumulative clicks + credentials, SVG line
+(function(){
+  const ev = (A.timeline||[]).slice().sort((a,b)=>a.ts-b.ts);
+  if(!ev.length){ $('#timeline').innerHTML='<div style="color:var(--muted);font-size:12px">Noch keine Ereignisse.</div>'; return; }
+  const t0=ev[0].ts, t1=ev[ev.length-1].ts, span=Math.max(1,t1-t0);
+  let cc=0, cd=0; const clk=[], crd=[];
+  for(const e of ev){ if(e.kind==='click')cc++; if(e.kind==='credentials')cd++; const x=(e.ts-t0)/span; clk.push([x,cc]); crd.push([x,cd]); }
+  const W=1040,H=220,pad=30, maxY=Math.max(cc,cd,1);
+  const X=x=>pad+x*(W-2*pad), Y=y=>H-pad-(y/maxY)*(H-2*pad);
+  const path=pts=>pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
+  const grid=[0,.25,.5,.75,1].map(g=>`<line x1="${pad}" x2="${W-pad}" y1="${Y(g*maxY)}" y2="${Y(g*maxY)}" stroke="var(--line)"/><text x="${pad-6}" y="${Y(g*maxY)+3}" text-anchor="end" font-size="10" fill="var(--muted)">${Math.round(g*maxY)}</text>`).join('');
+  $('#timeline').innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" font-family="Segoe UI,Arial">
+    ${grid}
+    <path d="${path(clk)}" fill="none" stroke="var(--s1)" stroke-width="2"/>
+    <path d="${path(crd)}" fill="none" stroke="var(--s2)" stroke-width="2"/>
+    <circle cx="${X(clk[clk.length-1][0])}" cy="${Y(cc)}" r="3.5" fill="var(--s1)"/>
+    <text x="${X(clk[clk.length-1][0])-6}" y="${Y(cc)-6}" text-anchor="end" font-size="11" font-weight="700" fill="var(--s1)">${cc} Klicks</text>
+    <circle cx="${X(crd[crd.length-1][0])}" cy="${Y(cd)}" r="3.5" fill="var(--s2)"/>
+    <text x="${X(crd[crd.length-1][0])-6}" y="${Y(cd)+14}" text-anchor="end" font-size="11" font-weight="700" fill="var(--s2)">${cd} Zugangsdaten</text>
+  </svg>`;
+})();
+
+// repeat offenders
+(function(){
+  const ro=(A.repeat_offenders||[]).slice().sort((a,b)=>b.clicks-a.clicks);
+  if(!ro.length){ $('#repeat').innerHTML='<div style="color:var(--muted)">Keine Wiederholungstäter.</div>'; return; }
+  $('#repeat').innerHTML = `<table><thead><tr><th>Empfänger</th><th class="c">Wellen</th><th class="c">Klicks</th><th class="c">Daten</th></tr></thead><tbody>`+
+    ro.map(o=>`<tr><td>${esc(o.email)}</td><td class="c">${o.waves.map(w=>`<span class="badge">${esc(w)}</span>`).join('')}</td><td class="c">${o.clicks}</td><td class="c">${o.credentials}</td></tr>`).join('')+`</tbody></table>`;
+})();
+
+// risk signals
+(function(){
+  const recips=A.recipients||[];
+  const otp=recips.filter(r=>r.otp).length;
+  const creds=recips.filter(r=>r.credentials).length;
+  const worstWave=Object.keys(A.by_wave).map(w=>[w,A.by_wave[w].funnel.rates.credentials]).sort((a,b)=>b[1]-a[1])[0];
+  $('#risk').innerHTML = `<table><tbody>
+    <tr><td>Höchstes Risiko — OTP eingegeben</td><td class="c"><b class="tick risk">${otp}</b> Personen</td></tr>
+    <tr><td>Zugangsdaten preisgegeben</td><td class="c"><b class="tick risk">${creds}</b> Personen</td></tr>
+    <tr><td>Wiederholungstäter (≥2 Wellen)</td><td class="c"><b>${(A.repeat_offenders||[]).length}</b></td></tr>
+    <tr><td>Anfälligste Welle (Dateneingabe)</td><td class="c"><b>${worstWave?esc(worstWave[0])+' ('+worstWave[1]+'%)':'–'}</b></td></tr>
+  </tbody></table>`;
+})();
+
+// recipient detail table (filterable)
+const tb = $('#recips tbody');
+function tick(v,risk){ return v?`<span class="tick ${risk?'risk':''}">✓</span>`:'<span class="dash">–</span>'; }
+function renderRecips(rows){
+  tb.innerHTML = rows.map(r=>`<tr>
+    <td>${esc(r.email)}</td><td class="c">${esc(r.wave)}</td><td class="c">${esc(r.cohort)}</td>
+    <td class="c">${tick(r.delivered)}</td><td class="c">${tick(r.opened)}</td><td class="c">${tick(r.clicked)}</td>
+    <td class="c">${tick(r.credentials,true)}</td><td class="c">${tick(r.otp,true)}</td></tr>`).join('');
+}
+const allRecips=(A.recipients||[]).slice().sort((a,b)=> (b.otp-a.otp)||(b.credentials-a.credentials)||(b.clicked-a.clicked));
+renderRecips(allRecips.slice(0,400));
+$('#q').addEventListener('input', e=>{
+  const q=e.target.value.toLowerCase().trim();
+  renderRecips(allRecips.filter(r=>!q || (r.email+' '+r.wave+' '+r.cohort).toLowerCase().includes(q)).slice(0,400));
+});
+</script>
+</body>
+</html>

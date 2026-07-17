@@ -1,0 +1,8 @@
+{
+  "name": "Outlook Web App (Exchange) sign-in (capture + awareness redirect)",
+  "description": "Authorised-simulation Outlook Web App (classic Exchange) sign-in for owa.texti1color.ch: single-page username + password (then optional OTP) recorded to the tracker, then redirects to a built-in 'Ooops, du wurdest gephisht' awareness page (learn.html) instead of the real OWA. Captures are stored in plaintext server-side — use only where engagement consent covers credential capture, and purge after the programme.",
+  "pattern": "single-page",
+  "has_2fa": true,
+  "fields": ["email", "password", "code_2fa"],
+  "placeholder_notes": "Reproduces the client's real OWA logon. learn.html ships with the clone — adapt the awareness copy/branding as needed."
+}

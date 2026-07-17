@@ -15,3 +15,10 @@
 # spear/images/brand/ are what the app uses.
 /brand-source/
 .superpowers/
+
+# Playwright MCP scratch artifacts
+.playwright-mcp/
+*-desktop.png
+
+# Local IP-geo DB (deployed directly, not committed; refresh: see spear/config/geo/README)
+spear/config/geo/*.mmdb

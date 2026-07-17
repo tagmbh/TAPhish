@@ -28,16 +28,10 @@
         })[status] || 'badge-secondary';
     }
 
+    // Delegate to the canonical decoder (js/camp_status.js) so the campaign
+    // status labels can't diverge from the campaign-list view again.
     function campStatusLabel(s) {
-        return ({
-            0: 'created',
-            1: 'queued',
-            2: 'sending',
-            3: 'completed',
-            4: 'auto-complete',
-            5: 'deferred',
-            6: 'stopped'
-        })[parseInt(s, 10)] || ('status ' + s);
+        return window.campStatus ? window.campStatus.label(s) : ('status ' + s);
     }
 
     function renderPicker(engagements) {
@@ -55,18 +49,146 @@
                 $('<span>').addClass('badge ' + statusBadgeClass(e.status)).text(e.status || 'draft')
             ));
             // Phase 3.56: resumable drafts deep-link back into the wizard.
+            // P1.4a: EVERY row (drafts included) also gets Open + Delete, so an
+            // abandoned draft is no longer stuck on "Continue setup" with no way
+            // to reach the detail view's delete button — the operator-reported
+            // "can't delete engagements" bug.
             var resumable = (e.status || 'draft') === 'draft' && ((parseInt(e.wizard_step, 10) || 1) < 7);
-            $tr.append($('<td>').append(
-                resumable
-                    ? $('<a class="btn btn-sm btn-info">')
-                        .attr('href', 'QuickStart?engagement_id=' + e.id)
-                        .html('<i class="fa fa-play"></i> Continue setup')
-                    : $('<a class="btn btn-sm btn-info">')
-                        .attr('href', 'EngagementView?engagement_id=' + e.id)
-                        .text('Open')
-            ));
+            var $actions = $('<td>');
+            if (resumable) {
+                $('<a class="btn btn-sm btn-info mr-1 mb-1">')
+                    .attr('href', 'QuickStart?engagement_id=' + e.id)
+                    .html('<i class="fa fa-play"></i> Continue')
+                    .appendTo($actions);
+            }
+            $('<a class="btn btn-sm btn-outline-info mr-1 mb-1">')
+                .attr('href', 'EngagementView?engagement_id=' + e.id)
+                .text('Open')
+                .appendTo($actions);
+            $('<button type="button" class="btn btn-sm btn-outline-danger mb-1">')
+                .attr('title', 'Delete engagement')
+                .html('<i class="fa fa-trash"></i>')
+                .on('click', function () { deleteEngagementFromPicker(e.id, e.name || e.slug); })
+                .appendTo($actions);
+            $tr.append($actions);
             $body.append($tr);
         });
+    }
+
+    // P1.4b: the Unscoped/Legacy bucket. Lists campaigns/trackers with no
+    // engagement, each with a per-row engagement dropdown + "Zuordnen" (assign).
+    function loadUnscoped() {
+        var $body = $('#eng_unscoped_table tbody').empty();
+        $.when(
+            post({ action_type: 'list_unscoped_campaigns' }),
+            post({ action_type: 'list_engagements' })
+        ).done(function (uRes, eRes) {
+            var items = (uRes && uRes[0] && uRes[0].campaigns) || [];
+            var engs = (eRes && eRes[0] && eRes[0].engagements) || [];
+            renderUnscoped(items, engs);
+        }).fail(function () {
+            $body.append('<tr><td colspan="4" class="text-muted">Could not load the unscoped list.</td></tr>');
+        });
+    }
+
+    function renderUnscoped(items, engagements) {
+        var $body = $('#eng_unscoped_table tbody').empty();
+        if (!items.length) {
+            $body.append('<tr><td colspan="4" class="text-muted">Nothing unscoped — every campaign and tracker is linked to an engagement.</td></tr>');
+            return;
+        }
+        items.forEach(function (c) {
+            var t = CAMPAIGN_TYPE[c.type] || { label: c.type || '?', cls: 'badge-secondary' };
+            var $tr = $('<tr>');
+            $tr.append($('<td>').append($('<span>').addClass('badge ' + t.cls).text(t.label)));
+            $tr.append($('<td>').text(c.name || c.id));
+            $tr.append($('<td>').addClass('small').text((c.type === 'mail' ? c.scheduled_time : c.date) || '—'));
+
+            var $sel = $('<select class="form-control form-control-sm d-inline-block" style="width:auto;max-width:16rem;">');
+            $('<option>').attr('value', '').text('— choose engagement —').appendTo($sel);
+            engagements.forEach(function (e) {
+                $('<option>').attr('value', e.id).text((e.name || e.slug) + (e.status ? ' (' + e.status + ')' : '')).appendTo($sel);
+            });
+            var $btn = $('<button type="button" class="btn btn-sm btn-outline-primary ml-1">').text('Zuordnen')
+                .on('click', function () { assignItem(c.type, c.id, $sel.val(), $(this)); });
+            var $del = $('<button type="button" class="btn btn-sm btn-outline-danger ml-1" title="Delete this unscoped item">')
+                .html('<i class="fa fa-trash"></i>')
+                .on('click', function () { deleteUnscopedItem(c.type, c.id, c.name || c.id, $(this)); });
+            $tr.append($('<td>').append($sel).append($btn).append($del));
+            $body.append($tr);
+        });
+    }
+
+    // P3 polish: delete an unscoped campaign/tracker straight from the bucket,
+    // dispatched by type to the existing per-type delete actions (which clean up
+    // the item's data). The bucket only ever lists engagement_id IS NULL items,
+    // so live scoped campaigns (e.g. the running engagement's) never appear here.
+    var UNSCOPED_DELETE = {
+        mail:  { url: 'manager/mail_campaign_manager',              body: function (id) { return { action_type: 'delete_campaign_from_campaign_id', campaign_id: id }; } },
+        web:   { url: 'manager/web_tracker_generator_list_manager', body: function (id) { return { action_type: 'delete_web_tracker', tracker_id: id }; } },
+        quick: { url: 'manager/quick_tracker_manager',              body: function (id) { return { action_type: 'delete_quick_tracker', tracker_id: id }; } }
+    };
+
+    function deleteUnscopedItem(type, id, name, $btn) {
+        var d = UNSCOPED_DELETE[type];
+        if (!d) { return; }
+        if (!window.confirm('Delete ' + type + ' "' + name + '"?\n\nThis removes it and its captured data. This cannot be undone.')) {
+            return;
+        }
+        $btn.prop('disabled', true);
+        $.ajax({ url: d.url, method: 'POST', contentType: 'application/json; charset=utf-8', data: JSON.stringify(d.body(id)) })
+            .done(function (raw) {
+                var res; try { res = (typeof raw === 'string') ? JSON.parse(raw) : raw; } catch (e) { res = raw; }
+                var ok = (res && res.result === 'success') || res === 'success';
+                if (ok) {
+                    if (window.toastr) { toastr.success('Deleted'); }
+                    loadUnscoped();
+                } else {
+                    $btn.prop('disabled', false);
+                    if (window.toastr) { toastr.error((res && res.error) || 'Delete failed'); }
+                }
+            })
+            .fail(function () { $btn.prop('disabled', false); if (window.toastr) { toastr.error('Delete failed (network)'); } });
+    }
+
+    function assignItem(type, id, engagementId, $btn) {
+        if (!engagementId) {
+            if (window.toastr) { toastr.warning('Pick an engagement first'); }
+            return;
+        }
+        $btn.prop('disabled', true);
+        post({ action_type: 'assign_engagement', type: type, id: id, engagement_id: parseInt(engagementId, 10) })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    if (window.toastr) { toastr.success('Assigned to engagement'); }
+                    loadUnscoped();   // row leaves the bucket
+                } else {
+                    $btn.prop('disabled', false);
+                    if (window.toastr) { toastr.error((res && res.error) || 'Assignment failed'); }
+                }
+            })
+            .fail(function () { $btn.prop('disabled', false); if (window.toastr) { toastr.error('Assignment failed (network)'); } });
+    }
+
+    // P1.4a: delete an engagement straight from the picker list (works for
+    // drafts too). Reuses the server delete_engagement action, which unlinks
+    // linked campaigns rather than destroying them.
+    function deleteEngagementFromPicker(id, name) {
+        if (!window.confirm('Delete engagement "' + name + '"?\n\nLinked campaigns are kept but unlinked. This cannot be undone.')) {
+            return;
+        }
+        post({ action_type: 'delete_engagement', engagement_id: id })
+            .done(function (res) {
+                if (res && res.result === 'success') {
+                    if (window.toastr) {
+                        toastr.success('Engagement deleted' + (res.unlinked ? ' (' + res.unlinked + ' campaign(s) unlinked)' : ''));
+                    }
+                    loadPicker();
+                } else if (window.toastr) {
+                    toastr.error((res && res.error) || 'Delete failed');
+                }
+            })
+            .fail(function () { if (window.toastr) { toastr.error('Delete failed (network)'); } });
     }
 
     function renderHeader(eng) {
@@ -99,26 +221,46 @@
         }
     }
 
+    // P1.3: campaigns arrive type-tagged (mail | web | quick) in the normalized
+    // shape { type, id, name, date, camp_status?, scheduled_time?, active? }.
+    var CAMPAIGN_TYPE = {
+        mail:  { label: 'Mail',  cls: 'badge-primary', action: 'Dashboard',
+                 link: function (id) { return 'MailCmpDashboard?campaign_id=' + encodeURIComponent(id); } },
+        web:   { label: 'Web',   cls: 'badge-info',    action: 'Report',
+                 link: function (id) { return 'TrackerReport?tracker=' + encodeURIComponent(id); } },
+        quick: { label: 'Quick', cls: 'badge-warning', action: 'Report',
+                 link: function (id) { return 'QuickTrackerReport?tracker=' + encodeURIComponent(id); } }
+    };
+
     function renderCampaigns(campaigns) {
         var $body = $('#eng_campaigns_table tbody').empty();
         if (!campaigns.length) {
-            $body.append('<tr><td colspan="4" class="text-muted">No campaigns linked yet. Run a campaign from <a href="QuickStart?engagement_id=' + ($('#eng_view_id').val()) + '">Quick Start</a> with this engagement selected.</td></tr>');
+            $body.append('<tr><td colspan="4" class="text-muted">Nothing linked yet. Run a campaign or tracker from <a href="QuickStart?engagement_id=' + ($('#eng_view_id').val()) + '">Quick Start</a> with this engagement selected, or scope one from the campaign builder / Unscoped bucket.</td></tr>');
             return;
         }
         campaigns.forEach(function (c) {
+            var t = CAMPAIGN_TYPE[c.type] || { label: c.type || '?', cls: 'badge-secondary', action: 'Open', link: function () { return '#'; } };
+            var href = t.link(c.id);
             var $tr = $('<tr>');
+
+            var $name = $('<td>');
+            $('<span>').addClass('badge ' + t.cls + ' mr-1').text(t.label).appendTo($name);
+            $('<a>').attr('href', href).text(c.name || c.id).appendTo($name);
+            $tr.append($name);
+
+            $tr.append($('<td>').addClass('small').text((c.type === 'mail' ? c.scheduled_time : c.date) || '—'));
+
+            var $status;
+            if (c.type === 'mail') {
+                $status = $('<span>').addClass('badge badge-secondary').text(campStatusLabel(c.camp_status));
+            } else {
+                $status = $('<span>').addClass('badge ' + (c.active ? 'badge-success' : 'badge-secondary'))
+                    .text(c.active ? 'Active' : 'Inactive');
+            }
+            $tr.append($('<td>').append($status));
+
             $tr.append($('<td>').append(
-                $('<a>').attr('href', 'MailCmpDashboard?campaign_id=' + encodeURIComponent(c.campaign_id))
-                    .text(c.campaign_name || c.campaign_id)
-            ));
-            $tr.append($('<td>').addClass('small').text(c.scheduled_time || '—'));
-            $tr.append($('<td>').append(
-                $('<span>').addClass('badge badge-secondary').text(campStatusLabel(c.camp_status))
-            ));
-            $tr.append($('<td>').append(
-                $('<a class="btn btn-sm btn-outline-info">')
-                    .attr('href', 'MailCmpDashboard?campaign_id=' + encodeURIComponent(c.campaign_id))
-                    .text('Dashboard')
+                $('<a class="btn btn-sm btn-outline-info">').attr('href', href).text(t.action)
             ));
             $body.append($tr);
         });
@@ -213,6 +355,7 @@
             $('#btn_refresh_eng_view').on('click', function () { loadView(id); });
         } else {
             loadPicker();
+            loadUnscoped();
         }
     });
 })();

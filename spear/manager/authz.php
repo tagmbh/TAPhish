@@ -207,6 +207,10 @@ if (!defined('TAPHISH_POLICY')) {
         'get_engagement_view'                => ['engagement_member'],
         'engagement_transition_status'       => ['super-admin', 'engagement_owner'],
         'delete_engagement'                  => ['super-admin', 'engagement_owner'],
+        // P1.4b: Unscoped/Legacy bucket — list unscoped campaigns/trackers and
+        // assign one to an engagement (operator work).
+        'list_unscoped_campaigns'            => ['super-admin', 'operator'],
+        'assign_engagement'                  => ['super-admin', 'operator'],
         // wizard steps (operator work; launch is engagement-scoped)
         'wizard_generate_dkim'               => ['super-admin', 'operator'],
         'wizard_list_landing_options'        => ['super-admin', 'operator'],
@@ -216,6 +220,8 @@ if (!defined('TAPHISH_POLICY')) {
         // Phase 3.57: full-funnel wizard helpers (auto-tracker, recipient commit).
         'wizard_create_web_tracker'          => ['super-admin', 'operator'],
         'wizard_list_web_trackers'           => ['super-admin', 'operator'],
+        // P2.1: unified tracker list (web + quick) — read, operator+.
+        'list_all_trackers'                  => ['super-admin', 'operator'],
         'wizard_commit_recipients'           => ['super-admin', 'operator'],
         'wizard_launch_campaign'             => ['super-admin', 'engagement_owner'],
 

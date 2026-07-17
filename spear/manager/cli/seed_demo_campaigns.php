@@ -210,7 +210,13 @@ foreach ($waves as $w) {
         if (!$DRY) {
             $tplId = getRandomStr(10);
             $html = nl2br(htmlspecialchars($w['body'], ENT_QUOTES, 'UTF-8'));
-            $timage_type = ''; $contentType = 'html'; $attachments = '';
+            // shootMail()/mail_campaign_cron only emit an HTML part when the
+            // content-type is exactly 'text/html'; the short-form 'html' (the
+            // old buggy clone value pretext_library's heal-migration exists to
+            // fix) would ship the body as plaintext. Write the correct MIME
+            // type up front so seeded demo mails render even before any web
+            // login triggers session_manager's heal pass.
+            $timage_type = ''; $contentType = 'text/html'; $attachments = '';
             $stmt = $conn->prepare("INSERT INTO tb_core_mailcamp_template_list(mail_template_id, mail_template_name, mail_template_subject, mail_template_content, timage_type, mail_content_type, attachment, date) VALUES(?,?,?,?,?,?,?,?)");
             $stmt->bind_param('ssssssss', $tplId, $w['tpl'], $w['subj'], $html, $timage_type, $contentType, $attachments, $entry);
             $stmt->execute(); $stmt->close();

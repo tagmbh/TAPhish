@@ -165,6 +165,25 @@ if (isset($_POST)) {
 				'engagements' => taphish_engagement_list($conn),
 			]);
 		}
+		// P1.4b: Unscoped/Legacy bucket — list every campaign/tracker with no
+		// engagement_id, and assign one to an engagement (Zuordnen).
+		if($POSTJ['action_type'] == "list_unscoped_campaigns") {
+			echo json_encode([
+				'result' => 'success',
+				'campaigns' => taphish_campaigns_unscoped($conn),
+			]);
+		}
+		if($POSTJ['action_type'] == "assign_engagement") {
+			$type = (string)($POSTJ['type'] ?? '');
+			$id   = (string)($POSTJ['id'] ?? '');
+			$eid  = (int)($POSTJ['engagement_id'] ?? 0);
+			if (taphish_engagement_assign_target($type) === null || $id === '' || $eid <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'Invalid assignment parameters']);
+			} else {
+				$ok = taphish_assign_engagement($conn, $type, $id, $eid);
+				echo json_encode($ok ? ['result' => 'success'] : ['result' => 'failed', 'error' => 'Assignment failed']);
+			}
+		}
 		// Phase 3.56: persist wizard progress so the QuickStart wizard
 		// is resumable. step + a whitelisted state blob (no secrets).
 		if($POSTJ['action_type'] == "wizard_save_progress") {
@@ -211,7 +230,8 @@ if (isset($_POST)) {
 					echo json_encode([
 						'result' => 'success',
 						'engagement' => $eng,
-						'campaigns' => taphish_engagement_campaigns($conn, $id),
+						// P1.3: all of the engagement's work (mail + web + quick), type-tagged.
+						'campaigns' => taphish_engagement_campaigns_all($conn, $id),
 					]);
 				}
 			}

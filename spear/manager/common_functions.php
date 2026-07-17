@@ -262,6 +262,13 @@ function getIPInfo($conn, $public_ip) {
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         if (empty($result['ip_info'])) {
+            // P3: local mmdb geo first (no external call, no rate limit).
+            require_once(__DIR__ . '/geo_lookup.php');
+            $geo = taphish_geo_lookup((string) $public_ip);
+            if (!empty($geo['country'])) {
+                return json_encode($geo);
+            }
+            // Fallback: ipapi.co (rate-limited) only if the local DB has no answer.
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
@@ -371,7 +378,7 @@ function getMailReplied($conn, $campaign_id, $quite=false){
         $arr_msg_info =[];
 
         try{
-            if($read = imap_open($sender_mailbox,$sender_username,$sender_acc_pwd)){             
+            if(function_exists('imap_open') && ($read = @imap_open($sender_mailbox,$sender_username,$sender_acc_pwd))){
                 $array = imap_search($read,'TEXT "@spmailer.generated"'); // match for Message-ID header {{RID}}@spmailer.generated
                 foreach($array as $result) {
                     $overview = imap_fetch_overview($read,$result,0); //var_dump($overview[0]->references);
@@ -402,19 +409,18 @@ function getMailReplied($conn, $campaign_id, $quite=false){
         }catch(Exception $e) {
             array_push($arr_err,$e->getMessage());
         }
-        array_push($arr_err,imap_errors());     //required to capture imap errors
-        
-        if(empty($arr_err) || $arr_err[0] == false)
-            if($quite)
-                return ['reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info];
-            else
-                echo json_encode(['reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info]);
+        if(function_exists('imap_errors')) imap_errors();   // drain the IMAP error buffer
+
+        // Fail soft: an unreachable / mis-configured IMAP mailbox (common for
+        // SMTP-only senders, or a host without the IMAP extension) must show
+        // "0 replied", never kill the dashboard panel with "Loading error!".
+        // Genuine replies still count; connection failures are just 0 replies.
+        $resp = ['reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info];
+        if($quite)
+            return $resp;
         else
-            if($quite)
-                return ['error'=>$arr_err, 'reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info];
-            else
-                echo json_encode(['error'=>$arr_err, 'reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info]);
-    }           
+            echo json_encode($resp);
+    }
     $stmt->close();
 }
 //--------------------------------------------------------------------
@@ -528,7 +534,10 @@ function getHTMLData(&$arr_odata,&$file_name,&$selected_col,&$dic_all_col){
 //--------------Logger--------
 function logIt($log,$username=null){
     global $conn;
-    $username=$username==null?$_SESSION['username']:$username;
+    // track.php (victim-facing) calls logIt() with no operator session, so
+    // $_SESSION is undefined there — guard it to avoid leaking PHP warnings +
+    // server paths into the capture HTTP response. Sessionless = 'system'.
+    $username = $username !== null ? $username : ($_SESSION['username'] ?? 'system');
     $entry_time=$GLOBALS['entry_time'];
     $public_ip = getPublicIP();
 

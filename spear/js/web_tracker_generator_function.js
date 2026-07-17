@@ -325,29 +325,10 @@ $(function() {
         makeCopyTrackerTemplate_action($(this).data('data-tracker_id'));
     });
 
-    $(document).on("click", "button[name='web_tracker_status_button']", function() {
-        $(this).tooltip('toggle');
-        if ($(this).data('status_value') == "0")
-            $(this).after('<button type="button" class="btn btn-dark btn-sm" data-toggle="tooltip" data-placement="top" title="Start/Resume Tracking" data-tracker_id="' + $(this).data('tracker_id') + '" data-status_value="1" name="web_tracker_status_button"><i class="mdi mdi-play"></i></button>');
-        else
-            $(this).after('<button type="button" class="btn btn-success btn-sm" data-toggle="tooltip" data-placement="top" title="Pause/Stop Tracking" data-tracker_id="' + $(this).data('tracker_id') + '" data-status_value="0" name="web_tracker_status_button"><i class="mdi mdi-stop"></i></button>');
-
-        $(this).tooltip('hide');
-        $(this).remove();
-
-        $.post("web_tracker_generator_list_manager", {
-                action_type: "pause_stop_tracker_tracking",
-                tracker_id: $(this).data('tracker_id'),
-                action_value: $(this).data('status_value')
-            },
-            function(data, status) {
-                if (data != "success") {
-                    toastr.error('', 'Error changing status!');
-                }
-            });
-
-        $('[data-toggle="tooltip"]').tooltip({ trigger: "hover" });
-    });
+    // Removed (P2.0): dead web_tracker_status_button handler — posted a stale
+    // action to a URL missing the manager/ prefix, with a wrong param name and
+    // response check (4 reasons it 404/403'd). The live start/stop toggle is
+    // promptWebTrackerActDeact on the tracker LIST page.
 
     $('[data-toggle="tooltip"]').tooltip({ trigger: "hover" });
 });

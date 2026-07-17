@@ -367,6 +367,61 @@ if (!function_exists('taphish_engagement_ensure_campaign_fk_column')) {
     }
 }
 
+if (!function_exists('taphish_tracker_ensure_engagement_column_generic')) {
+    /**
+     * P1.2: shared, idempotent "add nullable engagement_id + index" migration for
+     * the tracker tables, so a web/quick tracker can be scoped to an engagement
+     * (mirrors the 3.45b campaign-FK migration). The table name is whitelisted
+     * (identifiers can't be bound); existing rows stay NULL → visible in the
+     * "Unscoped/Legacy" bucket until an operator assigns them (no auto-backfill:
+     * tracker→engagement linkage is less certain than the user-group case, so we
+     * leave assignment explicit rather than guessing).
+     */
+    function taphish_tracker_ensure_engagement_column_generic(\mysqli $conn, string $table, string $index): void
+    {
+        if (!($conn instanceof \mysqli)) {
+            return;
+        }
+        if (!in_array($table, ['tb_core_web_tracker_list', 'tb_core_quick_tracker_list'], true)) {
+            return; // never interpolate an unwhitelisted identifier
+        }
+        $stmt = $conn->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND COLUMN_NAME = 'engagement_id'"
+        );
+        if ($stmt === false) {
+            return;
+        }
+        $stmt->bind_param('s', $table);
+        $stmt->execute();
+        $present = (int) $stmt->get_result()->fetch_row()[0];
+        $stmt->close();
+        if ($present > 0) {
+            return;
+        }
+        @$conn->query("ALTER TABLE $table ADD COLUMN engagement_id INT UNSIGNED NULL DEFAULT NULL");
+        @$conn->query("CREATE INDEX $index ON $table(engagement_id)");
+    }
+}
+
+if (!function_exists('taphish_web_tracker_ensure_engagement_column')) {
+    /** P1.2: nullable engagement_id on tb_core_web_tracker_list. */
+    function taphish_web_tracker_ensure_engagement_column(\mysqli $conn): void
+    {
+        taphish_tracker_ensure_engagement_column_generic($conn, 'tb_core_web_tracker_list', 'idx_web_tracker_engagement');
+    }
+}
+
+if (!function_exists('taphish_quick_tracker_ensure_engagement_column')) {
+    /** P1.2: nullable engagement_id on tb_core_quick_tracker_list. */
+    function taphish_quick_tracker_ensure_engagement_column(\mysqli $conn): void
+    {
+        taphish_tracker_ensure_engagement_column_generic($conn, 'tb_core_quick_tracker_list', 'idx_quick_tracker_engagement');
+    }
+}
+
 if (!function_exists('taphish_user_group_backfill_engagement')) {
     /**
      * Phase 3.48b: pure backfill decision. Given the engagement_ids of every
@@ -536,6 +591,155 @@ if (!function_exists('taphish_engagement_campaigns')) {
         }
         $stmt->close();
         return $out;
+    }
+}
+
+if (!function_exists('taphish_engagement_campaigns_normalize')) {
+    /**
+     * P1.3 (pure): merge an engagement's mail campaigns + web trackers + quick
+     * trackers into one uniform, type-tagged list. Each row carries a common
+     * {type,id,name,date} shape plus type-specific fields (mail: camp_status,
+     * scheduled_time; trackers: active). Concatenated mail→web→quick, each
+     * already date-desc from its SQL ORDER BY; cross-type date sorting is left
+     * to the client DataTable so this stays free of tz/format parsing.
+     */
+    function taphish_engagement_campaigns_normalize(array $mail, array $web, array $quick): array
+    {
+        $out = [];
+        foreach ($mail as $r) {
+            $out[] = [
+                'type'           => 'mail',
+                'id'             => (string) ($r['campaign_id'] ?? ''),
+                'name'           => (string) ($r['campaign_name'] ?? ''),
+                'camp_status'    => $r['camp_status'] ?? null,
+                'scheduled_time' => $r['scheduled_time'] ?? null,
+                'date'           => $r['date'] ?? null,
+            ];
+        }
+        foreach (['web' => $web, 'quick' => $quick] as $type => $rows) {
+            foreach ($rows as $r) {
+                $out[] = [
+                    'type'   => $type,
+                    'id'     => (string) ($r['tracker_id'] ?? ''),
+                    'name'   => (string) ($r['tracker_name'] ?? ''),
+                    'active' => isset($r['active']) ? (int) $r['active'] : null,
+                    'date'   => $r['date'] ?? null,
+                ];
+            }
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('taphish_tracker_rows_by_engagement')) {
+    /**
+     * P1.3: fetch tracker rows scoped to an engagement, or (when $id === null)
+     * the UNSCOPED ones (engagement_id IS NULL) for the Legacy bucket. Table is
+     * whitelisted — the identifier can't be bound.
+     */
+    function taphish_tracker_rows_by_engagement(\mysqli $conn, string $table, ?int $id): array
+    {
+        if (!in_array($table, ['tb_core_web_tracker_list', 'tb_core_quick_tracker_list'], true)) {
+            return [];
+        }
+        if ($id === null) {
+            $res = @$conn->query("SELECT tracker_id, tracker_name, active, date FROM $table WHERE engagement_id IS NULL ORDER BY date DESC");
+        } else {
+            $stmt = $conn->prepare("SELECT tracker_id, tracker_name, active, date FROM $table WHERE engagement_id = ? ORDER BY date DESC");
+            if ($stmt === false) {
+                return [];
+            }
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $res = $stmt->get_result();
+        }
+        $out = [];
+        if ($res instanceof \mysqli_result) {
+            while ($r = $res->fetch_assoc()) {
+                $out[] = $r;
+            }
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('taphish_engagement_campaigns_all')) {
+    /**
+     * P1.3: everything scoped to an engagement — mail campaigns + web + quick
+     * trackers — as one type-tagged list for the hub.
+     */
+    function taphish_engagement_campaigns_all(\mysqli $conn, int $id): array
+    {
+        return taphish_engagement_campaigns_normalize(
+            taphish_engagement_campaigns($conn, $id),
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_web_tracker_list', $id),
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_quick_tracker_list', $id)
+        );
+    }
+}
+
+if (!function_exists('taphish_engagement_assign_target')) {
+    /**
+     * P1.4b (pure): map a campaign/tracker `type` to its [table, id-column]. This
+     * is the ONLY place a table/column name is chosen for the assign UPDATE, and
+     * it is a strict whitelist — any unknown/injection type returns null so the
+     * UPDATE is never constructed from caller-supplied identifiers.
+     */
+    function taphish_engagement_assign_target(string $type): ?array
+    {
+        $map = [
+            'mail'  => ['tb_core_mailcamp_list', 'campaign_id'],
+            'web'   => ['tb_core_web_tracker_list', 'tracker_id'],
+            'quick' => ['tb_core_quick_tracker_list', 'tracker_id'],
+        ];
+        return $map[$type] ?? null;
+    }
+}
+
+if (!function_exists('taphish_campaigns_unscoped')) {
+    /**
+     * P1.4b: the Unscoped/Legacy bucket — every mail campaign / web tracker /
+     * quick tracker with engagement_id IS NULL, type-tagged via the shared
+     * normalizer, so the operator can assign them to an engagement.
+     */
+    function taphish_campaigns_unscoped(\mysqli $conn): array
+    {
+        $mail = [];
+        $res = @$conn->query("SELECT campaign_id, campaign_name, scheduled_time, camp_status, date FROM tb_core_mailcamp_list WHERE engagement_id IS NULL ORDER BY date DESC");
+        if ($res instanceof \mysqli_result) {
+            while ($r = $res->fetch_assoc()) {
+                $mail[] = $r;
+            }
+        }
+        return taphish_engagement_campaigns_normalize(
+            $mail,
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_web_tracker_list', null),
+            taphish_tracker_rows_by_engagement($conn, 'tb_core_quick_tracker_list', null)
+        );
+    }
+}
+
+if (!function_exists('taphish_assign_engagement')) {
+    /**
+     * P1.4b: scope a single campaign/tracker to an engagement. Table + id-column
+     * come from the whitelisted target map (never from caller input); the id and
+     * engagement_id are bound. Returns true on a successful UPDATE.
+     */
+    function taphish_assign_engagement(\mysqli $conn, string $type, string $id, int $engagementId): bool
+    {
+        $target = taphish_engagement_assign_target($type);
+        if ($target === null || $id === '' || $engagementId <= 0) {
+            return false;
+        }
+        [$table, $idcol] = $target;
+        $stmt = $conn->prepare("UPDATE $table SET engagement_id = ? WHERE $idcol = ?");
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('is', $engagementId, $id);
+        $ok = $stmt->execute();
+        $stmt->close();
+        return (bool) $ok;
     }
 }
 

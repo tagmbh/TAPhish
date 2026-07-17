@@ -304,4 +304,56 @@ final class PreflightChecksTest extends TestCase
         self::assertFalse($r['ok']);
         self::assertFalse($r['gates']['mail_body']['ok']);
     }
+
+    // --- F1: send-loop landing probe cache must not poison on a blip -------
+
+    public function testProbeCacheOnlyStoresSuccessVerdicts(): void
+    {
+        $cache = [];
+        $okGet = fn ($u) => ['ok' => true, 'status' => 200, 'body' => '<form></form>', 'error' => ''];
+        $r = taphish_landing_probe_cached('https://phish.example/p/m365/', $cache, $okGet, 3, 0);
+        self::assertTrue($r['ok']);
+        self::assertArrayHasKey('https://phish.example/p/m365/', $cache);
+    }
+
+    public function testProbeFailureIsNotCached(): void
+    {
+        $cache = [];
+        $downGet = fn ($u) => ['ok' => false, 'status' => 503, 'body' => '', 'error' => ''];
+        $r = taphish_landing_probe_cached('https://phish.example/p/m365/', $cache, $downGet, 2, 0);
+        self::assertFalse($r['ok']);
+        // A failing probe must NEVER be cached — otherwise one blip while
+        // recipient #1 is processed blocks the whole rest of the campaign.
+        self::assertArrayNotHasKey('https://phish.example/p/m365/', $cache);
+    }
+
+    public function testTransientBlipIsAbsorbedByRetryThenSends(): void
+    {
+        $cache = [];
+        $calls = 0;
+        // Down on the first attempt, healthy on the second.
+        $flaky = function ($u) use (&$calls) {
+            $calls++;
+            return $calls === 1
+                ? ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'timeout']
+                : ['ok' => true, 'status' => 200, 'body' => '<form></form>', 'error' => ''];
+        };
+        $r = taphish_landing_probe_cached('https://phish.example/p/m365/', $cache, $flaky, 3, 0);
+        self::assertTrue($r['ok']);
+        self::assertSame(2, $calls);
+    }
+
+    public function testCachedSuccessShortCircuitsWithoutReprobing(): void
+    {
+        $calls = 0;
+        $okGet = function ($u) use (&$calls) {
+            $calls++;
+            return ['ok' => true, 'status' => 200, 'body' => '<form></form>', 'error' => ''];
+        };
+        $cache = [];
+        taphish_landing_probe_cached('https://phish.example/p/m365/', $cache, $okGet, 3, 0);
+        taphish_landing_probe_cached('https://phish.example/p/m365/', $cache, $okGet, 3, 0);
+        // Second call for the same URL must hit the cache, not the network.
+        self::assertSame(1, $calls);
+    }
 }

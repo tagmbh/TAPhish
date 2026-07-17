@@ -235,6 +235,12 @@ if (!function_exists('landing_library_template_files')) {
         foreach ($iter as $f) {
             $rel = ltrim(str_replace($dir, '', (string) $f), '/');
             if ($rel === 'meta.json') continue;
+            // Operator-only tooling that ships inside a library entry (e.g.
+            // m365-login-capture/deploy_hostpoint.sh, which embeds the SSH
+            // target + look-alike host list) must NOT be copied into the
+            // operator's clone — from there a host-push would publish it on
+            // the public landing host. Web assets only.
+            if (preg_match('/\.sh$/i', $rel)) continue;
             $out[] = $rel;
         }
         sort($out);

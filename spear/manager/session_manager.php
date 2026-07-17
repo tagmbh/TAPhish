@@ -70,6 +70,10 @@ if (isset($conn) && $conn instanceof mysqli) {
 		// Phase 3.48b: engagement_id on tb_core_mailcamp_user_group + one-time
 		// backfill, so recipient PII can be scoped per engagement.
 		taphish_user_group_ensure_engagement_column($conn);
+		// P1.2: engagement_id on the web/quick tracker tables so trackers can be
+		// scoped to an engagement (nullable; existing rows → Unscoped bucket).
+		taphish_web_tracker_ensure_engagement_column($conn);
+		taphish_quick_tracker_ensure_engagement_column($conn);
 	}
 	// Phase 3.48: RBAC - tb_main.role (+ admin auto-promote) and the
 	// engagement-membership join table. Idempotent; safe every boot.

@@ -39,7 +39,19 @@ if (isset($_POST)) {
 
 		if($POSTJ['action_type'] == "get_link_to_web_tracker")		//from mail template
 			getLinktoWebTracker($conn);
+		if($POSTJ['action_type'] == "list_all_trackers")		// P2.1 unified list (web + quick)
+			getAllTrackers($conn);
 	}
+}
+
+// P2.1: unified tracker list feed — web + quick, type-tagged, times localized.
+function getAllTrackers($conn){
+	require_once(dirname(__FILE__) . '/tracker_unified.php');
+	$DTime_info = getTimeInfo($conn);
+	$localize = function($t) use ($DTime_info) {
+		return getInClientTime_FD($DTime_info, $t, null, 'd-m-Y h:i A');
+	};
+	echo json_encode(['result' => 'success', 'trackers' => taphish_all_trackers($conn, $localize)], JSON_INVALID_UTF8_IGNORE);
 }
 
 //-----------------------------
@@ -168,18 +180,54 @@ function pauseStopWebTrackerTracking($conn,$active,$tracker_id,$quite){
 }
 
 function getHTMLContent($url){
+	require_once(dirname(__FILE__) . '/url_fetch_guard.php');
+	$url = (string)$url;
+
+	// SSRF guard: http(s) only, and neither the URL host nor any address it
+	// resolves to may be private/reserved (blocks 169.254.169.254, 127.0.0.1,
+	// internal names, etc.). See url_fetch_guard.php + UrlFetchGuardTest.
+	$pre = taphish_fetch_url_precheck($url);
+	if (!$pre['ok']) {
+		echo json_encode(['result' => 'failed', 'error' => $pre['error']]);
+		return;
+	}
+	$host = $pre['host'];
+	$bare = ($host !== '' && $host[0] === '[') ? trim($host, '[]') : $host;
+	if (filter_var($bare, FILTER_VALIDATE_IP) !== false) {
+		$ips = [$bare];                     // literal IP already precheck-validated
+	} else {
+		$ips = @gethostbynamel($host);      // A records; false on failure
+		if ($ips === false) { $ips = []; }
+	}
+	if (empty($ips)) {
+		echo json_encode(['result' => 'failed', 'error' => 'That host did not resolve.']);
+		return;
+	}
+	foreach ($ips as $ip) {
+		if (!taphish_ip_is_public($ip)) {
+			echo json_encode(['result' => 'failed', 'error' => 'That host resolves to a private address.']);
+			return;
+		}
+	}
+
 	$ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:79.0) Gecko/20100101 Firefox/79.0');
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // ignore SSL errors
-    $result=curl_exec($ch);
-    curl_close($ch);
-    if($result)
-    	echo json_encode($result);
-    else
-    	echo json_encode(['result' => 'failed', 'error' => $stmt->error()]);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:79.0) Gecko/20100101 Firefox/79.0');
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);                      // no redirect-to-internal bypass
+	curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+	$result = curl_exec($ch);
+	$err = curl_error($ch);
+	curl_close($ch);
+	if ($result !== false && $result !== '') {
+		echo json_encode($result);
+	} else {
+		// Clean JSON on failure (the old code fatally called a method on a null
+		// statement handle). Redirecting URLs won't follow now — paste HTML instead.
+		echo json_encode(['result' => 'failed', 'error' => 'Fetch failed' . ($err !== '' ? ': ' . $err : '') . '. Tip: paste the page HTML directly.']);
+	}
 }
 
 //-------------------------------------------------------------------------

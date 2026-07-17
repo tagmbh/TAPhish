@@ -132,6 +132,14 @@
                               </div>
                            </div>
                            <div class="form-group row">
+                              <label for="engagementSelector" class="col-sm-4 text-left control-label col-form-label" title="Scope this campaign to an engagement so it appears in that engagement's hub. Leave Unscoped for standalone/legacy campaigns." data-toggle="tooltip" data-placement="right">Engagement:</label>
+                              <div class="col-sm-7">
+                                 <select class="form-control custom-select" id="engagementSelector" style="height: 36px;width: 100%;">
+                                    <option value="">— Unscoped (legacy) —</option>
+                                 </select>
+                              </div>
+                           </div>
+                           <div class="form-group row">
                               <label for="userGroupSelector" class="col-sm-4 text-left control-label col-form-label">User Group:*</label>
                               <div class="col-sm-7">
                                  <select class="select2 form-control custom-select" id="userGroupSelector" style="height: 36px;width: 100%;">
@@ -311,7 +319,8 @@
       <script src="js/libs/custom.min.js"></script>
       <!-- this page js -->   
       <script src="js/common_scripts.js"></script>
-      <script src="js/mail_campaign.js"></script> 
+      <script src="js/camp_status.js"></script>
+      <script src="js/mail_campaign.js"></script>
       <?php
          echo '<script>';
          if(isset($_GET['action'])){

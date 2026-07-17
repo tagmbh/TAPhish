@@ -7,6 +7,7 @@ require_once(dirname(__FILE__,2) . '/manager/recipient_tz.php');
 require_once(dirname(__FILE__,2) . '/manager/secret_at_rest.php');
 require_once(dirname(__FILE__,2) . '/manager/pretext_library.php');
 require_once(dirname(__FILE__,2) . '/manager/preflight_checks.php');
+require_once(dirname(__FILE__,2) . '/manager/send_pacing.php');
 require_once(dirname(__FILE__,2) . '/libs/symfony/autoload.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/qrcode.php');
 require_once(dirname(__FILE__,2) . '/libs/qr_barcode/barcode.php');
@@ -159,7 +160,9 @@ function InitMailCampaign($conn, $campaign_id){
 	$config_recipient_type = $MCONFIG_DATA['mconfig_data']['recipient_type'];
 	$config_signed_mail = $MCONFIG_DATA['mconfig_data']['signed_mail'];
 	$config_encrypted_mail = $MCONFIG_DATA['mconfig_data']['encrypted_mail'];
-	$config_antiflood_limit = $MCONFIG_DATA['mconfig_data']['antiflood']['limit'];
+	// Sanitised: 0 = anti-flood disabled. Never used as a modulo divisor raw
+	// ($i % 0 is a fatal DivisionByZeroError on PHP 8 that kills the worker).
+	$config_antiflood_limit = taphish_antiflood_limit_sane($MCONFIG_DATA['mconfig_data']['antiflood']['limit'] ?? 0);
 	$config_antiflood_pause = $MCONFIG_DATA['mconfig_data']['antiflood']['pause'];
 	$config_msg_priority = $MCONFIG_DATA['mconfig_data']['msg_priority'];
 	$config_peer_verification = $MCONFIG_DATA['mconfig_data']['peer_verification'];
@@ -205,20 +208,7 @@ function InitMailCampaign($conn, $campaign_id){
 	//----------------------------------------------------------------------------------------
 	
 	$transport = Transport::fromDsn(getMailerDSN($sender_dsn_type, urlencode($sender_acc_username), urlencode($sender_acc_pwd), $sender_SMTP_server, $config_peer_verification));
-	$mailer = new Mailer($transport); 
-	$message = (new Email());
-
-	$message->priority($config_msg_priority); //Msg priority
-
-	//Adding headers
-  	foreach ($cust_headers as $header_name => $header_val) {
-  		if(strcasecmp($header_name, 'return-path') == 0)
-            $message->returnPath($header_val);
-        elseif(strcasecmp($header_name, 'reply-to') == 0)
-            $message->replyTo($header_val);
-        else
-            $message->getHeaders()->addTextHeader($header_name, $header_val);
-	}
+	$mailer = new Mailer($transport);
 
 	foreach ($arr_user_data as $arr_user) {
 		// Phase 3.18: skip recipient if they already have a row for this
@@ -258,6 +248,24 @@ function InitMailCampaign($conn, $campaign_id){
 	    $RID = generateRID($conn, $campaign_id);
 	    $i++;
 
+	    // Fresh message per recipient. Previously a single $message was built
+	    // once before the loop and reused: attachments + QR/barcode embeds
+	    // accumulated across recipients (recipient N got N copies), and S/MIME
+	    // signing/encryption reassigned $message to a base Mime\Message whose
+	    // next-iteration ->from()/->subject() call fatals — breaking every
+	    // signed/encrypted campaign after the first recipient.
+	    $message = (new Email());
+	    $message->priority($config_msg_priority); //Msg priority
+	    //Adding headers
+	    foreach ($cust_headers as $header_name => $header_val) {
+	        if(strcasecmp($header_name, 'return-path') == 0)
+	            $message->returnPath($header_val);
+	        elseif(strcasecmp($header_name, 'reply-to') == 0)
+	            $message->replyTo($header_val);
+	        else
+	            $message->getHeaders()->addTextHeader($header_name, $header_val);
+	    }
+
 	    $keyword_vals['{{RID}}'] = $RID;
 	    $keyword_vals['{{MID}}'] = $campaign_id;
 	    $keyword_vals['{{NAME}}'] = $arr_user['fname'].' '.$arr_user['lname'];
@@ -292,6 +300,16 @@ function InitMailCampaign($conn, $campaign_id){
 		}
 		$keyword_vals['{{VARIANT}}'] = $ab_variant;
 
+		// Next-round guarantee: if the template opts into open-tracking
+		// (timage_type==1) but its body lacks the {{TRACKER}} open-pixel token
+		// (e.g. saved outside the wizard), append it — mirrors wizard_pure.js:39-40
+		// so a tracking template always ships the pixel. Respects timage_type==0
+		// (no forced pixel). NB: opens still depend on the client loading remote
+		// images (Gmail/Outlook often block/proxy them → low open rates are normal).
+		if ((string)$mail_timage_type === '1' && strpos((string)$_body, '{{TRACKER}}') === false) {
+			$_body .= '{{TRACKER}}';
+		}
+
 		// Create a message
 		$message->from(new Address($sender_from_mail, $sender_from_name))->subject((filterKeywords($_subj,$keyword_vals)));
 		$msg_body = filterKeywords($_body,$keyword_vals);
@@ -316,18 +334,21 @@ function InitMailCampaign($conn, $campaign_id){
 		// from disk — or the landing host is otherwise down — we refuse
 		// the send rather than ship a mail whose CTA 404s.
 		$_send_landing_blocker = null;
+		if (!isset($GLOBALS['_taphish_landing_probe_cache'])) {
+			$GLOBALS['_taphish_landing_probe_cache'] = [];
+		}
 		foreach (taphish_mail_body_extract_cta_landing_urls($msg_body) as $_landing) {
-			if (!isset($GLOBALS['_taphish_landing_probe_cache'])) {
-				$GLOBALS['_taphish_landing_probe_cache'] = [];
-			}
-			if (!array_key_exists($_landing, $GLOBALS['_taphish_landing_probe_cache'])) {
-				$_p = taphish_preflight_http_get($_landing);
-				$_gate = taphish_preflight_landing_gate($_landing, function() use ($_p) { return $_p; });
-				$GLOBALS['_taphish_landing_probe_cache'][$_landing] = $_gate;
-			}
-			if (!$GLOBALS['_taphish_landing_probe_cache'][$_landing]['ok']) {
-				$_send_landing_blocker = 'Landing URL ' . $_landing . ' — '
-				                       . $GLOBALS['_taphish_landing_probe_cache'][$_landing]['reason'];
+			// Only successful verdicts are cached; a failing probe is retried
+			// and never cached, so a single transient blip on the landing host
+			// blocks at most the current recipient instead of poisoning the
+			// verdict for the whole batch. See taphish_landing_probe_cached().
+			$_gate = taphish_landing_probe_cached(
+				$_landing,
+				$GLOBALS['_taphish_landing_probe_cache'],
+				'taphish_preflight_http_get'
+			);
+			if (empty($_gate['ok'])) {
+				$_send_landing_blocker = 'Landing URL ' . $_landing . ' — ' . $_gate['reason'];
 				break;
 			}
 		}
@@ -407,12 +428,15 @@ function InitMailCampaign($conn, $campaign_id){
 			}
 		}
 
-		//sleep for next email
-		$delay_val = rand(explode("-",$MC_msg_interval)[0]*1000,explode("-",$MC_msg_interval)[1]*1000); //milli-seconds
-		usleep($delay_val*1000); //usleep is in microseconds
+		//sleep for next email — bounds parsed defensively so a malformed
+		//interval (single value, reversed, or non-numeric) can't throw.
+		[$_iv_lo_ms, $_iv_hi_ms] = taphish_msg_interval_bounds_ms($MC_msg_interval);
+		if ($_iv_hi_ms > 0) {
+			usleep(rand($_iv_lo_ms, $_iv_hi_ms) * 1000); //usleep is in microseconds
+		}
 
-		//Anti-flood control
-		if($i%$config_antiflood_limit == 0){
+		//Anti-flood control ($config_antiflood_limit==0 disables batching)
+		if($config_antiflood_limit > 0 && $i % $config_antiflood_limit == 0){
 			$transport->stop();
 			sleep($config_antiflood_pause);
 		}

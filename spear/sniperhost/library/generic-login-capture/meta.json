@@ -1,0 +1,8 @@
+{
+  "name": "Generic webmail sign-in (low-tier, capture + awareness redirect)",
+  "description": "Deliberately-generic, easy-to-recognise low-tier landing for feed.msoffice365.ch: a plain 'Office 365 Webmail' sign-in with no authentic Microsoft branding (generic mail/cloud glyph, generic German copy). Records email + password + OTP to the tracker (3-step concept — click recorded by the tracker visit, credentials recorded on submit), then redirects to a built-in 'Ooops, du wurdest gephisht' awareness page (learn.html) instead of a real login. Captures are stored in plaintext server-side — use only where the engagement consent covers credential capture, and purge after the programme. Intended as the easiest tier for a trained user to spot as fake.",
+  "pattern": "multi-step",
+  "has_2fa": true,
+  "fields": ["email", "password", "code_2fa"],
+  "placeholder_notes": "Captures real credentials (DSG/GDPR-sensitive). Branding is intentionally generic/low-effort (no real Microsoft mark) — do NOT upgrade it to a pixel-perfect clone; this tier is meant to be recognisable. learn.html ships with the template — adapt the awareness copy/domain references as needed."
+}

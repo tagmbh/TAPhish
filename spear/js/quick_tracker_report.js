@@ -52,7 +52,7 @@ $(document).ready(function() {
             "bDestroy": true,
             "pageLength": 5,
             "lengthMenu": [5, 10, 20, 50, 100],
-            "aaSorting": [3, 'desc'],
+            "order": [[3, 'desc']],   // Date Created desc (prior default-sort was malformed + an ignored 2nd DataTable arg)
             "preDrawCallback": function(settings) {
                 $('#table_quick_tracker_list tbody').hide();
             },
@@ -65,11 +65,9 @@ $(document).ready(function() {
             "initComplete": function() {
                 $('label>select').select2({minimumResultsForSearch: -1, });
             }
-        }, {
-            "order": [[1, 'asc']]
         }); //initialize table
 
-        dt_quick_tracker_result.on('order.dt_quick_tracker_result search.dt_quick_tracker_result', function() {
+        dt_quick_tracker_result.on('order.dt search.dt', function() {   // real .dt events (a per-table namespace here never fired)
             dt_quick_tracker_result.column(0, {
                 search: 'applied',
                 order: 'applied'
@@ -125,8 +123,9 @@ function loadTableQuickTrackerResult(tracker_id) {
             contentType: "application/json; charset=utf-8",
             data: function (d) {   //request parameters here
                     d.action_type = 'get_quick_tracker_data';
-                    d.tracker_id = tracker_id;                    
+                    d.tracker_id = tracker_id;
                     d.selected_col = allReportColListSelected;
+                    d.hide_scanner = $('#cb_hide_scanner').is(':checked');   // P2.2: scanner-hide toggle
                     return JSON.stringify(d);
                 },
             dataSrc: function ( resp ){
@@ -150,6 +149,14 @@ function loadTableQuickTrackerResult(tracker_id) {
         }
     });
 }
+
+// P2.2: reload the results when the scanner-hide toggle changes (delegated so it
+// survives table re-inits; tdt only exists once a tracker is selected).
+$(function () {
+    $(document).on('change', '#cb_hide_scanner', function () {
+        try { if (tdt) { tdt.ajax.reload(); } } catch (e) {}
+    });
+});
 
 function exportReportAction(e) {
     if(tdt.rows().count() > 0){

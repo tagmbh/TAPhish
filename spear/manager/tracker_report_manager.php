@@ -1,5 +1,6 @@
 <?php
 require_once(dirname(__FILE__) . '/session_manager.php');
+require_once(dirname(__FILE__) . '/datatables_helper.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 if(isSessionValid() == false)
 	die("Access denied");
@@ -131,6 +132,10 @@ function getTableWebpageVisitFormSubmission($conn, &$POSTJ){
 	$selected_col = $POSTJ['selected_col'];
 	$arr_filtered=[];
 	$DTime_info = getTimeInfo($conn);
+	// P2.2a: opt-in scanner-hide. is_scanner exists on tb_data_webform_submit
+	// (page>0); tb_data_webpage_visit (page 0) has no flag → predicate no-ops.
+	require_once(dirname(__FILE__) . '/tracker_unified.php');
+	$hideScanner = filter_var($POSTJ['hide_scanner'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 	if (!in_array($columnName, ['rid','session_id','public_ip','ip_info','user_agent','screen_res','time','browser','platform','device_type']))	//should be db column name
 	    $columnName = '';
@@ -150,21 +155,25 @@ function getTableWebpageVisitFormSubmission($conn, &$POSTJ){
 	$stmt->execute();
 	$row = $stmt->get_result()->fetch_row();
 	$totalRecords = $row[0];
-	$totalRecords_with_filter = $totalRecords;//will be updated from below
 
+	// No SQL LIMIT/OFFSET: the search filter below spans JSON/computed columns
+	// (ip_info, form_field_data, client-tz time) that SQL LIKE can't reach, so we
+	// must build the FULL filtered set, count it, then slice the page in PHP.
+	// Row count is bounded per tracker (same fetch downloadReport already does).
 	if($page == 0){
-		$stmt = $conn->prepare("SELECT * FROM tb_data_webpage_visit WHERE tracker_id=? ".$colSortString." LIMIT ? OFFSET ?");
-		$stmt->bind_param("sss", $tracker_id,$limit,$offset);
+		$stmt = $conn->prepare("SELECT * FROM tb_data_webpage_visit WHERE tracker_id=? ".$colSortString);
+		$stmt->bind_param("s", $tracker_id);
 	}
 	else{
-		$stmt = $conn->prepare("SELECT * FROM tb_data_webform_submit WHERE tracker_id=? AND page=? ".$colSortString." LIMIT ? OFFSET ?");
-		$stmt->bind_param("ssss", $tracker_id,$page,$limit,$offset);
+		$stmt = $conn->prepare("SELECT * FROM tb_data_webform_submit WHERE tracker_id=? AND page=? ".$colSortString);
+		$stmt->bind_param("ss", $tracker_id,$page);
 	}
 
 	$stmt->execute();
 	$result = $stmt->get_result();
 	$rows = $result->fetch_all(MYSQLI_ASSOC);
 	foreach($rows as $i => $row){
+		if(!taphish_hit_is_visible($row, $hideScanner)) continue;   // P2.2a: hide scanner hits when toggled
 		$tmp = [];
 		$ip_info = json_decode($row['ip_info'],true);
 		$form_field_data = json_decode($row['form_field_data'],true);
@@ -202,19 +211,20 @@ function getTableWebpageVisitFormSubmission($conn, &$POSTJ){
 			if(empty($search_value) || (!empty($search_value) && $f_found == true))
 				array_push($arr_filtered,$tmp);
 	}
-	$totalRecords_with_filter = sizeof($arr_filtered);
 	$stmt->close();
-	$resp = array(
-		  "draw" => intval($draw),
-		  "recordsTotal" => intval($totalRecords),
-		  "recordsFiltered" => intval($totalRecords_with_filter),
-		  "data" => $arr_filtered
-		);
+	// recordsFiltered is the FULL filtered count (gates the Next button); data is
+	// only the requested page, sliced AFTER counting.
+	$resp = taphish_dt_envelope(
+		intval($draw),
+		intval($totalRecords),
+		sizeof($arr_filtered),
+		taphish_dt_slice($arr_filtered, $offset, $limit)
+	);
 
 	echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);
 }
 
-function getWebTrackerFromId($conn, $tracker_id){	
+function getWebTrackerFromId($conn, $tracker_id){
 	$stmt = $conn->prepare("SELECT * FROM tb_core_web_tracker_list WHERE tracker_id = ?");
 	$stmt->bind_param("s", $tracker_id);
 	$stmt->execute();

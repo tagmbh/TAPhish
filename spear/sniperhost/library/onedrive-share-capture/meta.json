@@ -1,0 +1,8 @@
+{
+  "name": "OneDrive / SharePoint shared-file sign-in (capture + awareness redirect)",
+  "description": "Authorised-simulation OneDrive / SharePoint 'someone shared a file with you' page for sharepoint.texti1color.ch: a OneDrive share banner + file chip ('Detlef Fischer hat eine Datei mit Ihnen geteilt' — Strategie_2026_Schoeller_Integration.xlsx) above the standard Microsoft sign-in card. Records email + password + OTP to the tracker (3-step concept — click recorded by the tracker visit, credentials recorded on submit), then redirects to a built-in 'Ooops, du wurdest gephisht' awareness page (learn.html) instead of the real Microsoft login. Captures are stored in plaintext server-side — use only where the engagement consent covers credential capture, and purge after the programme.",
+  "pattern": "multi-step",
+  "has_2fa": true,
+  "fields": ["email", "password", "code_2fa"],
+  "placeholder_notes": "Captures real credentials (DSG/GDPR-sensitive). learn.html ships with the clone — adapt the awareness copy/branding as needed. The Microsoft 4-square mark stays on the sign-in card; the OneDrive cloud glyph + share banner sit above it."
+}

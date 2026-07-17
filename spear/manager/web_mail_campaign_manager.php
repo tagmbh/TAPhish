@@ -1,5 +1,6 @@
 <?php
 require_once(dirname(__FILE__,2) . '/manager/session_manager.php');
+require_once(dirname(__FILE__) . '/datatables_helper.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 //-------------------------------------------------------
 date_default_timezone_set('UTC');
@@ -298,10 +299,12 @@ function multi_get_live_campaign_data_web_mail($conn, $POSTJ){
 	$stmt->execute();
 	$row = $stmt->get_result()->fetch_row();
 	$totalRecords = $row[0];
-	$totalRecords_with_filter = $totalRecords;//will be updated from below
 
-	$stmt = $conn->prepare("SELECT * FROM tb_data_mailcamp_live WHERE campaign_id=? ".$colSortString." LIMIT ? OFFSET ?");
-	$stmt->bind_param("sss", $campaign_id,$limit,$offset);
+	// No SQL LIMIT/OFFSET: rows are joined in-memory with tracker hits and the
+	// search spans those computed columns, so build the FULL filtered set, count
+	// it, then slice the page in PHP. Bounded per campaign (recipient count).
+	$stmt = $conn->prepare("SELECT * FROM tb_data_mailcamp_live WHERE campaign_id=? ".$colSortString);
+	$stmt->bind_param("s", $campaign_id);
 	$stmt->execute();
 	$result = $stmt->get_result();
 	$rows = $result->fetch_all(MYSQLI_ASSOC);
@@ -379,7 +382,9 @@ function multi_get_live_campaign_data_web_mail($conn, $POSTJ){
 						$ocol=substr($col, 6);	//removes Field-
 						if(!isset($tmp[$col]))	//else can overwrites with empty value
 							$tmp[$col]=[];
-						if($form_field_data->$ocol != null)
+						// P3: DISTINCT per field (was one push per submission → email ×24,
+						// password ×8). See taphish_decode_capture_fields / CaptureFieldsTest.
+						if($form_field_data->$ocol != null && !in_array($form_field_data->$ocol, $tmp[$col], true))
 							array_push($tmp[$col],$form_field_data->$ocol);
 						$tmp['SPPage-'.$hit_entry['page']] = true;
 					}
@@ -433,13 +438,13 @@ function multi_get_live_campaign_data_web_mail($conn, $POSTJ){
 				array_push($arr_filtered,$tmp);		
 	}
 
-	$totalRecords_with_filter = sizeof($arr_filtered);
 	$stmt->close();
-	$resp = array(
-		"draw" => intval($draw),
-		"recordsTotal" => intval($totalRecords),
-		"recordsFiltered" => intval($totalRecords_with_filter),
-		"data" => $arr_filtered
+	// recordsFiltered is the FULL filtered count (gates Next); data is the page.
+	$resp = taphish_dt_envelope(
+		intval($draw),
+		intval($totalRecords),
+		sizeof($arr_filtered),
+		taphish_dt_slice($arr_filtered, $offset, $limit)
 	);
 
 	echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);
@@ -559,7 +564,9 @@ function downloadReport($conn,$campaign_id,$tracker_id,$selected_col,$dic_all_co
 						$ocol=substr($col, 6);	//removes Field-
 						if(!isset($tmp[$col]))	//else can overwrites with empty value
 							$tmp[$col]=[];
-						if($form_field_data->$ocol != null)
+						// P3: DISTINCT per field (was one push per submission). Mirrors
+						// taphish_decode_capture_fields / CaptureFieldsTest.
+						if($form_field_data->$ocol != null && !in_array($form_field_data->$ocol, $tmp[$col], true))
 							array_push($tmp[$col],$form_field_data->$ocol);
 						$tmp['SPPage-'.$hit_entry['page']] = 'Yes';
 					}
