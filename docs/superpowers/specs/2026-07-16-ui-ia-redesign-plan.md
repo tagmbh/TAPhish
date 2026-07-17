@@ -53,8 +53,10 @@
   it a dispatcher action): default **ALL**, one column-picker, one `download_report`; **one clean column
   per logical field** (`decode_fields`, distinct/latest value — fixes the 24×-concatenation + duplicate
   columns), **dedup to one row per victim** with per-hit drill-down. Plaintext credentials operator-tier.
-- **P4 · One live dashboard** — fold Web-MailCamp into the Email Campaign Dashboard as a "show web tracker"
-  toggle; retire the duplicate manager + nav leaf; place under Engagements.
+- **P4 · One live dashboard** — ✅ **safe consolidation DONE + live (2026-07-17):** one "Campaign Dashboard"
+  nav group (Email view + Web-tracker view) replaces the two leaves. The literal single-page FOLD is a large
+  rewrite of two near-clone live clients (hard JS conflicts + dynamic columns/charts) → **attended task**,
+  designed in `2026-07-17-attended-tasks-plan.md` (with the unified Reports generator).
 
 ## Also fixed along the way (from analysis)
 
