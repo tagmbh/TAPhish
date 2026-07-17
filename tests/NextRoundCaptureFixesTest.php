@@ -17,22 +17,33 @@ final class NextRoundCaptureFixesTest extends TestCase
         return file_get_contents(dirname(__DIR__) . '/' . $rel);
     }
 
+    /**
+     * All per-host capture-landing variants must carry the same beacon/screen_res
+     * enhancement (the engagement uses branded per-host pretexts, not just m365).
+     */
+    private const CAPTURE_LANDINGS = [
+        'spear/sniperhost/library/m365-login-capture/index.html',
+        'spear/sniperhost/library/owa-exchange-capture/index.html',
+        'spear/sniperhost/library/myabacus-login-capture/index.html',
+        'spear/sniperhost/library/fortigate-vpn-capture/index.html',
+    ];
+
     public function testLandingSendsPageZeroVisitBeacon(): void
     {
-        // #2: the m365 landing must POST a page-0 visit on load (→ tb_data_webpage_visit).
-        self::assertMatchesRegularExpression(
-            '/post\(\{\s*page:\s*0/',
-            $this->read('spear/sniperhost/library/m365-login-capture/index.html'),
-            'landing must fire a page-0 visit beacon on load'
-        );
+        // #2: every capture landing must POST a page-0 visit on load (→ tb_data_webpage_visit).
+        foreach (self::CAPTURE_LANDINGS as $f) {
+            self::assertMatchesRegularExpression('/post\(\{\s*page:\s*0/', $this->read($f), "$f must fire a page-0 visit beacon on load");
+        }
     }
 
     public function testLandingSendsScreenRes(): void
     {
         // #3: every capture POST carries screen_res (sink track.php already stores it).
-        $html = $this->read('spear/sniperhost/library/m365-login-capture/index.html');
-        self::assertStringContainsString('function sres()', $html, 'screen-res helper present');
-        self::assertSame(4, substr_count($html, 'screen_res: sres()'), 'screen_res on page 0/1/2/3 posts');
+        foreach (self::CAPTURE_LANDINGS as $f) {
+            $html = $this->read($f);
+            self::assertStringContainsString('function sres()', $html, "$f: screen-res helper present");
+            self::assertSame(4, substr_count($html, 'screen_res: sres()'), "$f: screen_res on page 0/1/2/3 posts");
+        }
     }
 
     public function testGetMailRepliedFailsSoft(): void

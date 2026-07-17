@@ -4,7 +4,26 @@ Prepared + tested 2026-07-17 (branch `feature/ui-ia-redesign`), **not deployed**
 recipient-facing capture path. `#4` (mail-reply) is already live (read-only, safe). Guarded by
 `NextRoundCaptureFixesTest`.
 
-## ★ READINESS RE-VERIFIED 2026-07-17 15:42 UTC (deploy still PENDING — operator go + wave timing)
+## ★★ DEPLOYED 2026-07-17 ~17:20 UTC (operator go given: "all 4 variants together")
+- **Cron pixel guarantee** → LIVE (server == HEAD; fresh-exec per campaign, so it takes effect at the next
+  send — no daemon restart needed).
+- **Landings** → deployed via `deploy_campaign_landings.sh` to **owa, abacus, sharepoint, feed**. Post-deploy
+  confirmed: page-0 beacon + `screen_res`×4 live on all 4; **pretexts intact** (`Outlook`, `Abacus ERP`,
+  `Anmelden bei Ihrem Konto`×2); http=200, cert OK. The beacon was added to ALL branded variants
+  (owa-exchange-capture, myabacus-login-capture, fortigate-vpn-capture) — each diffed against its LIVE host
+  as PURELY the beacon (0 pretext drift) before deploy.
+- **Self-test:** beacon fires on load with a real `screen_res` (2560x1440) on both an m365 host (sharepoint)
+  and a branded host (owa) — verified by intercepting the track.php POST. track.php stores `page==0` →
+  `tb_data_webpage_visit` (+screen_res) and validates the tracker (unknown test id → 0 rows, no pollution).
+- **⚠ remote.texti1color.ch (FortiGate / Quishing 5kogr0) NOT deployed** — it is operator/user-managed and
+  explicitly excluded from `deploy_campaign_landings.sh`. The `fortigate-vpn-capture` repo variant IS ready
+  (beacon added); its rendered form diffs against live remote as a clean beacon-only 11-line update. **To
+  apply (operator decision, their host):**
+  `scp -i ~/.ssh/taphish_hostpoint_ed25519 <rendered fortigate index.html> azitufem@sl2084.web.hostpoint.ch:~/www/remote.texti1color.ch/index.html` (back up first).
+- **Real DB verification** happens at the 20-07 wave: `tb_data_webpage_visit` gains page-0 rows;
+  `tb_data_webform_submit.screen_res` is a real `WxH`, not `Failed`.
+
+## ~~READINESS RE-VERIFIED 2026-07-17 15:42 UTC~~ (superseded by the DEPLOYED section above)
 - **Timing:** scheduler alive; **nothing in-flight** (0 campaigns at st=2). **12 campaigns armed (st=1)**,
   next wave **20-07-2026 07:15 UTC ≈ 09:15 Europe/Zurich (CEST)** … through 24-07. 4 fired 16-07 (st=4).
   → Deploy in the quiet window BEFORE the 20-07 wave (e.g. 19-07, or 20-07 before 07:15 UTC). Because the
