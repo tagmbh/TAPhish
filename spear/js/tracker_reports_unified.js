@@ -171,6 +171,13 @@ function trackerSelected(type, tracker_id) {
         contentType: 'application/json; charset=utf-8',
         data: JSON.stringify({ action_type: cfg.infoAction, tracker_id: tracker_id })
     }).done(function (data) {
+        // Guard a stale deep-link (e.g. ?type=web&tracker=<deleted id>): the info
+        // endpoints return {error:'No data'} with no tracker_step_data, which would
+        // otherwise crash the web branch on data.tracker_step_data.web_forms.
+        if (!data || data.error || (type === 'web' && (!data.tracker_step_data || !data.tracker_step_data.web_forms))) {
+            toastr.error('', 'Tracker not found or has no data');
+            return;
+        }
         $('#disp_web_tracker_name').text(data.tracker_name);
         $('#Modal_export_file_name').val(data.tracker_name);
         $('#disp_tracker_start').text((data.start_time == '' || data.start_time == undefined) ? "Not started" : data.start_time);

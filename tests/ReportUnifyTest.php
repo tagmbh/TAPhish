@@ -50,6 +50,19 @@ final class ReportUnifyTest extends TestCase
         }
     }
 
+    public function testTrackerSelectedGuardsMissingTracker(): void
+    {
+        // Review finding #3: a deep-link to a deleted tracker returns
+        // {error:'No data'} with no tracker_step_data; guard before dereferencing
+        // it so the web branch can't crash on data.tracker_step_data.web_forms.
+        $js = $this->f('js/tracker_reports_unified.js');
+        self::assertMatchesRegularExpression(
+            '/if \(!data \|\| data\.error[\s\S]{0,140}tracker_step_data[\s\S]{0,140}return;/',
+            $js,
+            'trackerSelected must guard a missing/errored tracker'
+        );
+    }
+
     public function testReportsNavRegistered(): void
     {
         $menu = $this->f('z_menu.php');

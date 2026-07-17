@@ -53,6 +53,27 @@ final class DashboardFoldTest extends TestCase
         self::assertStringContainsString('Campaign Dashboard', $php, 'page renamed to the single Campaign Dashboard');
     }
 
+    public function testExportUsesTheEmailOnlyColumnFilter(): void
+    {
+        // Review finding #1: the export must apply the same email-only column
+        // filter as the on-screen table, else an email-only campaign exports 6
+        // blank web columns. Factored into a shared helper used by BOTH sites.
+        $js = $this->f('js/web_mail_campaign_dashboard.js');
+        self::assertStringContainsString('function dropWebColsIfEmailOnly()', $js, 'shared email-only column filter helper');
+        self::assertSame(2, substr_count($js, 'dropWebColsIfEmailOnly();'), 'filter applied to BOTH the result table and the export');
+    }
+
+    public function testStaleTrackerHidesWebSectionsAndWarns(): void
+    {
+        // Review finding #2: a supplied tracker_id that no longer resolves must
+        // re-hide the web sections (else the web charts spin forever) and warn.
+        // `toggleWebSections(false)` and the toast text are unique to this branch.
+        $js = $this->f('js/web_mail_campaign_dashboard.js');
+        self::assertStringContainsString('toggleWebSections(false)', $js, 'no-tracker-resolve branch must re-hide web sections');
+        self::assertStringContainsString('if (hasTracker)', $js, 'warning is gated on a supplied-but-unresolved tracker');
+        self::assertStringContainsString('Web tracker not found', $js, 'must warn when a supplied tracker did not resolve');
+    }
+
     public function testShellDeepLinkAcceptsCampaignAlone(): void
     {
         $php = $this->f('WebMailCmpDashboard.php');
