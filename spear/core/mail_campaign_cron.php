@@ -300,6 +300,16 @@ function InitMailCampaign($conn, $campaign_id){
 		}
 		$keyword_vals['{{VARIANT}}'] = $ab_variant;
 
+		// Next-round guarantee: if the template opts into open-tracking
+		// (timage_type==1) but its body lacks the {{TRACKER}} open-pixel token
+		// (e.g. saved outside the wizard), append it — mirrors wizard_pure.js:39-40
+		// so a tracking template always ships the pixel. Respects timage_type==0
+		// (no forced pixel). NB: opens still depend on the client loading remote
+		// images (Gmail/Outlook often block/proxy them → low open rates are normal).
+		if ((string)$mail_timage_type === '1' && strpos((string)$_body, '{{TRACKER}}') === false) {
+			$_body .= '{{TRACKER}}';
+		}
+
 		// Create a message
 		$message->from(new Address($sender_from_mail, $sender_from_name))->subject((filterKeywords($_subj,$keyword_vals)));
 		$msg_body = filterKeywords($_body,$keyword_vals);

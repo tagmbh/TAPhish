@@ -378,7 +378,7 @@ function getMailReplied($conn, $campaign_id, $quite=false){
         $arr_msg_info =[];
 
         try{
-            if($read = imap_open($sender_mailbox,$sender_username,$sender_acc_pwd)){             
+            if(function_exists('imap_open') && ($read = @imap_open($sender_mailbox,$sender_username,$sender_acc_pwd))){
                 $array = imap_search($read,'TEXT "@spmailer.generated"'); // match for Message-ID header {{RID}}@spmailer.generated
                 foreach($array as $result) {
                     $overview = imap_fetch_overview($read,$result,0); //var_dump($overview[0]->references);
@@ -409,19 +409,18 @@ function getMailReplied($conn, $campaign_id, $quite=false){
         }catch(Exception $e) {
             array_push($arr_err,$e->getMessage());
         }
-        array_push($arr_err,imap_errors());     //required to capture imap errors
-        
-        if(empty($arr_err) || $arr_err[0] == false)
-            if($quite)
-                return ['reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info];
-            else
-                echo json_encode(['reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info]);
+        if(function_exists('imap_errors')) imap_errors();   // drain the IMAP error buffer
+
+        // Fail soft: an unreachable / mis-configured IMAP mailbox (common for
+        // SMTP-only senders, or a host without the IMAP extension) must show
+        // "0 replied", never kill the dashboard panel with "Loading error!".
+        // Genuine replies still count; connection failures are just 0 replies.
+        $resp = ['reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info];
+        if($quite)
+            return $resp;
         else
-            if($quite)
-                return ['error'=>$arr_err, 'reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info];
-            else
-                echo json_encode(['error'=>$arr_err, 'reply_count_unique'=>count($arr_msg_info), 'msg_info'=>$arr_msg_info]);
-    }           
+            echo json_encode($resp);
+    }
     $stmt->close();
 }
 //--------------------------------------------------------------------
