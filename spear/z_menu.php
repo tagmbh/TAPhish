@@ -151,6 +151,7 @@
                <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="mdi mdi-radar"></i><span class="hide-menu">Trackers </span></a>
                <ul aria-expanded="false" class="collapse  first-level">
                   <li class="sidebar-item"><a href="/spear/Trackers" class="sidebar-link"><i class="fas fa-th-list"></i><span class="hide-menu"> All Trackers </span></a></li>
+                  <li class="sidebar-item"><a href="/spear/TrackerReports" class="sidebar-link"><i class="mdi mdi-chart-box-outline"></i><span class="hide-menu"> Reports </span></a></li>
                   <li class="sidebar-item"><a href="/spear/TrackerGenerator" class="sidebar-link"><i class="mdi mdi-web"></i><span class="hide-menu"> New Web Tracker </span></a></li>
                   <li class="sidebar-item"><a href="/spear/QuickTracker" class="sidebar-link"><i class="mdi mdi-watch-vibrate"></i><span class="hide-menu"> New Quick Tracker </span></a></li>
                </ul>
