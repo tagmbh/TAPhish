@@ -165,6 +165,17 @@ function toggleWebSections(show) {
     show ? $('.web-only-section').show() : $('.web-only-section').hide();
 }
 
+// Email-only (no tracker): drop web-derived columns from the current selection
+// so BOTH the on-screen result table AND the export show mail data only (the
+// server returns web columns blank otherwise). Mutates allReportColListSelected.
+function dropWebColsIfEmailOnly() {
+    if (g_tracker_id === '' || g_tracker_id == null) {
+        allReportColListSelected = allReportColListSelected.filter(function(c){
+            return !(c && (c.indexOf('wcm_')===0 || c.indexOf('wpv_')===0 || c.indexOf('wfs_')===0 || c.indexOf('Field-')===0 || c.indexOf('SPPage-')===0));
+        });
+    }
+}
+
 function startLoaders() {
     $.each(['chart_live_mailcamp','radialchart_overview_mailcamp','piechart_mail_total_sent','piechart_mail_total_mail_open','piechart_mail_total_replied','table_campaign_result','piechart_total_pv','piechart_total_fs','piechart_total_suspect','radialchart_overview_webcamp'], function(i, id){
         $('#'+id).attr('hidden', true);
@@ -316,12 +327,18 @@ function campaignSelected(campaign_id,tracker_id='',f_refresh=false) {
 
             updateWebCampGraphs(data.mailcamp_info.campaign_data.user_group.id);
         } else {
-            // Email-only view: no tracker → clear the web-tracker display + the
-            // dynamic capture columns so only mail data is shown.
+            // Email-only view (no tracker) OR a tracker_id that no longer resolves
+            // (e.g. a bookmarked link to a since-deleted tracker): render mail only.
+            // Re-hide the web sections here too — toggleWebSections(hasTracker) ran
+            // before the response, so a stale tracker_id would otherwise leave the
+            // web charts stuck on their loaders.
             g_page_count = 0;
             $("#disp_web_tracker_name").text('NA');
             $("#tb_camp_result_colums_list_wfs_data").empty();
             form_field_cols = [];
+            toggleWebSections(false);
+            if (hasTracker)
+                toastr.warning('', 'Web tracker not found — showing email metrics only');
         }
 
         getTimelineData(data.mailcamp_info.campaign_data.user_group.id);
@@ -1057,13 +1074,7 @@ function loadTableCampaignResult() {
 
 
     getAllReportColListSelected();
-    // Email-only (no tracker): drop web-derived columns so the result table
-    // shows mail data only (the server returns web columns blank otherwise).
-    if (g_tracker_id === '' || g_tracker_id == null) {
-        allReportColListSelected = allReportColListSelected.filter(function(c){
-            return !(c && (c.indexOf('wcm_')===0 || c.indexOf('wpv_')===0 || c.indexOf('wfs_')===0 || c.indexOf('Field-')===0 || c.indexOf('SPPage-')===0));
-        });
-    }
+    dropWebColsIfEmailOnly();   // email-only view → mail columns only
     $('input[name="radio_table_data"]:checked').val() == "radio_table_data_single"?g_tb_data_single=true:g_tb_data_single=false;
 
     var arr_tb_heading=[];
@@ -1574,6 +1585,7 @@ function exportReportAction(e) {
         var file_name = $('#Modal_export_file_name').val().trim();
         var file_format = $('#modal_export_report_selector').val();
         getAllReportColListSelected();
+        dropWebColsIfEmailOnly();   // don't export blank web columns from an email-only campaign
 
         if(file_format == 'csv')
             content_type='text/csv';
