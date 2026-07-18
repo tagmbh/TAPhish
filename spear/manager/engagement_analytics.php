@@ -144,6 +144,60 @@ if (!function_exists('taphish_engagement_analytics')) {
     }
 }
 
+if (!function_exists('taphish_analytics_redact_values')) {
+    /**
+     * R2.3: redact captured field VALUES while keeping the field names, for the
+     * PII-free aggregate/'*' tier (proves what was captured without exposing it).
+     * @param array<string,mixed> $fields
+     * @return array<string,string>
+     */
+    function taphish_analytics_redact_values(array $fields): array
+    {
+        $out = [];
+        foreach ($fields as $k => $v) {
+            $s = (string) $v;
+            $out[(string) $k] = ($s === '') ? '' : str_repeat('•', min(8, max(4, strlen($s))));
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('taphish_analytics_creds_rows')) {
+    /**
+     * R2.3: per-recipient captured-credentials table. One row per recipient who
+     * submitted a form (credentials=true). $reveal comes from RBAC — the
+     * operator tier sees plaintext values; any lower tier gets redacted values
+     * (this whole table is served only to the operator tier, redaction is
+     * defence-in-depth). Captures are joined by rid from $capturesByRid:
+     *   ['<rid>' => ['fields' => ['username'=>..,'password'=>..], 'otp' => '..']]
+     *
+     * @param array $recipients stage records from taphish_analytics_build
+     * @param array<string,array{fields?:array,otp?:string}> $capturesByRid
+     * @return array<int,array>
+     */
+    function taphish_analytics_creds_rows(array $recipients, array $capturesByRid, bool $reveal): array
+    {
+        $out = [];
+        foreach ($recipients as $r) {
+            if (empty($r['credentials'])) { continue; }   // only actual form submitters
+            $rid    = (string) ($r['rid'] ?? '');
+            $cap    = $capturesByRid[$rid] ?? [];
+            $fields = (isset($cap['fields']) && is_array($cap['fields'])) ? $cap['fields'] : [];
+            $otp    = (string) ($cap['otp'] ?? '');
+            $out[] = [
+                'email'   => (string) ($r['email'] ?? ''),
+                'name'    => (string) ($r['name'] ?? ''),
+                'wave'    => (string) ($r['wave'] ?? ''),
+                'cohort'  => (string) ($r['cohort'] ?? ''),
+                'fields'  => $reveal ? $fields : taphish_analytics_redact_values($fields),
+                'otp'     => $reveal ? $otp : ($otp !== '' ? str_repeat('•', min(6, max(4, strlen($otp)))) : ''),
+                'has_otp' => $otp !== '',
+            ];
+        }
+        return $out;
+    }
+}
+
 if (!function_exists('taphish_analytics_repeat_offenders')) {
     /**
      * People who clicked in ≥2 distinct waves — the awareness-progress signal.
