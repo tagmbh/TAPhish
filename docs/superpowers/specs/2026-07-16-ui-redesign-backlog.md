@@ -228,6 +228,12 @@ tracker deploy or authorize separately. Backups staged: `*.bak-audit`.
   the decoder can't tell "Completed" from "Error-paused". Kept the dominant "Completed" label (the
   failure case is already alerted via the send watchdog/Telegram). Proper fix (later phase): add a
   distinct error/stopped status so the list can show it honestly.
+  **DECISION 2026-07-18 (deliberately DEFERRED, best-practice):** verified there is NO per-campaign signal
+  to distinguish the three code-3 cases at read time — the only real fix adds a distinct status that the
+  **scheduler** (`SniperPhish_Manager.php`, actively running the 12 armed campaigns) must SET. Touching the
+  live scheduler for a cosmetic label mid-engagement fails the risk/value test (impact is a label; the
+  error case is already Telegram-alerted). → do it in the post-engagement window, together with the
+  scheduler/status cleanup, when the daemon can be safely restarted.
 - **Import-HTML modal fatal + SSRF**: web_tracker_generator_list_manager.php:182 error branch calls
   `$stmt->error()` with no `$stmt` (fatal); the fetch is an unauth SSRF (VERIFYPEER off, follows redirects).
 - **Dead handler**: web_tracker_generator_function.js posts `pause_stop_tracker_tracking` (manager
