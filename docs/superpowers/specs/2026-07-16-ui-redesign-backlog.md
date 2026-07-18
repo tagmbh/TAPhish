@@ -260,3 +260,55 @@ tracker deploy or authorize separately. Backups staged: `*.bak-audit`.
 One row per recipient (by email), captures merged via rid, per wave/cohort funnel — no page-segment
 trap, no duplicate columns. Missing until the beacon fix: opens + pure-clicks. Missing until
 decode_fields: the actual captured values (currently boolean "credentials ✓").
+
+---
+
+## 🔴 Acceptance pass — round 2 (operator-reported 2026-07-18)
+
+Operator walkthrough of the shipped redesign surfaced these. Live campaign is ARMED (20-07 wave) —
+only view/setup-path fixes land now; anything touching capture/send waits for the deploy window.
+
+### ✅ BUG-R2.1 — "Continue setup" opens a BLANK Step 1 (FIXED — branch `fix/wizard-resume-prefill`)
+Clicking **Continue / Continue setup** on a draft engagement (Engagements list + QuickStart "Recent
+engagements" + EngagementView) routed to `QuickStart?engagement_id=N` but showed an empty Step 1 —
+the engagement's own name / target org / window / authorised scope / notes were dropped.
+- **Root cause:** `taphish_wizard_resume_payload()` returned only `{id, step, state}`; Step 1 inputs
+  had no server `value=`, and `applyResumeState()` hydrated only Step 2+ (target_domain/dkim/IDs).
+  Eng 3 also has `wizard_step=1` (built via campaign-admin, not the wizard) so it lands ON Step 1.
+- **Fix (TDD, suite 1082 green):** payload now carries a `meta` sub-array; QuickStart emits
+  `#wizard_resume_meta`; `wizard_stepflow.js applyStep1Meta()` fills every Step 1 field on resume
+  and converts the stored-UTC window back to local for the datetime pickers.
+- **Status:** committed, NOT yet deployed (operator-only setup path; batch-deploy at next window).
+
+### 🟡 TODO-R2.2 — Campaign list: filter by engagement (bei Gelegenheit)
+`Email Campaign` list (`MailCampaign` / mail_campaign_manager) shows all 16 campaigns flat with no
+engagement filter. Add an engagement selector/column so the list scopes to one engagement. Ties into
+Consolidation-target #4 (Campaigns under Engagements) — schema already has the nullable `engagement_id`
+FK. Low-risk read-path change. Assess: a top-of-list `<select>` filtering the existing DataTable vs a
+server-side `engagement_id` filter param on `get_campaign_list`.
+
+### 🟡 TODO-R2.3 — Engagement Analytics: full user credentials-list table (bei Gelegenheit)
+Engagement Analytics currently shows funnel + by-wave/by-cohort rollups + repeat offenders + a 25-row
+recent-activity timeline. Operator wants a **full per-user table**: every clicker + captured
+credentials/OTP, filterable/exportable. **PII-GATED:** plaintext PW/OTP is operator-tier RBAC only
+(reuse the `engagement_analytics_summary` authz = super-admin/operator); aggregate/'*' tier stays
+PII-free. Needs `decode_fields` to surface actual captured values (today it's boolean "credentials ✓").
+Design: extend the tested `engagement_analytics.php` core with a per-recipient detail action +
+column-picker + `download_report`, RBAC-gated. Overlaps Consolidation-target #2 (one report generator).
+
+### 🧭 FEATURE-R2.4 — Hoster integration via FTP/SFTP for direct landing deploy (PLAN CLEANLY)
+Operator ask: in **Settings** (or Hosted Pages) add a way to bind an external hoster (**Hostpoint
+first**) via FTP so landing pages deploy **directly from the platform** — and wire that deploy step
+into **every wizard / campaign-config workflow** where it fits, so setup can be automated step-by-step.
+Explicitly requested "plan cleanly so the complex workflow actually works" → gets its own spec + plan
+(brainstorming first), NOT ad-hoc code. Key decisions to resolve before building:
+- **Protocol/lib:** SFTP (phpseclib — no ext-ssh2 on shared hosting) vs FTPS (`ftp_ssl_connect`, ext-ftp).
+  Verify what Hostpoint PHP 8.3 exposes. (We already deploy landings from the laptop via `scp`/SSH; this
+  moves the push into the app server → new outbound path.)
+- **Credential storage:** host/port/user/password/base-path sealed at rest (reuse `secret_at_rest.php`
+  sealing, same as SMTP pw); never rendered plaintext; RBAC-gated management UI.
+- **Model:** a reusable "Hosting Connection" record (like Senders) → selectable in Step 4 (Landing):
+  clone/generate → push to connection → verify HTTPS/cert → return live URL → auto-wire the CTA.
+- **Safety:** outward-facing writes to a live host → explicit operator action, path allow-listing,
+  dry-run/verify, rollback (keep prior deploy), and no secrets in logs.
+- **Scope:** MVP = one connection + Step 4 deploy button; then generalise across wizard/campaign flows.
