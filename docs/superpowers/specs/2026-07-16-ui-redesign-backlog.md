@@ -296,7 +296,22 @@ PII-free. Needs `decode_fields` to surface actual captured values (today it's bo
 Design: extend the tested `engagement_analytics.php` core with a per-recipient detail action +
 column-picker + `download_report`, RBAC-gated. Overlaps Consolidation-target #2 (one report generator).
 
-### 🧭 FEATURE-R2.4 — Hoster integration via FTP/SFTP for direct landing deploy (PLAN CLEANLY)
+### ✅ FEATURE-R2.4 — Hoster integration for direct landing deploy (RESOLVED 2026-07-18)
+**Outcome:** the requested feature **already existed** as Phase 3.60/3.61 `landing_host` — Settings →
+General "External landing hosts" (sealed FTP/FTPS creds, connectivity test, bulk sub-domain generator)
++ QuickStart Step-4 auto-push. I initially (mis)built a parallel same-account local-copy feature
+(`landing_deploy`/`hosted_pages_manager`/`HostDeploy`), then **removed it** and **merged** its one real
+improvement — `{{POST_URL}}` render at push time (`landing_host_render_html` in `landing_host_push_dir`) —
+into the existing feature. Fixes the byte-for-byte push gap. Suite 1086 green. Commits `0654674`
+(parallel build) + `93729a9` (merge/cleanup). Design record: `2026-07-18-in-app-landing-deploy-design.md`.
+**Open follow-ups:** (a) library-source push — a source picker so branded `sniperhost/library/` variants
+push (today: cloned only); (b) **SFTP driver** — `landing_host` is FTP/FTPS-only (cURL), no SSH/SFTP.
+**Process lesson:** the initial grep for `ftp_connect`/`ssh2_`/`phpseclib` missed `landing_host`'s cURL-over-
+`ftp://` implementation → wrongly concluded greenfield. Grep for the FEATURE/domain terms, not just the lib APIs.
+
+<details><summary>Original request (superseded — the feature already existed)</summary>
+
+#### 🧭 Hoster integration via FTP/SFTP for direct landing deploy (PLAN CLEANLY)
 Operator ask: in **Settings** (or Hosted Pages) add a way to bind an external hoster (**Hostpoint
 first**) via FTP so landing pages deploy **directly from the platform** — and wire that deploy step
 into **every wizard / campaign-config workflow** where it fits, so setup can be automated step-by-step.
@@ -312,3 +327,5 @@ Explicitly requested "plan cleanly so the complex workflow actually works" → g
 - **Safety:** outward-facing writes to a live host → explicit operator action, path allow-listing,
   dry-run/verify, rollback (keep prior deploy), and no secrets in logs.
 - **Scope:** MVP = one connection + Step 4 deploy button; then generalise across wizard/campaign flows.
+
+</details>
