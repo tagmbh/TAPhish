@@ -15,11 +15,11 @@ recipient-facing capture path. `#4` (mail-reply) is already live (read-only, saf
 - **Self-test:** beacon fires on load with a real `screen_res` (2560x1440) on both an m365 host (sharepoint)
   and a branded host (owa) — verified by intercepting the track.php POST. track.php stores `page==0` →
   `tb_data_webpage_visit` (+screen_res) and validates the tracker (unknown test id → 0 rows, no pollution).
-- **⚠ remote.texti1color.ch (FortiGate / Quishing 5kogr0) NOT deployed** — it is operator/user-managed and
-  explicitly excluded from `deploy_campaign_landings.sh`. The `fortigate-vpn-capture` repo variant IS ready
-  (beacon added); its rendered form diffs against live remote as a clean beacon-only 11-line update. **To
-  apply (operator decision, their host):**
-  `scp -i ~/.ssh/taphish_hostpoint_ed25519 <rendered fortigate index.html> azitufem@sl2084.web.hostpoint.ch:~/www/remote.texti1color.ch/index.html` (back up first).
+- **✅ remote.texti1color.ch (FortiGate / Quishing 5kogr0) DEPLOYED 2026-07-18** (operator said "go" on their
+  host). Re-verified no drift (clean 11-line beacon-only), backed up
+  (`index.html.bak-20260718`), scp'd the rendered `fortigate-vpn-capture` landing, verified: beacon +
+  `screen_res`×4 live, pretext `Please Login` intact, http 200, cert OK. Self-test: beacon fires with real
+  `screen_res` 2560x1440; unknown test tracker → 0 DB rows (no pollution). All 5 hosts now carry the beacon.
 - **Real DB verification** happens at the 20-07 wave: `tb_data_webpage_visit` gains page-0 rows;
   `tb_data_webform_submit.screen_res` is a real `WxH`, not `Failed`.
 
