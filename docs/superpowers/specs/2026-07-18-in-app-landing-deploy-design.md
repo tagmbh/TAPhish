@@ -2,16 +2,24 @@
 
 **Date:** 2026-07-18
 **Backlog item:** FEATURE-R2.4 (`docs/superpowers/specs/2026-07-16-ui-redesign-backlog.md`)
-**Status:** ⚠️ SUPERSEDED (2026-07-18). This local-FS-copy design was built as Phase 1, then a
-review found the operator's real ask — bind an external hoster over FTP and push landings from the
-app — **already existed** as the Phase 3.60/3.61 `landing_host` feature (Settings → General "External
-landing hosts" + QuickStart auto-push; sealed FTP/FTPS creds; connectivity test). The parallel
-build (`landing_deploy.php`/`hosted_pages_manager.php`/`HostDeploy.php`/`host_deploy.js`) was
-**removed**, and its one genuinely-additive part — **`{{POST_URL}}` render at push time** — was
-**merged into `landing_host`** (`landing_host_render_html` + `landing_host_push_dir($…, $postUrl)`,
-wired in `settings_manager.php`). Net result: one clean feature. Kept below as a record of the
-approach. **Open follow-ups:** library-source push (a source picker so branded `sniperhost/library/`
-variants push, not only clones) and an SFTP driver (`landing_host` is FTP/FTPS-only).
+**Status:** ✅ ACTIVE (reinstated 2026-07-18). Journey: built as Phase 1 → deleted when a review
+found the Phase 3.60/3.61 `landing_host` FTP feature and I merged toward it → **reinstated** after a
+live diagnostic proved FTP is the wrong fit here. The connectivity test of the operator's two
+configured FTP profiles returned **cURL 67 / FTP 530 (login denied)** on both, `last_push=null`
+(never worked): on Hostpoint **FTP needs a separate account per host**, whereas the **account/SSH
+reaches every `~/www/<host>/`**. Since the TAPhish app runs ON that same `azitufem` account, it writes
+the landing **directly** into `~/www/<host>/` (this design) — no FTP, no keys, no per-host accounts.
+
+**Two complementary features (kept clearly separate):**
+- **This one — `landing_deploy` / "Push to Host":** same-account **local-FS copy** to a look-alike
+  **host-root** `~/www/<host>/`, renders `{{POST_URL}}`, target+source allow-lists. The working path
+  for the Textilcolor look-alike vhosts.
+- **`landing_host` / Settings "External landing hosts":** remote **FTP/FTPS** push (sealed creds,
+  slug-subdir, connectivity test, wizard auto-push) for hosts on **other** accounts/hosters. The
+  `{{POST_URL}}` render was merged into its push path too (`landing_host_render_html`).
+
+**Open follow-ups:** an **SFTP driver** (for external hosts that only offer SSH, using a provisioned
+key) and library-source push in `landing_host`. The same-account case needs neither.
 
 ## Goal
 
