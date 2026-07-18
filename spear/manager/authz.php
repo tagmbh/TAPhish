@@ -205,6 +205,8 @@ if (!defined('TAPHISH_POLICY')) {
         // engagement lifecycle (engagement-scoped — these carry engagement_id)
         'save_engagement'                    => ['super-admin', 'operator'],
         'get_engagement_view'                => ['engagement_member'],
+        // Consolidated funnel analytics — operator-tier (carries recipient emails).
+        'engagement_analytics_summary'       => ['super-admin', 'operator'],
         'engagement_transition_status'       => ['super-admin', 'engagement_owner'],
         'delete_engagement'                  => ['super-admin', 'engagement_owner'],
         // P1.4b: Unscoped/Legacy bucket — list unscoped campaigns/trackers and

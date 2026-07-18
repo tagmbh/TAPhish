@@ -9,6 +9,7 @@ require_once(dirname(__FILE__) . '/pretext_library.php');
 require_once(dirname(__FILE__) . '/homoglyph.php');
 require_once(dirname(__FILE__) . '/dmarc_lookup.php');
 require_once(dirname(__FILE__) . '/engagement.php');
+require_once(dirname(__FILE__) . '/engagement_analytics.php');
 require_once(dirname(__FILE__) . '/mx_classify.php');
 require_once(dirname(__FILE__) . '/web_fingerprint.php');
 require_once(dirname(__FILE__) . '/toolset_checks.php');
@@ -234,6 +235,15 @@ if (isset($_POST)) {
 						'campaigns' => taphish_engagement_campaigns_all($conn, $id),
 					]);
 				}
+			}
+		}
+		if($POSTJ['action_type'] == "engagement_analytics_summary") {
+			$id = (int)($POSTJ['engagement_id'] ?? 0);
+			if ($id <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id required']);
+			} else {
+				// Operator-tier: carries recipient emails (RBAC-gated in authz.php).
+				echo json_encode(array_merge(['result' => 'success'], taphish_engagement_analytics($conn, $id)), JSON_INVALID_UTF8_IGNORE);
 			}
 		}
 		// Phase 3.48: per-engagement membership management. The top-of-file

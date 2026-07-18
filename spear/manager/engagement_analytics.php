@@ -70,6 +70,80 @@ if (!function_exists('taphish_analytics_build')) {
     }
 }
 
+if (!function_exists('taphish_analytics_campaign_map')) {
+    /**
+     * Build the campaign_id => {wave,cohort,slot} map taphish_analytics_build
+     * needs, generically: each campaign is a "wave" (its name) within a "cohort"
+     * (its user-group name). No engagement-specific parsing.
+     *
+     * @param array $rows rows: campaign_id, campaign_name, user_group_name
+     */
+    function taphish_analytics_campaign_map(array $rows): array
+    {
+        $map = [];
+        foreach ($rows as $r) {
+            $map[$r['campaign_id']] = [
+                'wave'   => (string) ($r['campaign_name'] ?? '?'),
+                'cohort' => ($r['user_group_name'] ?? '') !== '' ? (string) $r['user_group_name'] : '?',
+                'slot'   => (string) $r['campaign_id'],
+            ];
+        }
+        return $map;
+    }
+}
+
+if (!function_exists('taphish_engagement_analytics')) {
+    /**
+     * Gather an engagement's send/visit/submit rows from the DB and run the pure
+     * aggregation. Recipients are joined by rid (a recipient's rid is carried
+     * from the mail CTA into the landing POST). Operator-tier: the result carries
+     * emails, so the dispatcher action is RBAC-gated to super-admin/operator.
+     */
+    function taphish_engagement_analytics(\mysqli $conn, int $engagementId): array
+    {
+        $esc = fn(array $xs) => implode(',', array_map(fn($x) => "'" . $conn->real_escape_string((string) $x) . "'", $xs));
+
+        // campaigns of this engagement (+ user-group name → cohort)
+        $campaigns = [];
+        $campIds = [];
+        $res = @$conn->query("SELECT campaign_id, campaign_name, campaign_data FROM tb_core_mailcamp_list WHERE engagement_id = " . (int) $engagementId);
+        if ($res instanceof \mysqli_result) {
+            while ($r = $res->fetch_assoc()) {
+                $cd = json_decode($r['campaign_data'], true);
+                $campaigns[] = ['campaign_id' => $r['campaign_id'], 'campaign_name' => $r['campaign_name'], 'user_group_name' => $cd['user_group']['name'] ?? ''];
+                $campIds[] = $r['campaign_id'];
+            }
+        }
+        $map = taphish_analytics_campaign_map($campaigns);
+
+        $sends = [];
+        if ($campIds) {
+            $res = @$conn->query("SELECT campaign_id,rid,user_email,user_name,sending_status,mail_open_times,send_time FROM tb_data_mailcamp_live WHERE campaign_id IN (" . $esc($campIds) . ")");
+            if ($res instanceof \mysqli_result) { while ($r = $res->fetch_assoc()) { $sends[] = $r; } }
+        }
+
+        // web trackers of this engagement → click/submit evidence
+        $trackerIds = [];
+        $res = @$conn->query("SELECT tracker_id FROM tb_core_web_tracker_list WHERE engagement_id = " . (int) $engagementId);
+        if ($res instanceof \mysqli_result) { while ($r = $res->fetch_assoc()) { $trackerIds[] = $r['tracker_id']; } }
+
+        $visits = $submits = [];
+        if ($trackerIds) {
+            $inT = $esc($trackerIds);
+            $res = @$conn->query("SELECT tracker_id,rid,time FROM tb_data_webpage_visit WHERE tracker_id IN ($inT)");
+            if ($res instanceof \mysqli_result) { while ($r = $res->fetch_assoc()) { $visits[] = $r; } }
+            $res = @$conn->query("SELECT tracker_id,rid,page,is_2fa_capture,time FROM tb_data_webform_submit WHERE tracker_id IN ($inT)");
+            if ($res instanceof \mysqli_result) { while ($r = $res->fetch_assoc()) { $submits[] = $r; } }
+        }
+
+        $built = taphish_analytics_build($sends, $visits, $submits, $map);
+        $built['engagement_id']  = $engagementId;
+        $built['campaign_count'] = count($campIds);
+        $built['tracker_count']  = count($trackerIds);
+        return $built;
+    }
+}
+
 if (!function_exists('taphish_analytics_repeat_offenders')) {
     /**
      * People who clicked in ≥2 distinct waves — the awareness-progress signal.
