@@ -148,8 +148,40 @@
         }
     }
 
+    // Inverse of quick_start.js localInputToUtc: a stored UTC datetime (either
+    // "YYYY-MM-DD HH:MM:SS" from the DB or "YYYY-MM-DDTHH:MM") -> the local
+    // wall-clock "YYYY-MM-DDTHH:MM" the native datetime-local picker expects.
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function utcToLocalInput(v) {
+        if (!v) { return ''; }
+        var s = String(v).trim().replace(' ', 'T');
+        if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) { s += 'Z'; } // force UTC interpretation
+        var d = new Date(s);
+        if (isNaN(d.getTime())) { return ''; }
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())
+            + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+
+    // Fix (blank-Step-1 bug): pre-fill the Step 1 metadata form from the saved
+    // engagement when resuming a draft. Text fields fill directly; the window
+    // dates convert UTC->local (overwriting quick_start.js's now/+14d default,
+    // which has already run since that script loads first).
+    function applyStep1Meta() {
+        if (!engId()) { return; }                       // only when resuming a saved draft
+        var m;
+        try { m = JSON.parse($('#wizard_resume_meta').val() || ''); } catch (_) { return; }
+        if (!m || typeof m !== 'object') { return; }
+        if (m.name)       { $('#eng_name').val(m.name); }
+        if (m.target_org) { $('#eng_org').val(m.target_org); }
+        if (m.notes)      { $('#eng_notes').val(m.notes); }
+        if (m.scope)      { $('#eng_scope').val(m.scope).trigger('input'); } // re-render chips
+        var s = utcToLocalInput(m.start_at); if (s) { $('#eng_start').val(s); }
+        var e = utcToLocalInput(m.end_at);   if (e) { $('#eng_end').val(e); }
+    }
+
     function restore() {
         var step = parseInt($('#wizard_resume_step').val(), 10) || 1;
+        applyStep1Meta();
         applyResumeState($('#wizard_resume_state').val() || '');
         // First paint: jump straight to the resumed step with no scroll jank.
         showStep(step > 1 ? step : 1, { noScroll: true });

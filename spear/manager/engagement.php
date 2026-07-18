@@ -914,8 +914,23 @@ if (!function_exists('taphish_wizard_resume_payload')) {
      */
     function taphish_wizard_resume_payload(?array $eng): array
     {
+        // Step-1 metadata carried so a resumed wizard can PRE-FILL the
+        // engagement form (name/org/window/scope/notes) instead of showing a
+        // blank Step 1. Dates stay in stored UTC; the client converts to local.
+        $meta = static function (?array $e): array {
+            $scope = $e['scope_allowlist'] ?? [];
+            if (is_string($scope)) { $scope = json_decode($scope, true) ?: []; }
+            return [
+                'name'       => (string) ($e['name']       ?? ''),
+                'target_org' => (string) ($e['target_org'] ?? ''),
+                'scope'      => implode(', ', array_map('strval', (array) $scope)),
+                'notes'      => (string) ($e['notes']      ?? ''),
+                'start_at'   => (string) ($e['start_at']   ?? ''),
+                'end_at'     => (string) ($e['end_at']     ?? ''),
+            ];
+        };
         if (!$eng || !isset($eng['id'])) {
-            return ['id' => 0, 'step' => 1, 'state' => '{}'];
+            return ['id' => 0, 'step' => 1, 'state' => '{}', 'meta' => $meta(null)];
         }
         $step = (int) ($eng['wizard_step'] ?? 1);
         if ($step < 1) $step = 1;
@@ -925,6 +940,7 @@ if (!function_exists('taphish_wizard_resume_payload')) {
             'id'    => (int) $eng['id'],
             'step'  => $step,
             'state' => (is_string($ws) && $ws !== '') ? $ws : '{}',
+            'meta'  => $meta($eng),
         ];
     }
 }

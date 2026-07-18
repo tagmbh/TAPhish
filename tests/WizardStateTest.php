@@ -179,9 +179,44 @@ final class WizardStateTest extends TestCase
 
     public function testResumePayloadFreshStartOnNullOrEmptyRow(): void
     {
-        $fresh = ['id' => 0, 'step' => 1, 'state' => '{}'];
+        $emptyMeta = ['name' => '', 'target_org' => '', 'scope' => '', 'notes' => '', 'start_at' => '', 'end_at' => ''];
+        $fresh = ['id' => 0, 'step' => 1, 'state' => '{}', 'meta' => $emptyMeta];
         self::assertSame($fresh, taphish_wizard_resume_payload(null));
         self::assertSame($fresh, taphish_wizard_resume_payload([]));
+    }
+
+    public function testResumePayloadCarriesStep1MetaForPrefill(): void
+    {
+        // The blank-Step-1 bug: resuming a draft dropped the engagement's own
+        // metadata. The payload must carry it so QuickStart can pre-fill Step 1.
+        $eng = [
+            'id'              => 3,
+            'name'            => 'Textilcolor AG — Awareness 2026',
+            'target_org'      => 'Textilcolor AG',
+            'start_at'        => '2026-07-15 00:00:00',
+            'end_at'          => '2026-09-30 00:00:00',
+            'scope_allowlist' => ['textilcolor.ch', 'textilcolor.com'],
+            'notes'           => 'Authorised by MSA',
+            'wizard_step'     => 1,
+            'wizard_state'    => '',
+        ];
+        $p = taphish_wizard_resume_payload($eng);
+        self::assertSame(3, $p['id']);
+        self::assertSame('Textilcolor AG — Awareness 2026', $p['meta']['name']);
+        self::assertSame('Textilcolor AG', $p['meta']['target_org']);
+        self::assertSame('textilcolor.ch, textilcolor.com', $p['meta']['scope']);
+        self::assertSame('Authorised by MSA', $p['meta']['notes']);
+        self::assertSame('2026-07-15 00:00:00', $p['meta']['start_at']);
+        self::assertSame('2026-09-30 00:00:00', $p['meta']['end_at']);
+    }
+
+    public function testResumePayloadScopeAcceptsJsonStringAllowlist(): void
+    {
+        // Robustness: a caller handing the raw JSON column instead of the
+        // decoded array must still yield a clean comma-joined scope string.
+        $eng = ['id' => 5, 'scope_allowlist' => '["a.com","b.org"]'];
+        $p = taphish_wizard_resume_payload($eng);
+        self::assertSame('a.com, b.org', $p['meta']['scope']);
     }
 
     public function testResumePayloadReadsRowAndClampsStep(): void
