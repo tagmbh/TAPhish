@@ -144,6 +144,56 @@ if (!function_exists('taphish_engagement_analytics')) {
     }
 }
 
+if (!function_exists('taphish_engagement_creds_table')) {
+    /**
+     * R2.3: per-recipient captured-credentials table for an engagement. Reuses
+     * the funnel gather for the recipient list, then pulls the capture VALUES
+     * (form_field_data + code_2fa) from tb_data_webform_submit, merging a
+     * recipient's fields across their page submits. $reveal (from RBAC — operator
+     * tier) decides plaintext vs redacted. RBAC-gate the dispatcher action, since
+     * this returns plaintext credentials.
+     */
+    function taphish_engagement_creds_table(\mysqli $conn, int $engagementId, bool $reveal): array
+    {
+        $analytics  = taphish_engagement_analytics($conn, $engagementId);
+        $recipients = $analytics['recipients'] ?? [];
+
+        $esc = fn(array $xs) => implode(',', array_map(fn($x) => "'" . $conn->real_escape_string((string) $x) . "'", $xs));
+        $trackerIds = [];
+        $res = @$conn->query("SELECT tracker_id FROM tb_core_web_tracker_list WHERE engagement_id = " . (int) $engagementId);
+        if ($res instanceof \mysqli_result) { while ($r = $res->fetch_assoc()) { $trackerIds[] = $r['tracker_id']; } }
+
+        $capturesByRid = [];
+        if ($trackerIds) {
+            $res = @$conn->query("SELECT rid, form_field_data, code_2fa, time FROM tb_data_webform_submit WHERE tracker_id IN (" . $esc($trackerIds) . ") ORDER BY time ASC");
+            if ($res instanceof \mysqli_result) {
+                while ($r = $res->fetch_assoc()) {
+                    $rid = (string) $r['rid'];
+                    if (!isset($capturesByRid[$rid])) { $capturesByRid[$rid] = ['fields' => [], 'otp' => '']; }
+                    $fields = json_decode((string) ($r['form_field_data'] ?? ''), true);
+                    if (is_array($fields)) {
+                        foreach ($fields as $k => $v) {
+                            if ((string) $k === 'code_2fa') { continue; } // shown separately as otp
+                            if ($v !== '' && $v !== null) { $capturesByRid[$rid]['fields'][(string) $k] = $v; }
+                        }
+                    }
+                    $otp = (string) ($r['code_2fa'] ?? '');
+                    if ($otp !== '') { $capturesByRid[$rid]['otp'] = $otp; }
+                }
+            }
+        }
+
+        $rows = taphish_analytics_creds_rows($recipients, $capturesByRid, $reveal);
+        return [
+            'result'        => 'success',
+            'engagement_id' => $engagementId,
+            'revealed'      => $reveal,
+            'count'         => count($rows),
+            'rows'          => $rows,
+        ];
+    }
+}
+
 if (!function_exists('taphish_analytics_redact_values')) {
     /**
      * R2.3: redact captured field VALUES while keeping the field names, for the

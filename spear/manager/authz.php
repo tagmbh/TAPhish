@@ -212,6 +212,8 @@ if (!defined('TAPHISH_POLICY')) {
         'get_engagement_view'                => ['engagement_member'],
         // Consolidated funnel analytics — operator-tier (carries recipient emails).
         'engagement_analytics_summary'       => ['super-admin', 'operator'],
+        // R2.3: per-recipient captured credentials/OTP — plaintext, operator-tier only.
+        'engagement_creds_table'             => ['super-admin', 'operator'],
         'engagement_transition_status'       => ['super-admin', 'engagement_owner'],
         'delete_engagement'                  => ['super-admin', 'engagement_owner'],
         // P1.4b: Unscoped/Legacy bucket — list unscoped campaigns/trackers and

@@ -246,6 +246,16 @@ if (isset($_POST)) {
 				echo json_encode(array_merge(['result' => 'success'], taphish_engagement_analytics($conn, $id)), JSON_INVALID_UTF8_IGNORE);
 			}
 		}
+		if($POSTJ['action_type'] == "engagement_creds_table") {
+			$id = (int)($POSTJ['engagement_id'] ?? 0);
+			if ($id <= 0) {
+				echo json_encode(['result' => 'failed', 'error' => 'engagement_id required']);
+			} else {
+				// R2.3 — operator-tier (RBAC-gated in authz.php): returns PLAINTEXT
+				// captured credentials. reveal=true because the action is operator-gated.
+				echo json_encode(taphish_engagement_creds_table($conn, $id, true), JSON_INVALID_UTF8_IGNORE);
+			}
+		}
 		// Phase 3.48: per-engagement membership management. The top-of-file
 		// guard already resolved engagement_role from engagement_id, so list
 		// needs membership and the mutations need owner/super-admin.
