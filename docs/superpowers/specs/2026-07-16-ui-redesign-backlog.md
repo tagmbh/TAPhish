@@ -297,15 +297,20 @@ Design: extend the tested `engagement_analytics.php` core with a per-recipient d
 column-picker + `download_report`, RBAC-gated. Overlaps Consolidation-target #2 (one report generator).
 
 ### ✅ FEATURE-R2.4 — Hoster integration for direct landing deploy (RESOLVED 2026-07-18)
-**Outcome:** the requested feature **already existed** as Phase 3.60/3.61 `landing_host` — Settings →
-General "External landing hosts" (sealed FTP/FTPS creds, connectivity test, bulk sub-domain generator)
-+ QuickStart Step-4 auto-push. I initially (mis)built a parallel same-account local-copy feature
-(`landing_deploy`/`hosted_pages_manager`/`HostDeploy`), then **removed it** and **merged** its one real
-improvement — `{{POST_URL}}` render at push time (`landing_host_render_html` in `landing_host_push_dir`) —
-into the existing feature. Fixes the byte-for-byte push gap. Suite 1086 green. Commits `0654674`
-(parallel build) + `93729a9` (merge/cleanup). Design record: `2026-07-18-in-app-landing-deploy-design.md`.
-**Open follow-ups:** (a) library-source push — a source picker so branded `sniperhost/library/` variants
-push (today: cloned only); (b) **SFTP driver** — `landing_host` is FTP/FTPS-only (cURL), no SSH/SFTP.
+**Outcome: TWO complementary deployers** (suite 1113 green, commit `da76cee`; NOT deployed). A **live
+diagnosis** settled the design: the operator's 2 configured FTP profiles both fail **cURL 67 / FTP 530
+login-denied**, never pushed (`last_push=null`) — because **Hostpoint FTP needs a per-host account**,
+while the **account/SSH reaches every `~/www/<host>/`**, and the TAPhish app runs on that same account.
+So:
+1. **`landing_deploy` / nav "Push to Host"** — same-account **local-FS copy** to host-root `~/www/<host>/`,
+   renders `{{POST_URL}}`, target+source allow-lists, operator-tier authz, 21 unit tests. **THE working
+   path for the Textilcolor look-alikes** (no FTP, no creds, no per-host accounts).
+2. **`landing_host` / Settings "External landing hosts"** — remote FTP/FTPS (existing Phase 3.60/3.61) for
+   third-party hosters; kept, with `{{POST_URL}}` render merged into its push.
+Journey (pivoted twice): built `landing_deploy` (`0654674`) → found `landing_host`, deleted+merged
+(`93729a9`) → 530 diagnosis proved FTP wrong-fit → **reinstated `landing_deploy` (`da76cee`)**.
+**Next:** live-verify a real "Push to Host" deploy to a Textilcolor host (outward-facing → operator go).
+**Open follow-ups:** SFTP driver (external SSH-only hosts) · library-source push in `landing_host`.
 **Process lesson:** the initial grep for `ftp_connect`/`ssh2_`/`phpseclib` missed `landing_host`'s cURL-over-
 `ftp://` implementation → wrongly concluded greenfield. Grep for the FEATURE/domain terms, not just the lib APIs.
 
