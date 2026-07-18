@@ -174,6 +174,9 @@
                  toggle. The old Email-only page (MailCmpDashboard) stays reachable
                  by direct URL for one release but is out of nav. -->
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/WebMailCmpDashboard" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i><span class="hide-menu">Campaign Dashboard</span></a></li>
+            <!-- Consolidated engagement funnel (delivered→opened→clicked→credentials→OTP,
+                 by-wave/cohort, repeat offenders, timeline) over the tested analytics core. -->
+            <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/EngagementAnalytics" aria-expanded="false"><i class="mdi mdi-chart-timeline-variant"></i><span class="hide-menu">Engagement Analytics</span></a></li>
             <li class="sidebar-section">Toolkit</li>
             <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/spear/ToolsetChecker" aria-expanded="false"><i class="mdi mdi-stethoscope"></i><span class="hide-menu">Toolset Checker</span></a></li>
             <li class="sidebar-item">
