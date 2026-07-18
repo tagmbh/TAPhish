@@ -17,6 +17,13 @@ RewriteEngine On
   Require all denied
 </FilesMatch>
 
+# Block backup / editor files from the web (deploy .bak-YYYYMMDD, *.orig, *.save,
+# *.old, *.swp). Without this a *.php.bak is served as PLAINTEXT = PHP source
+# disclosure. (config/ — incl. db.php creds — is already fully blocked above.)
+<FilesMatch "\.(bak|orig|save|old|swp)([.-].*)?$">
+  Require all denied
+</FilesMatch>
+
 # Compress static text assets only — never text/html (it would add cache/
 # transfer handling to the dynamic, session-bearing PHP responses).
 <IfModule mod_deflate.c>
