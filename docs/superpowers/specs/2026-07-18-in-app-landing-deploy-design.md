@@ -2,7 +2,16 @@
 
 **Date:** 2026-07-18
 **Backlog item:** FEATURE-R2.4 (`docs/superpowers/specs/2026-07-16-ui-redesign-backlog.md`)
-**Status:** Design approved (operator, 2026-07-18) → ready for implementation plan.
+**Status:** ⚠️ SUPERSEDED (2026-07-18). This local-FS-copy design was built as Phase 1, then a
+review found the operator's real ask — bind an external hoster over FTP and push landings from the
+app — **already existed** as the Phase 3.60/3.61 `landing_host` feature (Settings → General "External
+landing hosts" + QuickStart auto-push; sealed FTP/FTPS creds; connectivity test). The parallel
+build (`landing_deploy.php`/`hosted_pages_manager.php`/`HostDeploy.php`/`host_deploy.js`) was
+**removed**, and its one genuinely-additive part — **`{{POST_URL}}` render at push time** — was
+**merged into `landing_host`** (`landing_host_render_html` + `landing_host_push_dir($…, $postUrl)`,
+wired in `settings_manager.php`). Net result: one clean feature. Kept below as a record of the
+approach. **Open follow-ups:** library-source push (a source picker so branded `sniperhost/library/`
+variants push, not only clones) and an SFTP driver (`landing_host` is FTP/FTPS-only).
 
 ## Goal
 
