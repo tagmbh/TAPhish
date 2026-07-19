@@ -209,6 +209,26 @@ if (!function_exists('landing_host_list_files')) {
     }
 }
 
+if (!function_exists('landing_host_render_html')) {
+    /**
+     * Belt-and-suspenders render applied to HTML at push time: substitute
+     * {{POST_URL}} with the live capture endpoint and drop the open-pixel beacon
+     * line (data-tracker src="{{TRACKER_URL_ATTR}}"). Cloned pages are already
+     * baked at clone time, so this is a no-op for them (idempotent); it makes a
+     * library source or any residual raw placeholder deploy correctly. Mirrors
+     * the render in deploy_hostpoint.sh.
+     */
+    function landing_host_render_html(string $html, string $postUrl): string
+    {
+        $html = str_replace('{{POST_URL}}', $postUrl, $html);
+        $lines = preg_split('/\r\n|\r|\n/', $html);
+        $kept = array_filter($lines, static function ($l) {
+            return strpos($l, 'data-tracker src="{{TRACKER_URL_ATTR}}"') === false;
+        });
+        return implode("\n", $kept);
+    }
+}
+
 if (!function_exists('landing_host_default_upload')) {
     /**
      * Real cURL FTP(S) upload of one file, creating missing remote dirs. For
@@ -262,10 +282,14 @@ if (!function_exists('landing_host_push_dir')) {
      * The per-file uploader is injectable (tests pass a stub; production uses
      * landing_host_default_upload). Stops on the first failure.
      *
+     * When $postUrl is non-empty, HTML files are rendered (landing_host_render_html)
+     * to a temp file before upload so {{POST_URL}} is baked and the beacon line
+     * dropped; the source tree is never mutated. Non-HTML files upload verbatim.
+     *
      * @param callable|null $uploader fn(array $cfg, string $localFile, string $remotePath): array{ok,error}
      * @return array{ok:bool,uploaded:int,total:int,public_url:string,error:string}
      */
-    function landing_host_push_dir(array $cfg, string $slug, string $localDir, ?callable $uploader = null): array
+    function landing_host_push_dir(array $cfg, string $slug, string $localDir, ?callable $uploader = null, string $postUrl = ''): array
     {
         $uploader = $uploader ?? 'landing_host_default_upload';
         $files = landing_host_list_files($localDir);
@@ -276,7 +300,19 @@ if (!function_exists('landing_host_push_dir')) {
         }
         $done = 0;
         foreach ($plan as $item) {
-            $r = $uploader($cfg, $item['local'], $item['remote']);
+            $localToUpload = $item['local'];
+            $tmp = null;
+            if ($postUrl !== '' && preg_match('/\.html?$/i', (string) $item['local'])) {
+                $rendered = landing_host_render_html((string) @file_get_contents($item['local']), $postUrl);
+                $tmp = tempnam(sys_get_temp_dir(), 'lhr');
+                if ($tmp !== false && file_put_contents($tmp, $rendered) !== false) {
+                    $localToUpload = $tmp;
+                } else {
+                    $tmp = null; // fall back to the original file on any temp failure
+                }
+            }
+            $r = $uploader($cfg, $localToUpload, $item['remote']);
+            if ($tmp !== null) { @unlink($tmp); }
             if (empty($r['ok'])) {
                 return [
                     'ok' => false, 'uploaded' => $done, 'total' => count($plan),

@@ -31,6 +31,7 @@ $(function() {
     });
 
     pullEngagements();
+    pullEngagementFilter();
 });
 
 // P1.1: populate the engagement selector from the engagements list. Engagements
@@ -52,6 +53,26 @@ function pullEngagements() {
         // Apply any pending selection (set by the campaign-load handler on edit).
         $('#engagementSelector').val(g_selectedEngagementId || '');
     });
+}
+
+// R2.2: populate the campaign-list engagement FILTER (distinct from the builder's
+// #engagementSelector) and reload the list scoped to the chosen engagement.
+function pullEngagementFilter() {
+    var $sel = $('#campaign_engagement_filter');
+    if (!$sel.length) { return; }
+    $.post({
+        url: "manager/userlist_campaignlist_mailtemplate_manager",
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({ action_type: "list_engagements" })
+    }).done(function (data) {
+        var rows = (data && Array.isArray(data.engagements)) ? data.engagements
+            : (Array.isArray(data) ? data : []);
+        rows.forEach(function (e) {
+            var label = (e.name || e.slug || ('Engagement ' + e.id)) + (e.status ? ' (' + e.status + ')' : '');
+            $sel.append($('<option>').attr('value', e.id).text(label));
+        });
+    });
+    $sel.on('change', function () { loadTableCampaignList(); });
 }
 
 function pullMailCampaignFieldData() {
@@ -366,8 +387,10 @@ function loadTableCampaignList() {
     $.post({
         url: "manager/mail_campaign_manager",
         contentType: 'application/json; charset=utf-8',
-        data: JSON.stringify({ 
-            action_type: "get_campaign_list"
+        data: JSON.stringify({
+            action_type: "get_campaign_list",
+            // R2.2: scope to the selected engagement (0 = all).
+            engagement_id: parseInt($('#campaign_engagement_filter').val(), 10) || 0
          })
     }).done(function (data) {
         $(function() {

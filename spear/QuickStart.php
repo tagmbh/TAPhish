@@ -53,6 +53,7 @@
                <input type="hidden" id="wizard_engagement_id" value="<?php echo (int) $resume['id']; ?>">
                <input type="hidden" id="wizard_resume_step" value="<?php echo (int) $resume['step']; ?>">
                <input type="hidden" id="wizard_resume_state" value="<?php echo htmlspecialchars($resume['state'], ENT_QUOTES); ?>">
+               <input type="hidden" id="wizard_resume_meta" value="<?php echo htmlspecialchars(json_encode($resume['meta'] ?? [], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>">
                <div class="row step-wrap" id="step1_wrap">
                   <div class="col-lg-7 mb-4">
                      <div class="card">

@@ -198,6 +198,11 @@ if (!defined('TAPHISH_POLICY')) {
         'lookalike_dns_records'              => ['super-admin', 'operator'],
         'lookalike_publish_hosted'           => ['super-admin', 'operator'],
         'lookalike_build_bundle'             => ['super-admin', 'operator'],
+        // Same-account direct landing deploy (writes to ~/www/<host>/ host-root).
+        // Distinct from the FTP/FTPS external landing_host feature. Operator-tier.
+        'landing_deploy'                     => ['super-admin', 'operator'],
+        'landing_deploy_targets'             => ['super-admin', 'operator'],
+        'landing_deploy_verify'              => ['super-admin', 'operator'],
         // user administration (super-admin only)
         'add_user_to_table'                  => ['super-admin'],
         'update_user'                        => ['super-admin'],
@@ -207,6 +212,8 @@ if (!defined('TAPHISH_POLICY')) {
         'get_engagement_view'                => ['engagement_member'],
         // Consolidated funnel analytics — operator-tier (carries recipient emails).
         'engagement_analytics_summary'       => ['super-admin', 'operator'],
+        // R2.3: per-recipient captured credentials/OTP — plaintext, operator-tier only.
+        'engagement_creds_table'             => ['super-admin', 'operator'],
         'engagement_transition_status'       => ['super-admin', 'engagement_owner'],
         'delete_engagement'                  => ['super-admin', 'engagement_owner'],
         // P1.4b: Unscoped/Legacy bucket — list unscoped campaigns/trackers and

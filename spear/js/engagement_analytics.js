@@ -114,5 +114,50 @@ function renderAnalytics(d) {
     }
     html += '</div></div>';
 
+    // R2.3 — captured credentials (operator-only, plaintext). NOT auto-loaded:
+    // the operator must click to reveal, avoiding accidental shoulder-surfing.
+    html += '<div class="card"><div class="card-body">'
+        + '<h5 class="card-title">Captured Credentials <small class="text-muted">(operator-only · plaintext)</small></h5>'
+        + '<p class="text-muted small">The actual captured usernames / passwords / OTP per recipient. Click to reveal.</p>'
+        + '<button class="btn btn-outline-danger btn-sm" id="reveal_creds_btn" data-eng="' + esc(d.engagement_id) + '"><i class="fa fa-eye"></i> Reveal captured credentials</button>'
+        + '<div id="creds_body" class="mt-3"></div>'
+        + '</div></div>';
+
     $('#analytics_body').html(html);
+    $('#reveal_creds_btn').on('click', function () { loadCredsTable($(this).data('eng')); });
+}
+
+function loadCredsTable(id) {
+    $('#creds_body').html('<i class="fas fa-spinner fa-spin"></i> Loading…');
+    $.post({
+        url: 'manager/userlist_campaignlist_mailtemplate_manager',
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify({ action_type: 'engagement_creds_table', engagement_id: id })
+    }).done(function (d) {
+        if (!d || d.result !== 'success') { $('#creds_body').html('<div class="alert alert-warning">Could not load.</div>'); return; }
+        renderCredsTable(d);
+    }).fail(function () { $('#creds_body').html('<div class="alert alert-danger">Request failed.</div>'); });
+}
+
+function fieldsToHtml(fields) {
+    if (!fields || typeof fields !== 'object') { return '<span class="text-muted">—</span>'; }
+    var keys = Object.keys(fields);
+    if (keys.length === 0) { return '<span class="text-muted">—</span>'; }
+    return keys.map(function (k) {
+        return '<div><span class="text-muted">' + esc(k) + ':</span> <code>' + esc(fields[k]) + '</code></div>';
+    }).join('');
+}
+
+function renderCredsTable(d) {
+    var rows = d.rows || [];
+    if (rows.length === 0) { $('#creds_body').html('<div class="text-muted">No captured credentials yet.</div>'); return; }
+    var html = '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr>'
+        + '<th>Name</th><th>Email</th><th>Wave</th><th>Cohort</th><th>Captured fields</th><th>OTP</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+        html += '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.email) + '</td><td>' + esc(r.wave) + '</td><td>' + esc(r.cohort) + '</td>'
+            + '<td>' + fieldsToHtml(r.fields) + '</td>'
+            + '<td>' + (r.has_otp ? '<code>' + esc(r.otp) + '</code>' : '<span class="text-muted">—</span>') + '</td></tr>';
+    });
+    html += '</tbody></table></div><div class="text-muted small mt-1">' + rows.length + ' recipient(s) with captured data.</div>';
+    $('#creds_body').html(html);
 }

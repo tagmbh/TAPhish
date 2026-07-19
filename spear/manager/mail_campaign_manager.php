@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/session_manager.php');
 require_once(dirname(__FILE__) . '/datatables_helper.php');
 require_once(dirname(__FILE__) . '/bounce_poll.php');
 require_once(dirname(__FILE__) . '/customer_report_aggregator.php');
+require_once(dirname(__FILE__) . '/campaign_filters.php');
 require_once(dirname(__FILE__,2) . '/libs/tcpdf_min/tcpdf.php');
 require_once(dirname(__FILE__,2) . '/config/brand.php');
 //-------------------------------------------------------
@@ -43,7 +44,7 @@ if (isset($_POST)) {
 		if($POSTJ['action_type'] == "save_campaign_list")
 			saveCampaignList($conn, $POSTJ);
 		if($POSTJ['action_type'] == "get_campaign_list")
-			getCampaignList($conn);
+			getCampaignList($conn, isset($POSTJ['engagement_id']) ? (int)$POSTJ['engagement_id'] : 0);
 		if($POSTJ['action_type'] == "get_campaign_from_campaign_list_id")
 			getCampaignFromCampaignListId($conn,$POSTJ['campaign_id']);
 		if($POSTJ['action_type'] == "delete_campaign_from_campaign_id")
@@ -122,11 +123,12 @@ function saveCampaignList($conn, &$POSTJ){
 		echo json_encode(['result' => 'failed', 'error' => $stmt->error]);
 }
 
-function getCampaignList($conn){
+function getCampaignList($conn, $engId = 0){
 	$resp = [];
 	$DTime_info = getTimeInfo($conn);
 
-	$result = mysqli_query($conn, "SELECT campaign_id,campaign_name,campaign_data,date,scheduled_time,stop_time,camp_status FROM tb_core_mailcamp_list");
+	// R2.2: carry engagement_id so the list can be scoped/annotated by engagement.
+	$result = mysqli_query($conn, "SELECT campaign_id,campaign_name,campaign_data,date,scheduled_time,stop_time,camp_status,engagement_id FROM tb_core_mailcamp_list");
 	if(mysqli_num_rows($result) > 0){
 		foreach (mysqli_fetch_all($result, MYSQLI_ASSOC) as $row){
 			$row["campaign_data"] = json_decode($row["campaign_data"]);	//avoid double json encoding
@@ -135,10 +137,17 @@ function getCampaignList($conn){
 			$row['stop_time'] = getInClientTime_FD($DTime_info,$row['stop_time'],null,'d-m-Y h:i A');
         	array_push($resp,$row);
 		}
-		echo json_encode($resp, JSON_INVALID_UTF8_IGNORE);
+		// R2.2: annotate with the engagement name, then optionally scope to one.
+		$engMap = [];
+		if ($er = @mysqli_query($conn, "SELECT id,name FROM tb_core_engagement")) {
+			foreach (mysqli_fetch_all($er, MYSQLI_ASSOC) as $e) { $engMap[(int)$e['id']] = (string)$e['name']; }
+		}
+		$resp = taphish_campaigns_annotate_engagement($resp, $engMap);
+		$resp = taphish_campaigns_filter_by_engagement($resp, (int)$engId);
+		echo json_encode(array_values($resp), JSON_INVALID_UTF8_IGNORE);
 	}
 	else
-		echo json_encode(['error' => 'No data']);	
+		echo json_encode(['error' => 'No data']);
 }
 
 function getCampaignFromCampaignListId($conn, $campaign_id){

@@ -73,8 +73,13 @@
                <div class="card">
                   <div class="card-body">
                      <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-12 d-flex align-items-center">
                            <button type="button" class="btn btn-info btn-sm" onclick="document.location='MailCampaignList?action=add&campaign=new'"><i class="fas fa-plus"></i> New Mail Campaign</button>
+                           <div class="ml-auto" style="min-width:260px;">
+                              <select class="form-control form-control-sm custom-select" id="campaign_engagement_filter" aria-label="Filter campaigns by engagement">
+                                 <option value="0">All engagements</option>
+                              </select>
+                           </div>
                         </div>
                      </div>
                      <div class="row">

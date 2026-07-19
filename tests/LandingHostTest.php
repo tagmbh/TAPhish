@@ -225,4 +225,60 @@ final class LandingHostTest extends TestCase
         self::assertStringContainsString('no files', $r['error']);
         @rmdir($dir);
     }
+
+    // --- Merge (FEATURE-R2.4): render {{POST_URL}} at push time -------------
+
+    public function testRenderHtmlSubstitutesPostUrlAndDropsBeacon(): void
+    {
+        $html = "<form action=\"{{POST_URL}}\">\n<script data-tracker src=\"{{TRACKER_URL_ATTR}}\"></script>\n<end>";
+        $out  = landing_host_render_html($html, 'https://deepaudit.ch/track.php');
+        self::assertStringContainsString('action="https://deepaudit.ch/track.php"', $out);
+        self::assertStringNotContainsString('{{POST_URL}}', $out);
+        self::assertStringNotContainsString('{{TRACKER_URL_ATTR}}', $out);
+        self::assertStringContainsString('<end>', $out);
+    }
+
+    public function testRenderHtmlIsIdempotentOnBakedContent(): void
+    {
+        // A clone already baked with an absolute POST_URL is a no-op.
+        $baked = '<form action="https://deepaudit.ch/track.php"><input name="p"></form>';
+        self::assertSame($baked, landing_host_render_html($baked, 'https://deepaudit.ch/track.php'));
+    }
+
+    public function testPushDirRendersHtmlButLeavesOtherFilesByteForByte(): void
+    {
+        $dir = sys_get_temp_dir() . '/lh_' . bin2hex(random_bytes(4));
+        mkdir($dir . '/assets', 0777, true);
+        file_put_contents($dir . '/index.html', '<form action="{{POST_URL}}">');
+        file_put_contents($dir . '/assets/app.css', 'body{background:url({{POST_URL}})}'); // non-HTML: untouched
+
+        $content = [];
+        $uploader = function (array $cfg, string $local, string $remote) use (&$content): array {
+            $content[$remote] = file_get_contents($local);
+            return ['ok' => true, 'error' => ''];
+        };
+        $r = landing_host_push_dir($this->goodCfg(), 'm365', $dir, $uploader, 'https://deepaudit.ch/track.php');
+
+        self::assertTrue($r['ok']);
+        self::assertStringContainsString('action="https://deepaudit.ch/track.php"', $content['m365/index.html']);
+        self::assertStringNotContainsString('{{POST_URL}}', $content['m365/index.html']);
+        self::assertStringContainsString('{{POST_URL}}', $content['m365/assets/app.css'], 'only HTML is rendered');
+
+        @unlink($dir . '/assets/app.css'); @unlink($dir . '/index.html');
+        @rmdir($dir . '/assets'); @rmdir($dir);
+    }
+
+    public function testPushDirWithoutPostUrlUploadsHtmlUnchanged(): void
+    {
+        $dir = sys_get_temp_dir() . '/lh_' . bin2hex(random_bytes(4));
+        mkdir($dir, 0777, true);
+        file_put_contents($dir . '/index.html', '<form action="{{POST_URL}}">');
+
+        $seen = null;
+        $uploader = function ($c, $l, $rp) use (&$seen): array { $seen = file_get_contents($l); return ['ok' => true, 'error' => '']; };
+        landing_host_push_dir($this->goodCfg(), 's', $dir, $uploader); // no postUrl -> byte-for-byte
+        self::assertStringContainsString('{{POST_URL}}', $seen);
+
+        @unlink($dir . '/index.html'); @rmdir($dir);
+    }
 }
