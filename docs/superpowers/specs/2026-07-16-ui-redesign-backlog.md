@@ -304,12 +304,12 @@ while the **account/SSH reaches every `~/www/<host>/`**, and the TAPhish app run
 So:
 1. **`landing_deploy` / nav "Push to Host"** — same-account **local-FS copy** to host-root `~/www/<host>/`,
    renders `{{POST_URL}}`, target+source allow-lists, operator-tier authz, 21 unit tests. **THE working
-   path for the Textilcolor look-alikes** (no FTP, no creds, no per-host accounts).
+   path for the client look-alikes** (no FTP, no creds, no per-host accounts).
 2. **`landing_host` / Settings "External landing hosts"** — remote FTP/FTPS (existing Phase 3.60/3.61) for
    third-party hosters; kept, with `{{POST_URL}}` render merged into its push.
 Journey (pivoted twice): built `landing_deploy` (`0654674`) → found `landing_host`, deleted+merged
 (`93729a9`) → 530 diagnosis proved FTP wrong-fit → **reinstated `landing_deploy` (`da76cee`)**.
-**Next:** live-verify a real "Push to Host" deploy to a Textilcolor host (outward-facing → operator go).
+**Next:** live-verify a real "Push to Host" deploy to a client host (outward-facing → operator go).
 **Open follow-ups:** SFTP driver (external SSH-only hosts) · library-source push in `landing_host`.
 **Process lesson:** the initial grep for `ftp_connect`/`ssh2_`/`phpseclib` missed `landing_host`'s cURL-over-
 `ftp://` implementation → wrongly concluded greenfield. Grep for the FEATURE/domain terms, not just the lib APIs.

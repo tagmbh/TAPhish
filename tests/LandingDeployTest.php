@@ -65,10 +65,10 @@ final class LandingDeployTest extends TestCase
 
     public function testResolveTargetAcceptsExistingHostUnderBase(): void
     {
-        mkdir($this->tmp . '/owa.texti1color.ch');
-        $r = taphish_landing_deploy_resolve_target('owa.texti1color.ch', $this->tmp);
+        mkdir($this->tmp . '/owa.example.com');
+        $r = taphish_landing_deploy_resolve_target('owa.example.com', $this->tmp);
         self::assertTrue($r['ok']);
-        self::assertSame(realpath($this->tmp . '/owa.texti1color.ch'), $r['docroot']);
+        self::assertSame(realpath($this->tmp . '/owa.example.com'), $r['docroot']);
     }
 
     public function testResolveTargetRejectsTraversal(): void
@@ -107,13 +107,13 @@ final class LandingDeployTest extends TestCase
 
     public function testListTargetsEnumeratesDirsMinusProtected(): void
     {
-        mkdir($this->tmp . '/owa.texti1color.ch');
-        mkdir($this->tmp . '/abacus.texti1color.ch');
+        mkdir($this->tmp . '/owa.example.com');
+        mkdir($this->tmp . '/abacus.example.com');
         mkdir($this->tmp . '/deepaudit.ch');   // app — excluded
         mkdir($this->tmp . '/config');          // protected — excluded
         file_put_contents($this->tmp . '/loose.txt', 'x'); // non-dir — excluded
         $t = taphish_landing_deploy_list_targets($this->tmp);
-        self::assertSame(['abacus.texti1color.ch', 'owa.texti1color.ch'], $t);
+        self::assertSame(['abacus.example.com', 'owa.example.com'], $t);
     }
 
     // ---- write_local (integration) ---------------------------------------
@@ -183,13 +183,13 @@ final class LandingDeployTest extends TestCase
         file_put_contents($src . '/assets/a.js', '1');
 
         $www = $this->tmp . '/www';
-        mkdir($www . '/owa.texti1color.ch', 0777, true);
+        mkdir($www . '/owa.example.com', 0777, true);
 
-        $res = taphish_landing_deploy_run($src, 'owa.texti1color.ch', $www, 'https://deepaudit.ch/track.php', '20260718');
+        $res = taphish_landing_deploy_run($src, 'owa.example.com', $www, 'https://deepaudit.ch/track.php', '20260718');
         self::assertTrue($res['ok'], $res['error'] ?? '');
-        self::assertStringContainsString('https://deepaudit.ch/track.php', file_get_contents($www . '/owa.texti1color.ch/index.html'));
-        self::assertFileExists($www . '/owa.texti1color.ch/learn.html');
-        self::assertFileExists($www . '/owa.texti1color.ch/assets/a.js');
+        self::assertStringContainsString('https://deepaudit.ch/track.php', file_get_contents($www . '/owa.example.com/index.html'));
+        self::assertFileExists($www . '/owa.example.com/learn.html');
+        self::assertFileExists($www . '/owa.example.com/assets/a.js');
     }
 
     public function testRunRejectsProtectedTarget(): void
@@ -210,9 +210,9 @@ final class LandingDeployTest extends TestCase
         $src = $this->tmp . '/src';
         mkdir($src, 0777, true); // no index.html
         $www = $this->tmp . '/www';
-        mkdir($www . '/owa.texti1color.ch', 0777, true);
+        mkdir($www . '/owa.example.com', 0777, true);
 
-        $res = taphish_landing_deploy_run($src, 'owa.texti1color.ch', $www, 'https://x/track.php', '20260718');
+        $res = taphish_landing_deploy_run($src, 'owa.example.com', $www, 'https://x/track.php', '20260718');
         self::assertFalse($res['ok']);
     }
 

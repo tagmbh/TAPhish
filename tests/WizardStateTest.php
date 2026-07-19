@@ -191,20 +191,20 @@ final class WizardStateTest extends TestCase
         // metadata. The payload must carry it so QuickStart can pre-fill Step 1.
         $eng = [
             'id'              => 3,
-            'name'            => 'Textilcolor AG — Awareness 2026',
-            'target_org'      => 'Textilcolor AG',
+            'name'            => 'Example Org — Awareness 2026',
+            'target_org'      => 'Example Org',
             'start_at'        => '2026-07-15 00:00:00',
             'end_at'          => '2026-09-30 00:00:00',
-            'scope_allowlist' => ['textilcolor.ch', 'textilcolor.com'],
+            'scope_allowlist' => ['example.com', 'example.org'],
             'notes'           => 'Authorised by MSA',
             'wizard_step'     => 1,
             'wizard_state'    => '',
         ];
         $p = taphish_wizard_resume_payload($eng);
         self::assertSame(3, $p['id']);
-        self::assertSame('Textilcolor AG — Awareness 2026', $p['meta']['name']);
-        self::assertSame('Textilcolor AG', $p['meta']['target_org']);
-        self::assertSame('textilcolor.ch, textilcolor.com', $p['meta']['scope']);
+        self::assertSame('Example Org — Awareness 2026', $p['meta']['name']);
+        self::assertSame('Example Org', $p['meta']['target_org']);
+        self::assertSame('example.com, example.org', $p['meta']['scope']);
         self::assertSame('Authorised by MSA', $p['meta']['notes']);
         self::assertSame('2026-07-15 00:00:00', $p['meta']['start_at']);
         self::assertSame('2026-09-30 00:00:00', $p['meta']['end_at']);

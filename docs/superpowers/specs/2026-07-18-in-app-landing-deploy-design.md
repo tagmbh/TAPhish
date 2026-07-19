@@ -13,7 +13,7 @@ the landing **directly** into `~/www/<host>/` (this design) — no FTP, no keys,
 **Two complementary features (kept clearly separate):**
 - **This one — `landing_deploy` / "Push to Host":** same-account **local-FS copy** to a look-alike
   **host-root** `~/www/<host>/`, renders `{{POST_URL}}`, target+source allow-lists. The working path
-  for the Textilcolor look-alike vhosts.
+  for the client look-alike vhosts.
 - **`landing_host` / Settings "External landing hosts":** remote **FTP/FTPS** push (sealed creds,
   slug-subdir, connectivity test, wizard auto-push) for hosts on **other** accounts/hosters. The
   `{{POST_URL}}` render was merged into its push path too (`landing_host_render_html`).

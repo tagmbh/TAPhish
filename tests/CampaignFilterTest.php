@@ -46,9 +46,9 @@ final class CampaignFilterTest extends TestCase
 
     public function testAnnotateAddsEngagementNameFromMap(): void
     {
-        $map = [3 => 'Textilcolor AG — Awareness 2026', 7 => 'Acme Q3'];
+        $map = [3 => 'Example Org — Awareness 2026', 7 => 'Acme Q3'];
         $out = taphish_campaigns_annotate_engagement($this->rows(), $map);
-        self::assertSame('Textilcolor AG — Awareness 2026', $out[0]['engagement_name']);
+        self::assertSame('Example Org — Awareness 2026', $out[0]['engagement_name']);
         self::assertSame('Acme Q3', $out[2]['engagement_name']);
     }
 
